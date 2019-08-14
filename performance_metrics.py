@@ -7,11 +7,12 @@ import time
 
 def calc_LOS(csv_file):
 	
-	# calculate reliability based on slack picked up at Alafia, TBC
-	# as well as BUD, CWUP, SCH wells 
+    # calculate reliability based on slack picked up at Alafia, TBC
+    # as well as BUD, CWUP, SCH wells 
     #  FOR WHICH VIOLATIONS OF PERMITS ARE TRACKED CUMULATIVELY AS
-    # THE OVERAGE TERM IN THE OUT FILE
+    #  THE OVERAGE TERM IN THE OUT FILE
     # if the variable wup_mavg_pos__CWUP exists, then according to TBW demands can be met with satisfaction
+
 
     CWUP_Violations = 0
     if max(csv_file.columns.str.find('wup_mavg_pos__CWUP')) != -1: # if variable is tracked...
@@ -25,14 +26,9 @@ def calc_LOS(csv_file):
     
     # what about surface water slack?
     Total_SW_Violations = 0
-    for sw in ['ngw_slack__Alafia','ngw_slack__TBC','ngw_slack__COT_supply']:
+    for sw in ['ngw_slack__Alafia','ngw_slack__TBC']:
         if max(csv_file.columns.str.find(sw)) != -1: # if variable is tracked...
             Total_SW_Violations += sum(csv_file[sw].dropna() > 0) # daily violations
-
-    #Overage = log_file.overage
-    #SCHmavg_weekly = csv_file['12mo_mavg__SCH'].dropna()
-    #BUDmavg_weekly = csv_file['12mo_mavg__BUD'].dropna()
-    #CWUPmavg_weekly = csv_file['12mo_mavg__CWUP'].dropna()
     
     # convert metrics into fraction of time violations occur
     LOS_CWUP = CWUP_Violations / 7304 # divide by number of simulated days
@@ -40,16 +36,20 @@ def calc_LOS(csv_file):
     LOS_SW = Total_SW_Violations / 7304 # divide by number of simulated days
     
     # what about days with any violation? 
+    # also record magnitude of events for later
     Total_GW_Violations = np.zeros((7304)); Total_SW_Violations = np.zeros((7304))
+    Mag_GW_Violations = np.zeros((7304)); Mag_SW_Violations = np.zeros((7304))
     for gw in ['wup_mavg_pos__BUD','wup_mavg_pos__CWUP','wup_mavg_pos__SCH']:
         if max(csv_file.columns.str.find(gw)) != -1: # if variable is tracked...
             which_NaN = np.isnan(csv_file[gw]); csv_file[gw][which_NaN] = 0
             Total_GW_Violations = [Total_GW_Violations[a] + (csv_file[gw][a] > 0) for a in range(len(csv_file[gw]))]
-            Total_GW_Violations = np.zeros((7304)); Total_SW_Violations = np.zeros((7304))
-    for sw in ['ngw_slack__Alafia','ngw_slack__TBC','ngw_slack__COT_supply']:
+            Mag_GW_Violations = [Mag_GW_Violations[a] + csv_file[gw][a] for a in range(len(csv_file[gw]))]
+            
+    for sw in ['ngw_slack__Alafia','ngw_slack__TBC']:
         if max(csv_file.columns.str.find(sw)) != -1: # if variable is tracked...
             which_NaN = np.isnan(csv_file[sw]); csv_file[sw][which_NaN] = 0
             Total_SW_Violations = [Total_SW_Violations[a] + (csv_file[sw][a] > 0) for a in range(len(csv_file[sw]))]
+            Mag_SW_Violations = [Mag_SW_Violations[a] + csv_file[sw][a] for a in range(len(csv_file[sw]))]
     
     Total_Violations = [Total_SW_Violations[a] + Total_GW_Violations[a] for a in range(len(Total_SW_Violations))]
     LOS_All = 0
@@ -57,7 +57,7 @@ def calc_LOS(csv_file):
         if Total_Violations[a] > 0: LOS_All += 1
     LOS_All = LOS_All / 7304
 
-    return LOS_All
+    return LOS_All, Total_Violations
 
 
 def calc_environmental_burden(csv_file, log_file):
@@ -79,6 +79,37 @@ def calc_environmental_burden(csv_file, log_file):
 
     return Environmental_Burden
 
+def find_failure_periods(Total_Violations, Violation_Magnitude):
+	#determine periods of unmet demand
+	failureconditions = 0; counter = 0; largefailure = 0;
+	length_of_fail = []; magnitude_of_fail =[]; magnitude_count =0
+
+	for k in range(len(Total_Violations)):
+		if Total_Violations[k] > 0:
+			magnitude_count += Violation_Magnitude[k]	
+			counter += 1
+		elif counter > 14: # how bad was the event?
+			length_of_fail.append(counter)
+			magnitude_of_fail.append(magnitude_count)
+			counter = 0
+			magnitude_count = 0 # reset
+		# if failure occurs long enough to be an issue for reliability
+		# treat each event the same: a 15-day unmanageable event
+		# counted the same as a 100-day one... 
+		if counter == 15: failureconditions += 1
+		if counter == 365: largefailure += 1
+    
+	# use the number of 2+ week-long periods where demands cannot be met
+	# as a proxy for the need for short-term mitigation
+	Unmanageable_Event_Count = failureconditions
+	Annual_Failures = largefailure
+	Unmanageable_Severity_95th = 0
+	Unmanageable_Duration_95th = 0
+	if len(length_of_fail) > 0:
+		Unmanageable_Duration_95th = np.quantile(length_of_fail, 0.95)
+		Unmanageable_Severity_95th = np.quantile(magnitude_of_fail, 0.95)
+	
+	return Unmanageable_Event_Count, Annual_Failures, Unmanageable_Severity_95th, Unmanageable_Duration_95th
 
 def calc_cost(run):
 	
