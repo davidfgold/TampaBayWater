@@ -20,9 +20,6 @@ from analysis_functions import read_AMPL_log, read_AMPL_out
 os.chdir('C:/Users/dgorelic/Desktop/TBWruns')
 #os.chdir('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data')
 
-# read in screening data
-screening_data = pd.read_csv('fine_grain_screening.csv')
-
 # 0079 is base run, plan Z2
 # 0080 is a slight change on base run, plan A2
 # 0082 is concept 1
@@ -41,8 +38,9 @@ Variable_Names = ['Simulation', 'SimOrder', 'Realization',
                   'Environmental Burden (target offset)', 
                   'Average SCH Production (MGD)', 'Average SCH Node 1 Demand (MGD)', 'Average SCH Node 2 Demand (MGD)',
                   '95th Percentile SCH Production', '95th Percentile SCH Node 1 Demand', '95th Percentile SCH Node 2 Demand',
-                  'Unmanageable Events (15+ day events)', 'Unmanageable Event Median Duration (days)', 
-                  'Unmanageable Event 95th Percentile Severity (MG deficit per day)',
+                  'Unmanageable Events (15+ day events)', 'Annual Failures (365+ day events)',
+                  'Unmanageable Duration 95th Percentile (days)', 
+                  'Unmanageable Severity 95th Percentile (total MG deficit)',
                   'Capital Costs ($MM)']
 collected_data = np.zeros([len(simulations)*334,len(Variable_Names)]); i = 0; j = 0
 for run in simulations:
@@ -77,14 +75,9 @@ for run in simulations:
         
         # what about surface water slack?
         Total_SW_Violations = 0
-        for sw in ['ngw_slack__Alafia','ngw_slack__TBC','ngw_slack__COT_supply']:
+        for sw in ['ngw_slack__Alafia','ngw_slack__TBC']:
             if max(csv_out.columns.str.find(sw)) != -1: # if variable is tracked...
                 Total_SW_Violations += sum(csv_out[sw].dropna() > 0) # daily violations
-
-        #Overage = log_out.overage
-        #SCHmavg_weekly = csv_out['12mo_mavg__SCH'].dropna()
-        #BUDmavg_weekly = csv_out['12mo_mavg__BUD'].dropna()
-        #CWUPmavg_weekly = csv_out['12mo_mavg__CWUP'].dropna()
         
         # convert metrics into fraction of time violations occur
         LOS_CWUP = CWUP_Violations / 7304 # divide by number of simulated days
@@ -92,22 +85,28 @@ for run in simulations:
         LOS_SW = Total_SW_Violations / 7304 # divide by number of simulated days
         
         # what about days with any violation? 
+        # also record magnitude of events for later
         Total_GW_Violations = np.zeros((7304)); Total_SW_Violations = np.zeros((7304))
+        Mag_GW_Violations = np.zeros((7304)); Mag_SW_Violations = np.zeros((7304))
         for gw in ['wup_mavg_pos__BUD','wup_mavg_pos__CWUP','wup_mavg_pos__SCH']:
             if max(csv_out.columns.str.find(gw)) != -1: # if variable is tracked...
                 which_NaN = np.isnan(csv_out[gw]); csv_out[gw][which_NaN] = 0
                 Total_GW_Violations = [Total_GW_Violations[a] + (csv_out[gw][a] > 0) for a in range(len(csv_out[gw]))]
-                Total_GW_Violations = np.zeros((7304)); Total_SW_Violations = np.zeros((7304))
-        for sw in ['ngw_slack__Alafia','ngw_slack__TBC','ngw_slack__COT_supply']:
+                Mag_GW_Violations = [Mag_GW_Violations[a] + csv_out[gw][a] for a in range(len(csv_out[gw]))]
+                
+        for sw in ['ngw_slack__Alafia','ngw_slack__TBC']:
             if max(csv_out.columns.str.find(sw)) != -1: # if variable is tracked...
                 which_NaN = np.isnan(csv_out[sw]); csv_out[sw][which_NaN] = 0
                 Total_SW_Violations = [Total_SW_Violations[a] + (csv_out[sw][a] > 0) for a in range(len(csv_out[sw]))]
+                Mag_SW_Violations = [Mag_SW_Violations[a] + csv_out[sw][a] for a in range(len(csv_out[sw]))]
         
         Total_Violations = [Total_SW_Violations[a] + Total_GW_Violations[a] for a in range(len(Total_SW_Violations))]
         LOS_All = 0
         for a in range(len(Total_Violations)): 
             if Total_Violations[a] > 0: LOS_All += 1
         LOS_All = LOS_All / 7304
+        
+        Violation_Magnitude = [Mag_SW_Violations[a] + Mag_GW_Violations[a] for a in range(len(Total_SW_Violations))]
         
         ### calculate environmental impact based on groundwater overuse
         Offset = log_out.tg_offset # future: break this down by well 
@@ -130,32 +129,33 @@ for run in simulations:
         #   supply can come from groundwater, desalination, ...
         #   ... alafia river pump station, tampa bypass canal pump station, or c.w. bill young reservoir
         # dont forget to include new sources...
-        New_Supply = np.zeros((7304))
-        for source in ['ngw_supply__ResWTP','ngw_supply__SHARP','ngw_supply__none']:
-            if max(csv_out.columns.str.find(source)) != -1: # if variable is tracked...
-                New_Source = csv_out[source]
-                where_NaNs = np.isnan(New_Source) # correct for missing vals
-                New_Source[where_NaNs] = 0
-
-                New_Supply = [New_Supply[a] + New_Source[a] for a in range(len(New_Source))]
+#        New_Supply = np.zeros((7304))
+#        for source in ['ngw_supply__ResWTP','ngw_supply__SHARP','ngw_supply__none']:
+#            if max(csv_out.columns.str.find(source)) != -1: # if variable is tracked...
+#                New_Source = csv_out[source]
+#                where_NaNs = np.isnan(New_Source) # correct for missing vals
+#                New_Source[where_NaNs] = 0
+#
+#                New_Supply = [New_Supply[a] + New_Source[a] for a in range(len(New_Source))]
 
         # total of all supply (gw + desal treated water + flow from alafia + flow from tbc + flow to/from reservoir + new supply)
         # versus total non-CoT demand total
         # negative value to Deficit means daily demand was not completely met
         
         # HEADS UP: THIS IS WRONG - THEY USE THE SLACK VIOLATIONS TO DETERMINE WHAT EVENTS ARE UNMANAGEABLE...
-        Deficit = out_out['GW'] + csv_out['wtp_eff__DS'] + csv_out['pflow__ARPS'] + \
-                  csv_out['pflow__TBPS'] + csv_out['pflow__CWBY'] + New_Supply - \
-                  (csv_out['total_demand__none'] - csv_out['pflow__J_COT'])
+        # DOES THE SLACK VIOLATION ID METHOD MISS VIOLATIONS IN NEW SUPPLY SOURCES?
+#        Deficit = out_out['GW'] + csv_out['wtp_eff__DS'] + csv_out['pflow__ARPS'] + \
+#                  csv_out['pflow__TBPS'] + csv_out['pflow__CWBY'] + New_Supply - \
+#                  (csv_out['total_demand__none'] - csv_out['pflow__J_COT'])
         
         # determine periods of unmet demand
-        failureconditions = 0; counter = 0; length_of_fail = []; magnitude_of_fail = []; magnitude_count = 0
-        C = 0 # assume 5 mgd deficit is "manageable", see appendix p.157 on use of C
-        # based on Deficit results, 5 MG deficit is routine, but use 0 here to track all deficits
-        for k in range(len(Deficit)):
+        failureconditions = 0; counter = 0; largefailure = 0
+        length_of_fail = []; magnitude_of_fail = []; magnitude_count = 0
+
+        for k in range(len(Total_Violations)):
             # keep track of consecutive days of unmet demand
-            if (Deficit[k] + C) < 0: 
-                magnitude_count -= Deficit[k] # "add" all days of event deficit
+            if Total_Violations[k] > 0: 
+                magnitude_count += Violation_Magnitude[k] # "add" all days of event deficit
                 counter += 1
             else:
                 if counter > 14: # how bad was the event?
@@ -168,16 +168,17 @@ for run in simulations:
             # treat each event the same: a 15-day unmanageable event
             # counted the same as a 100-day one... 
             if counter == 15: failureconditions += 1
+            if counter == 365: largefailure += 1
         
         # use the number of 2+ week-long periods where demands cannot be met
         # as a proxy for the need for short-term mitigation
         Unmanageable_Event_Count = failureconditions
-        
-        Unmanageable_Severity_Per_Day_95th = 0
-        Unmanageable_Event_Median_Duration = 0
+        Annual_Failures = largefailure
+        Unmanageable_Severity_95th = 0
+        Unmanageable_Duration_95th = 0
         if len(length_of_fail) > 0:
-            Unmanageable_Event_Median_Duration = np.median(length_of_fail)
-            Unmanageable_Severity_Per_Day_95th = np.quantile([magnitude_of_fail[a]/length_of_fail[a] for a in range(len(magnitude_of_fail))], 0.95)
+            Unmanageable_Duration_95th = np.quantile(length_of_fail, 0.95)
+            Unmanageable_Severity_95th = np.quantile(magnitude_of_fail, 0.95)
         
         ### assign the cost of infrastructure for each realization based on 
         # screening from reports on life cycle cost
@@ -212,8 +213,8 @@ for run in simulations:
                                Environmental_Burden, 
                                SCH_WF_Production, SCH_1_Demand, SCH_2_Demand,
                                SCH_WF_Production_95th, SCH_1_Demand_95th, SCH_2_Demand_95th,
-                               Unmanageable_Event_Count, Unmanageable_Event_Median_Duration, 
-                               Unmanageable_Severity_Per_Day_95th,
+                               Unmanageable_Event_Count, Annual_Failures,
+                               Unmanageable_Duration_95th, Unmanageable_Severity_95th,
                                Additional_Capital_Costs]
         i += 1
     
