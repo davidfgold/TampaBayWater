@@ -6,4 +6,4 @@ The folder "exploratory_modeling" contains calculations of performance metrics a
 
 The folder "PerformanceAssessment" contains up-to-date calculations of water supply and environmental performance objectives and scripts for their visualization.
 
-The folder "FinancialModel" contains the master script for the new TBW financial model.
+The folder "FinancialModeling" contains the master script for the new TBW financial model.
