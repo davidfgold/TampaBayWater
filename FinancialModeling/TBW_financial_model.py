@@ -140,6 +140,38 @@ def estimate_VariableRate(annual_estimate,
     # applied to the Uniform Rate.
     return estimated_variable_costs/annual_estimate * uniform_rate
 
+def get_DailySupplySlack(csv_out):
+    ### water supply model deliveries do not account for slack, which is
+    ### only recorded on the supply side, not the delivery/demand side
+    ### so we need to get all slack for the days we are looking at
+    import pandas as pd
+    slack_source_variables = ['wup_mavg_pos__CWUP',
+                              'wup_mavg_pos__SCH',
+                              'wup_mavg_pos__BUD', 
+                              'ngw_slack__Alafia',
+                              'ngw_slack__Reservoir',
+                              'ngw_slack__TBC', 
+                              'sch_demand__sch3_slack']
+    
+    # initialize vectors of NaN for each variable
+    slack_sources = np.zeros([len(csv_out),
+                              len(slack_source_variables)])
+    slack_sources[:] = np.nan
+    
+    # loop to collect data of interest
+    for i in range(len(slack_source_variables)):
+        if slack_source_variables[i] in csv_out.columns:
+            slack_sources[:,i] = csv_out[slack_source_variables[i]]
+            
+            # if slack variable is a weekly moving average, multiply by 7
+            # to account for all days
+            if slack_source_variables[i] in ['wup_mavg_pos__CWUP','wup_mavg_pos__SCH','wup_mavg_pos__BUD']:
+                slack_sources[:,i] *= 7
+
+    # replace nans with zeroes
+    slack_sources = pd.DataFrame(slack_sources).replace(np.nan, 0)
+    return slack_sources
+
 def get_MemberDeliveries(csv_out): # accepts cleaned AMPL csv file
     ### collect quantities of supply that are supposedly equal to 
     ### demands at points of connection in the model 
@@ -1010,9 +1042,21 @@ def run_FinancialModelForSingleRealization(realization_id = 1,
                 [(Month[d] == month and Year[d] == year) for d in range(0,ndays_of_realization)]
             uniform_rate_member_deliveries = \
                 get_MemberDeliveries(AMPL_cleaned_data.iloc[current_month_indices,:])
+            delivery_slack = \
+                get_DailySupplySlack(AMPL_cleaned_data.iloc[current_month_indices,:])
             month_TBC_raw_deliveries = \
                 pd.Series(TBC_raw_sales_to_CoT).iloc[current_month_indices]
-            
+                
+            # distribute slack, remove it from deliveries
+            # slack distributed based on fraction of total delivery to 
+            # each member government
+            # NOTE: in future, slack could be adjusted for at a daily level
+            #  but that would mean distributing moving-average slack variables
+            #  from weekly to daily level first. for now, do monthly total
+            slack_by_member = delivery_slack.sum().sum() * \
+                uniform_rate_member_deliveries.iloc[:,:-1].sum() / \
+                uniform_rate_member_deliveries.iloc[:,:-1].sum().sum()
+                
             # calculate revenues from water sales
             # FY 2020 is row 3 (row index 2) of dataset
             current_year_variable_rate = \
@@ -1025,7 +1069,7 @@ def run_FinancialModelForSingleRealization(realization_id = 1,
                 historical_annual_budget_projections['Variable Operating Expenses'].iloc[-1]
     
             month_uniform_variable_sales_by_member = \
-                uniform_rate_member_deliveries.iloc[:,:-1].sum() * \
+                (uniform_rate_member_deliveries.iloc[:,:-1].sum() - slack_by_member) * \
                 current_year_variable_rate * convert_kgal_to_MG
             month_uniform_fixed_sales_by_member = \
                 last_FY_member_delivery_fractions * \
@@ -1035,10 +1079,11 @@ def run_FinancialModelForSingleRealization(realization_id = 1,
                 historical_annual_budget_projections['TBC Rate'].iloc[-1] * \
                 convert_kgal_to_MG
             
-            # append to deliveries and sales data
+            # append to deliveries and sales data           
             this_month_delivery_sales_data = \
                 [pd.datetime(int(year),int(month),n_days_per_month[int(month)-1]).timestamp()] + \
-                [x for x in uniform_rate_member_deliveries.sum()] + \
+                [x for x in (uniform_rate_member_deliveries.iloc[:,:-1].sum() - slack_by_member)] + \
+                [x for x in (uniform_rate_member_deliveries.iloc[:,-1].sum() - slack_by_member.sum())] + \
                 [x for x in month_uniform_fixed_sales_by_member] + \
                 [x for x in month_uniform_variable_sales_by_member] + \
                 [month_TBC_raw_deliveries.sum(), month_tbc_sales]
