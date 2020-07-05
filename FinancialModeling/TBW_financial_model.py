@@ -905,7 +905,10 @@ def estimate_UniformRate(annual_estimate,
 ### because it will not impact daily water supply operations
 ### ----------------------------------------------------------------------- ###
 
-def run_FinancialModelForSingleRealization(realization_id = 1,
+def run_FinancialModelForSingleRealization(simulation_id,
+                                           decision_variables, 
+                                           rdm_factors,
+                                           realization_id = 1,
                                            additional_scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization',
                                            orop_oms_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
                                            financial_results_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125', 
@@ -917,12 +920,9 @@ def run_FinancialModelForSingleRealization(realization_id = 1,
     import os; import pandas as pd; import numpy as np
     
     ### -----------------------------------------------------------------------
-    # set parameters, variables, constants, etc.
-    # BELOW ARE A BIG SET OF CONSTANTS, DECISION VARIABLES AND DEEPLY UNCERTAIN FACTORS
+    # constants
     start_year = 2020; convert_kgal_to_MG = 1000; n_months_in_year = 12
     n_days_per_month = [31,28,31,30,31,30,31,31,30,31,30,31]
-    covenant_threshold_net_revenue_plus_fund_balance = 1.25
-    debt_covenant_required_ratio = 1
     new_projects_to_finance = []
     accumulated_new_operational_fixed_costs_from_infra = 0
     accumulated_new_operational_variable_costs_from_infra = 0
@@ -936,19 +936,28 @@ def run_FinancialModelForSingleRealization(realization_id = 1,
     reserve_fund_balance_failure_counter = 0
     rr_fund_balance_failure_counter = 0
     COVENANT_FAILURE = 1
-    KEEP_UNIFORM_RATE_STABLE = False
-    managed_uniform_rate_increase_rate = 0.01 # COULD BE CHANGED, LIKELY MODEL PARAMETER
-    rate_stabilization_minimum_ratio = 0.085 # FACTOR FROM BUDGET BUT COULD BE CHANGED
-    rate_stabilization_maximum_ratio = 0.30 # FACTOR THAT COULD BE CHANGED
-    fraction_fixed_operational_cost = 0.15 # FACTOR THAT CAN BE CHANGED, potential deeply uncertain factor?
-    budgeted_unencumbered_fraction = 0.025 # ANOTHER FACTOR TO CHANGE
-    annual_budget_operating_cost_inflation_rate = 0.033 # ANOTHER FACTOR TO BE CHANGED
-    annual_demand_growth_rate = 0.0125 # CAN BE ADJUSTED
-    next_FY_budgeted_tampa_tbc_delivery = 2000 # volume in MG/fiscal year, COULD BE CHANGED
-    fixed_op_ex_factor = 0.85; variable_op_ex_factor = 0.85 # fyi, budgets seem very hard to balance unless these are below 0.9
-    non_sales_rev_factor = 1
-    rate_stab_transfer_factor = 1; rr_transfer_factor = 1
-    other_transfer_factor = 1; required_cip_factor = 1 # factors that can be changed, potentially deeply uncertain factors?
+    
+    # decision variables
+    covenant_threshold_net_revenue_plus_fund_balance = decision_variables[0]
+    debt_covenant_required_ratio = decision_variables[1]
+    KEEP_UNIFORM_RATE_STABLE = bool(np.round(decision_variables[2])) # if range is [0,1], will round to either bound for T/F value
+    managed_uniform_rate_increase_rate = decision_variables[3]
+    
+    # deeply uncertain factors
+    rate_stabilization_minimum_ratio = rdm_factors[0]
+    rate_stabilization_maximum_ratio = rdm_factors[1]
+    fraction_fixed_operational_cost = rdm_factors[2]
+    budgeted_unencumbered_fraction = rdm_factors[3]
+    annual_budget_operating_cost_inflation_rate = rdm_factors[4]
+    annual_demand_growth_rate = rdm_factors[5]
+    next_FY_budgeted_tampa_tbc_delivery = rdm_factors[6] # volume in MG/fiscal year
+    fixed_op_ex_factor = rdm_factors[7]
+    variable_op_ex_factor = rdm_factors[8] # fyi, budgets seem very hard to balance unless these are below 0.9
+    non_sales_rev_factor = rdm_factors[9]
+    rate_stab_transfer_factor = rdm_factors[10]
+    rr_transfer_factor = rdm_factors[11]
+    other_transfer_factor = rdm_factors[12]
+    required_cip_factor = rdm_factors[13]
 
     # outcomes to track in modeling
     financial_metrics = pd.DataFrame(['Debt Covenant Ratio', 
@@ -1002,13 +1011,11 @@ def run_FinancialModelForSingleRealization(realization_id = 1,
     
     # get index for days, months, years
     # can use same file each time
-#    AMPL_outfile = read_AMPL_out(orop_oms_output_path + '/ampl_0' + str(1000 + realization_id)[1:] + '.out')
     AMPL_outfile = read_AMPL_out(orop_oms_output_path + '/ampl_0001.out')
     Year  = [str(float(str(x)[:4])-1)[:4] for x in AMPL_outfile['Date']] # corrected to 2020-2039 rather than 2021-2040...
     Month = [str(x)[4:6] for x in AMPL_outfile['Date']]
     
     # get additional water supply modeling data from OMS results
-    # NOTE: SECOND-MOST TIME-CONSUMING ACTION
     TBC_raw_sales_to_CoT = get_HarneyAugmentationFromOMS(orop_oms_output_path + '/sim_0' + str(1000 + realization_id)[1:] + '.mat', ndays_of_realization, realization_id)
     
     # get existing debt by issue
@@ -1112,7 +1119,7 @@ def run_FinancialModelForSingleRealization(realization_id = 1,
             #               (4) bond covenants
             if (month == '09'): # if it is the end of the fiscal year, september 
                 # collect model output from just-completed FY
-                current_FY_data = monthly_water_deliveries_and_sales.iloc[-12:,:]
+                current_FY_data = monthly_water_deliveries_and_sales.iloc[-n_months_in_year:,:]
                 
                 ### (1) calculate "actual" budget for completed FY ------------
                 # using modeled water demands, budgeted debt service, and
@@ -1773,79 +1780,106 @@ def run_FinancialModelForSingleRealization(realization_id = 1,
     financial_metrics_final = pd.DataFrame(financial_metrics.iloc[1:,:])
     financial_metrics_final.columns = metrics_colnames
     
-    historical_annual_budget_projections.to_csv(financial_results_output_path + '/output/budget_projections_r' + str(realization_id) + '.csv')
-    annual_budget_data.to_csv(financial_results_output_path + '/output/budget_actuals_r' + str(realization_id) + '.csv')
-    financial_metrics_final.to_csv(financial_results_output_path + '/output/financial_metrics_r' + str(realization_id) + '.csv')
-    existing_issued_debt.to_csv(financial_results_output_path + '/output/final_debt_balance_r' + str(realization_id) + '.csv')
-    monthly_water_deliveries_and_sales.to_csv(financial_results_output_path + '/output/water_deliveries_revenues_r' + str(realization_id) + '.csv')
+    historical_annual_budget_projections.to_csv(financial_results_output_path + '/output/budget_projections_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    annual_budget_data.to_csv(financial_results_output_path + '/output/budget_actuals_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    financial_metrics_final.to_csv(financial_results_output_path + '/output/financial_metrics_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    existing_issued_debt.to_csv(financial_results_output_path + '/output/final_debt_balance_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    monthly_water_deliveries_and_sales.to_csv(financial_results_output_path + '/output/water_deliveries_revenues_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     
     return historical_annual_budget_projections, annual_budget_data, financial_metrics_final, monthly_water_deliveries_and_sales, existing_issued_debt
     
-    
+
+
 ### ----------------------------------------------------------------------- ###
-### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
-### ----------------------------------------------------------------------- ###  
+### RUN ACROSS DIFFERENT MONTE CARLO SETS OF DVS
+### ----------------------------------------------------------------------- ###
+import numpy as np; import pandas as pd
+# read in decision variables from spreadsheet
+dv_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/TampaBayWater/FinancialModeling'
+DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
 
-import numpy as np
-debt_covenant_years = [int(x) for x in range(2020,2040)]
-rate_covenant_years = [int(x) for x in range(2020,2040)]
-full_rate_years = [int(x) for x in range(2010,2040)]
-variable_rate_years = [int(x) for x in range(2010,2040)]
-total_deliveries_months = [int(x) for x in range(1,364)]
-for r_id in range(1,6):
-    budget_projection, actuals, outcomes, water_vars, final_debt = \
-        run_FinancialModelForSingleRealization(
-                realization_id = r_id, 
-                additional_scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization',
-                orop_oms_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
-                financial_results_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125', 
-                historical_financial_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials',
-                observed_daily_deliveries_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data')
-    
-    ### -----------------------------------------------------------------------
-    # collect data of some results across all realizations
-    debt_covenant_years = np.vstack((debt_covenant_years, [x for x in outcomes['Debt Covenant Ratio']]))
-    rate_covenant_years = np.vstack((rate_covenant_years, [x for x in outcomes['Rate Covenant Ratio']]))
-    full_rate_years = np.vstack((full_rate_years, [x for x in actuals['Uniform Rate (Full)']]))
-    variable_rate_years = np.vstack((variable_rate_years, [x for x in actuals['Uniform Rate (Variable Portion)']]))
-    total_deliveries_months = np.vstack((total_deliveries_months, [x for x in water_vars['Water Delivery - Uniform Sales Total']]))
-    
-    
-### ---------------------------------------------------------------------------
-# reorganize data
-import pandas as pd
-DC = pd.DataFrame(debt_covenant_years[1:,:]); DC.columns = [int(x) for x in debt_covenant_years[0,:]]
-RC = pd.DataFrame(rate_covenant_years[1:,:]); RC.columns = [int(x) for x in rate_covenant_years[0,:]]
-UR = pd.DataFrame(full_rate_years[1:,:]); UR.columns = [int(x) for x in full_rate_years[0,:]]
-VR = pd.DataFrame(variable_rate_years[1:,:]); VR.columns = [int(x) for x in variable_rate_years[0,:]]
-WD = pd.DataFrame(total_deliveries_months[1:,:]); WD.columns = [int(x) for x in total_deliveries_months[0,:]]
+# read in deeply uncertain factors
+DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
 
 ### ---------------------------------------------------------------------------
-# calculate financial objectives
-# 1: debt covenant (fraction of realizations with covenant violation in year with most violations)
-DC_Violations = (DC < 1).sum()
-Objective_DC_Violations = max(DC_Violations)/len(DC)
-
-# 2: rate covenant (fraction of realizations with covenant violation in year with most violations)
-RC_Violations = (RC < 1.25).sum()
-Objective_RC_Violations = max(RC_Violations)/len(RC)
-
-# 3: uniform date (average of greatest annual rate across realizations)
-Objective_UR_Highs = UR.max(axis = 1).mean()
-
-# write objectives to outfile
-Objectives = pd.DataFrame([Objective_DC_Violations, 
-                           Objective_RC_Violations, 
-                           Objective_UR_Highs]).transpose()
-Objectives.columns = ['Debt Covenant Violation Frequency', 
+# run loop across DV sets
+sim_objectives = [0,0,0,0] # sim id + three objectives
+for sim in range(0,len(DVs)):
+    ### ----------------------------------------------------------------------- ###
+    ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
+    ### ----------------------------------------------------------------------- ###  
+    dvs = [x for x in DVs.iloc[sim,:]]
+    dufs = [x for x in DUFs.iloc[sim,:]]
+    
+    debt_covenant_years = [int(x) for x in range(2020,2040)]
+    rate_covenant_years = [int(x) for x in range(2020,2040)]
+    full_rate_years = [int(x) for x in range(2010,2040)]
+    variable_rate_years = [int(x) for x in range(2010,2040)]
+    total_deliveries_months = [int(x) for x in range(1,364)]
+    for r_id in range(1,3):
+        budget_projection, actuals, outcomes, water_vars, final_debt = \
+            run_FinancialModelForSingleRealization(
+                    simulation_id = sim,
+                    decision_variables = dvs, 
+                    rdm_factors = dufs,
+                    realization_id = r_id, 
+                    additional_scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization',
+                    orop_oms_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
+                    financial_results_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125', 
+                    historical_financial_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials',
+                    observed_daily_deliveries_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data')
+        
+        ### -----------------------------------------------------------------------
+        # collect data of some results across all realizations
+        debt_covenant_years = np.vstack((debt_covenant_years, [x for x in outcomes['Debt Covenant Ratio']]))
+        rate_covenant_years = np.vstack((rate_covenant_years, [x for x in outcomes['Rate Covenant Ratio']]))
+        full_rate_years = np.vstack((full_rate_years, [x for x in actuals['Uniform Rate (Full)']]))
+        variable_rate_years = np.vstack((variable_rate_years, [x for x in actuals['Uniform Rate (Variable Portion)']]))
+        total_deliveries_months = np.vstack((total_deliveries_months, [x for x in water_vars['Water Delivery - Uniform Sales Total']]))
+           
+    ### ---------------------------------------------------------------------------
+    # reorganize data
+    DC = pd.DataFrame(debt_covenant_years[1:,:]); DC.columns = [int(x) for x in debt_covenant_years[0,:]]
+    RC = pd.DataFrame(rate_covenant_years[1:,:]); RC.columns = [int(x) for x in rate_covenant_years[0,:]]
+    UR = pd.DataFrame(full_rate_years[1:,:]); UR.columns = [int(x) for x in full_rate_years[0,:]]
+    VR = pd.DataFrame(variable_rate_years[1:,:]); VR.columns = [int(x) for x in variable_rate_years[0,:]]
+    WD = pd.DataFrame(total_deliveries_months[1:,:]); WD.columns = [int(x) for x in total_deliveries_months[0,:]]
+    
+    ### ---------------------------------------------------------------------------
+    # calculate financial objectives
+    # 1: debt covenant (fraction of realizations with covenant violation in year with most violations)
+    DC_Violations = (DC < 1).sum()
+    Objective_DC_Violations = max(DC_Violations)/len(DC)
+    
+    # 2: rate covenant (fraction of realizations with covenant violation in year with most violations)
+    RC_Violations = (RC < 1.25).sum()
+    Objective_RC_Violations = max(RC_Violations)/len(RC)
+    
+    # 3: uniform date (average of greatest annual rate across realizations)
+    Objective_UR_Highs = UR.max(axis = 1).mean()
+    
+    # write objectives to outfile
+    sim_objectives = np.vstack((sim_objectives, 
+                                [sim,
+                                 Objective_DC_Violations, 
+                                 Objective_RC_Violations, 
+                                 Objective_UR_Highs]))
+    
+    ### ---------------------------------------------------------------------------
+    # plot Debt Covenant, Rate Covenant, Uniform Rate, Variable Rate, Water Deliveries
+    DC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/DC.png', format = 'png')
+    RC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/RC.png', format = 'png')
+    UR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/UR.png', format = 'png')
+    VR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/VR.png', format = 'png')
+    WD.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/WD.png', format = 'png')
+    
+### ---------------------------------------------------------------------------
+# write output file for all objectives
+Objectives = pd.DataFrame(sim_objectives[1:,:])
+Objectives.columns = ['Simulation ID',
+                      'Debt Covenant Violation Frequency', 
                       'Rate Covenant Violation Frequency', 
                       'Peak Uniform Rate']
 Objectives.to_csv('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/Objectives.csv')
-
-### ---------------------------------------------------------------------------
-# plot Debt Covenant, Rate Covenant, Uniform Rate, Variable Rate, Water Deliveries
-DC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/DC.png', format = 'png')
-RC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/RC.png', format = 'png')
-UR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/UR.png', format = 'png')
-VR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/VR.png', format = 'png')
-WD.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/WD.png', format = 'png')
+    
+    
