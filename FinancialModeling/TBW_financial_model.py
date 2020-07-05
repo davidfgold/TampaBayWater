@@ -280,10 +280,11 @@ def get_HarneyAugmentationFromOMS(mat_file_name_path = 'C:/Users/dgorelic/Deskto
     ### find Harney Augmentation (HA) in matlab OMS model output
     ### (HA is raw water purchased from TBC by CoT, not under uniform rate)
     # for testing, mat_file_name_path = orop_oms_output_path + '/sim_0001.mat'
+    one_thousand_added_to_read_files = 1000
     
     import h5py
     oms_file = h5py.File(mat_file_name_path)
-    all_harney_days = oms_file['sim_0' + str(1000 + r_id)[1:]]['HRTBC']['HAug'][:]
+    all_harney_days = oms_file['sim_0' + str(one_thousand_added_to_read_files + r_id)[1:]]['HRTBC']['HAug'][:]
     daily_harney_augmentation = [all_harney_days[0,d] for d in range(0,ndays_in_realization)]
     
     return daily_harney_augmentation
@@ -294,6 +295,7 @@ def build_HistoricalMonthlyWaterDeliveriesAndSalesData(historical_financial_data
     #   (can I get this by month?)
     import os; import pandas as pd; import numpy as np
     os.chdir(historical_financial_data_path)
+    convert_kgal_to_MG = 1000
     
     MonthlyWaterSales = ['Date',
                          'Water Delivery - City of St. Petersburg',
@@ -399,8 +401,8 @@ def build_HistoricalMonthlyWaterDeliveriesAndSalesData(historical_financial_data
         p += 1
        
     # fill in missing variable rate data
-    monthly_water_sales_by_member_variable.iloc[70,:-2] = [x*0.439*1000 for x in [880.93,1432.20,0,1445.67,665.73,89.13]] # aug 2015, multiply use by variable uniform rate (see spreadsheets for 2015 rate)
-    monthly_water_sales_by_member_variable.iloc[71,:-2] = [x*0.439*1000 for x in [842.7,1316.33,0,1508.09,680.08,89.82]] # sept 2015
+    monthly_water_sales_by_member_variable.iloc[70,:-2] = [x*0.439*convert_kgal_to_MG for x in [880.93,1432.20,0,1445.67,665.73,89.13]] # aug 2015, multiply use by variable uniform rate (see spreadsheets for 2015 rate)
+    monthly_water_sales_by_member_variable.iloc[71,:-2] = [x*0.439*convert_kgal_to_MG for x in [842.7,1316.33,0,1508.09,680.08,89.82]] # sept 2015
     monthly_water_sales_by_member_variable = monthly_water_sales_by_member_variable.replace(np.nan,0)
     
     # export for record/convenience
@@ -689,6 +691,7 @@ def append_Late2019DeliveryAndSalesData(monthly_record,
     #   (2) calculating TBC and variable sales revenue based on FY2020 rates from budget
     #   (3) calculating fixed sales revenues based on estimated FY2020 fixed costs to be recovered
     #       and FY2019 demands by each member relative to each other
+    n_months_in_year = 12; convert_kgal_to_MG = 1000
     
     # (0) get approved budget variables in list format
     FY2020_approved_budget = [x for x in FY2020_approved_budget]
@@ -705,15 +708,15 @@ def append_Late2019DeliveryAndSalesData(monthly_record,
     # (2) calculate variable sales revenue for each month
     # NOTE: A LOT OF INDICES HERE ARE HARD CODED AND WILL BE WRONG IF
     # MORE OR LESS COLUMNS ARE ADDED TO INPUT DATASETS
-    oct_nov_dec_2019_monthly_variable_water_sales = oct_nov_dec_2019_monthly_water_deliveries.iloc[:,1:-1] * FY2020_approved_budget[-6] * 1000
-    oct_nov_dec_2019_monthly_tbc_sales = oct_nov_dec_2019_monthly_water_deliveries.iloc[:,-1] * FY2020_approved_budget[-5] * 1000
+    oct_nov_dec_2019_monthly_variable_water_sales = oct_nov_dec_2019_monthly_water_deliveries.iloc[:,1:-1] * FY2020_approved_budget[-6] * convert_kgal_to_MG
+    oct_nov_dec_2019_monthly_tbc_sales = oct_nov_dec_2019_monthly_water_deliveries.iloc[:,-1] * FY2020_approved_budget[-5] * convert_kgal_to_MG
     
     # (3) calculate fixed sales
-    fraction_FY_total_deliveries_by_member = monthly_record.iloc[-12:,1:7].sum() / monthly_record.iloc[-12:,1:7].sum().sum()
+    fraction_FY_total_deliveries_by_member = monthly_record.iloc[-n_months_in_year:,1:7].sum() / monthly_record.iloc[-n_months_in_year:,1:7].sum().sum()
     fixed_costs_to_recover_in_FY20 = FY2020_approved_budget[1] - FY2020_approved_budget[5] # annual estimate - budgeted variable costs
-    monthly_fixed_sales_by_member = np.vstack((fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / 12,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / 12,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / 12))
+    monthly_fixed_sales_by_member = np.vstack((fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year))
     
     # (4) append to existing record and return
     # order of columns in monthly_record spreadsheet is:
@@ -867,19 +870,21 @@ def estimate_UniformRate(annual_estimate,
                          increase_rate_cap = 0.01,
                          MANAGE_RATE = False):
     import numpy as np
+    n_days_in_year = 365; convert_kgal_to_MG = 1000
+    
     if MANAGE_RATE:
         # in this scenario, will need to pull from rate stabilization
         # fund to balance budget - increase transfer in if 
         # rate would naturally be greater than desired
         if current_uniform_rate * (1 + increase_rate_cap) > \
-                annual_estimate / (demand_estimate * 365) / 1000:
+                annual_estimate / (demand_estimate * n_days_in_year) / convert_kgal_to_MG:
             # increase rate stabilization transfer in by as much as necessary,
             # capped if transfer depletes fund
             rs_transfer_in_shift = \
                 np.min([\
-                ((annual_estimate / (demand_estimate * 365) / 1000) - \
+                ((annual_estimate / (demand_estimate * n_days_in_year) / convert_kgal_to_MG) - \
                  (current_uniform_rate * (1 + increase_rate_cap))) * \
-                (demand_estimate * 365) * 1000, 
+                (demand_estimate * n_days_in_year) * convert_kgal_to_MG, 
                 rs_fund_total - \
                 rs_transfer_in])
                 
@@ -889,12 +894,12 @@ def estimate_UniformRate(annual_estimate,
                 annual_estimate - rs_transfer_in_shift
                 
             uniform_rate = updated_annual_estimate / \
-                (demand_estimate * 365) / 1000
+                (demand_estimate * n_days_in_year) / convert_kgal_to_MG
                 
             rs_transfer_in += rs_transfer_in_shift
     else:
         uniform_rate = annual_estimate / \
-            (demand_estimate * 365) / 1000
+            (demand_estimate * n_days_in_year) / convert_kgal_to_MG
         updated_annual_estimate = annual_estimate
     
     return uniform_rate, updated_annual_estimate, rs_transfer_in
@@ -908,12 +913,14 @@ def estimate_UniformRate(annual_estimate,
 def run_FinancialModelForSingleRealization(simulation_id,
                                            decision_variables, 
                                            rdm_factors,
+                                           annual_budget,
+                                           budget_projections,
+                                           water_deliveries_and_sales,
                                            realization_id = 1,
                                            additional_scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization',
                                            orop_oms_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
                                            financial_results_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125', 
                                            historical_financial_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials',
-                                           observed_daily_deliveries_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data',
                                            PRE_CLEANED = True,
                                            ACTIVE_DEBUGGING = False):
     # get necessary packages
@@ -921,7 +928,8 @@ def run_FinancialModelForSingleRealization(simulation_id,
     
     ### -----------------------------------------------------------------------
     # constants
-    start_year = 2020; convert_kgal_to_MG = 1000; n_months_in_year = 12
+    one_thousand_added_to_read_files = 1000
+    start_year = 2020; convert_kgal_to_MG = 1000; n_months_in_year = 12; n_days_in_year = 365
     n_days_per_month = [31,28,31,30,31,30,31,31,30,31,30,31]
     new_projects_to_finance = []
     accumulated_new_operational_fixed_costs_from_infra = 0
@@ -971,26 +979,6 @@ def run_FinancialModelForSingleRealization(simulation_id,
                                      'Required R&R Fund Deposit',
                                      'Required Reserve Fund Deposit',
                                      'Necessary Use of Other Funds (Rate Stabilization Supplement)']).transpose()
-                
-    
-    ### -----------------------------------------------------------------------
-    # step 0a: read in historical financial info
-    #           in future, if this is run in a larger loop across realizations
-    #           consider reading in historical data outside function once
-    #           and passed here
-    monthly_water_deliveries_and_sales = build_HistoricalMonthlyWaterDeliveriesAndSalesData(historical_financial_data_path)
-    annual_budget_data = build_HistoricalAnnualData(historical_financial_data_path = historical_financial_data_path)
-    historical_annual_budget_projections = build_HistoricalProjectedAnnualBudgets(historical_financial_data_path)
-    
-    # step 0b: data for actual budget results goes to end of FY 2019 (Sept 31, 2019)
-    #           but OROP/OMS water supply modeling begins "Jan 2021"
-    #           BUT WE WILL ASSUME WATER SUPPLY MODELING ACTUALLY BEGINS JAN 2020
-    #           AND OROP/OMS RESULTS REPRESENT 2020-2039 YEARS RATHER THAN 2021-2040
-    #           so for now we need to use the approved FY2020 budget/uniform rates
-    #           for calculation of revenue from observed water sales 
-    monthly_water_deliveries_and_sales = append_Late2019DeliveryAndSalesData(monthly_record = monthly_water_deliveries_and_sales, 
-                                                                             FY2020_approved_budget = historical_annual_budget_projections.iloc[2,:], 
-                                                                             daily_delivery_path = observed_daily_deliveries_path)
     
     ### -----------------------------------------------------------------------
     # step 1: read in realization data from water supply modeling
@@ -999,9 +987,9 @@ def run_FinancialModelForSingleRealization(simulation_id,
     #   NOTE: THIS IS THE MOST TIME-CONSUMING STEP
     os.chdir(additional_scripts_path); from analysis_functions import read_AMPL_csv, read_AMPL_out
     if PRE_CLEANED:
-        AMPL_cleaned_data = pd.read_csv(orop_oms_output_path + '/ampl_0' + str(1000 + realization_id)[1:] + '.csv')
+        AMPL_cleaned_data = pd.read_csv(orop_oms_output_path + '/ampl_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.csv')
     else:
-        AMPL_cleaned_data = read_AMPL_csv(orop_oms_output_path + '/ampl_0' + str(1000 + realization_id)[1:] + '.csv', export = False)
+        AMPL_cleaned_data = read_AMPL_csv(orop_oms_output_path + '/ampl_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.csv', export = False)
     ndays_of_realization = len(AMPL_cleaned_data.iloc[:,0])
     
     # until water supply model is changed to include infrastructure adjustment
@@ -1016,7 +1004,7 @@ def run_FinancialModelForSingleRealization(simulation_id,
     Month = [str(x)[4:6] for x in AMPL_outfile['Date']]
     
     # get additional water supply modeling data from OMS results
-    TBC_raw_sales_to_CoT = get_HarneyAugmentationFromOMS(orop_oms_output_path + '/sim_0' + str(1000 + realization_id)[1:] + '.mat', ndays_of_realization, realization_id)
+    TBC_raw_sales_to_CoT = get_HarneyAugmentationFromOMS(orop_oms_output_path + '/sim_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.mat', ndays_of_realization, realization_id)
     
     # get existing debt by issue
     existing_issued_debt = get_ExistingDebt(historical_financial_data_path)
@@ -1025,10 +1013,10 @@ def run_FinancialModelForSingleRealization(simulation_id,
     potential_projects = get_PotentialInfrastructureProjects(historical_financial_data_path)
     
     # set remaining constants, etc. based on read-in data
-    deliveries_sales_colnames = monthly_water_deliveries_and_sales.columns
-    annual_budget_data_colnames = annual_budget_data.columns
-    historical_annual_budget_projections_colnames = historical_annual_budget_projections.columns
-    past_FY_year_data = monthly_water_deliveries_and_sales.iloc[-15:-3,:] # FY 2019 (Oct 2018 - Sept 2019)
+    deliveries_sales_colnames = water_deliveries_and_sales.columns
+    annual_budget_colnames = annual_budget.columns
+    budget_projections_colnames = budget_projections.columns
+    past_FY_year_data = water_deliveries_and_sales.iloc[-15:-3,:] # FY 2019 (Oct 2018 - Sept 2019)
     
 
     ### -----------------------------------------------------------------------
@@ -1067,13 +1055,13 @@ def run_FinancialModelForSingleRealization(simulation_id,
             # calculate revenues from water sales
             # FY 2020 is row 3 (row index 2) of dataset
             current_year_variable_rate = \
-                historical_annual_budget_projections['Variable Uniform Rate'].iloc[-1] 
+                budget_projections['Variable Uniform Rate'].iloc[-1] 
             last_FY_member_delivery_fractions = \
                 past_FY_year_data.iloc[:,1:7].sum() / \
                 past_FY_year_data.iloc[:,1:7].sum().sum()
             current_year_projected_fixed_costs_to_recover = \
-                historical_annual_budget_projections['Annual Estimate'].iloc[-1] - \
-                historical_annual_budget_projections['Variable Operating Expenses'].iloc[-1]
+                budget_projections['Annual Estimate'].iloc[-1] - \
+                budget_projections['Variable Operating Expenses'].iloc[-1]
     
             month_uniform_variable_sales_by_member = \
                 (uniform_rate_member_deliveries.iloc[:,:-1].sum() - slack_by_member) * \
@@ -1083,7 +1071,7 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 current_year_projected_fixed_costs_to_recover / \
                 n_months_in_year
             month_tbc_sales = month_TBC_raw_deliveries.sum() * \
-                historical_annual_budget_projections['TBC Rate'].iloc[-1] * \
+                budget_projections['TBC Rate'].iloc[-1] * \
                 convert_kgal_to_MG
             
             # append to deliveries and sales data           
@@ -1094,12 +1082,12 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 [x for x in month_uniform_fixed_sales_by_member] + \
                 [x for x in month_uniform_variable_sales_by_member] + \
                 [month_TBC_raw_deliveries.sum(), month_tbc_sales]
-            monthly_water_deliveries_and_sales = \
-                pd.DataFrame(np.vstack((monthly_water_deliveries_and_sales,
+            water_deliveries_and_sales = \
+                pd.DataFrame(np.vstack((water_deliveries_and_sales,
                                         this_month_delivery_sales_data)))
-            monthly_water_deliveries_and_sales.columns = \
+            water_deliveries_and_sales.columns = \
                 deliveries_sales_colnames # clean up axis titles
-            monthly_water_deliveries_and_sales['Date'].iloc[-1] = \
+            water_deliveries_and_sales['Date'].iloc[-1] = \
                 pd.to_datetime(pd.datetime(int(year),
                                            int(month),
                                            n_days_per_month[int(month)-1])) # clean date
@@ -1119,7 +1107,7 @@ def run_FinancialModelForSingleRealization(simulation_id,
             #               (4) bond covenants
             if (month == '09'): # if it is the end of the fiscal year, september 
                 # collect model output from just-completed FY
-                current_FY_data = monthly_water_deliveries_and_sales.iloc[-n_months_in_year:,:]
+                current_FY_data = water_deliveries_and_sales.iloc[-n_months_in_year:,:]
                 
                 ### (1) calculate "actual" budget for completed FY ------------
                 # using modeled water demands, budgeted debt service, and
@@ -1149,13 +1137,13 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 #   upcoming year - Sandro says this is an exact percentage
                 #   but not sure how it is set/calculated
                 current_FY_debt_service = \
-                    historical_annual_budget_projections['Debt Service'].iloc[-1]
+                    budget_projections['Debt Service'].iloc[-1]
                 current_FY_acquisition_credits = \
-                    historical_annual_budget_projections['Acquisition Credits'].iloc[-1]   
+                    budget_projections['Acquisition Credits'].iloc[-1]   
                 current_FY_unencumbered_funds_carried_forward = \
-                    historical_annual_budget_projections['Unencumbered Carryover Funds'].iloc[-1]
+                    budget_projections['Unencumbered Carryover Funds'].iloc[-1]
                 current_FY_budgeted_gross_revenue = \
-                    historical_annual_budget_projections['Gross Revenues'].iloc[-1]
+                    budget_projections['Gross Revenues'].iloc[-1]
                     
                 # operational expenses and non-sales revenue assumed to be 
                 # similar to approved budget with potential perturbation factor
@@ -1165,13 +1153,13 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 # fixed operating expenses in this spreadsheet include
                 # water quality credits ($48k/year) and R&R projects budgeted
                 current_FY_fixed_operational_expenses = \
-                    historical_annual_budget_projections['Fixed Operating Expenses'].iloc[-1] * \
+                    budget_projections['Fixed Operating Expenses'].iloc[-1] * \
                     fixed_op_ex_factor
                 current_FY_variable_operational_expenses = \
-                    historical_annual_budget_projections['Variable Operating Expenses'].iloc[-1] * \
+                    budget_projections['Variable Operating Expenses'].iloc[-1] * \
                     variable_op_ex_factor
                 current_FY_non_sales_revenues = \
-                    historical_annual_budget_projections['Non-Sales Revenues'].iloc[-1] * \
+                    budget_projections['Non-Sales Revenues'].iloc[-1] * \
                     non_sales_rev_factor
                 
                 # transfers in are equal to budgeted amounts (with an adjustment factor)
@@ -1183,13 +1171,13 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 # attached
                 # NOTE: SO MAYBE DON'T HAVE DEEPLY UNCERTAIN MULTIPLIERS HERE??
                 current_FY_rate_stabilization_funds_transferred_in = \
-                    historical_annual_budget_projections['Rate Stabilization Fund Transfers In'].iloc[-1] * \
+                    budget_projections['Rate Stabilization Fund Transfers In'].iloc[-1] * \
                     rate_stab_transfer_factor
                 current_FY_rr_funds_transferred_in = \
-                    historical_annual_budget_projections['R&R Fund Transfers In'].iloc[-1] * \
+                    budget_projections['R&R Fund Transfers In'].iloc[-1] * \
                     rr_transfer_factor
                 current_FY_other_funds_transferred_in = \
-                    historical_annual_budget_projections['Other Funds Transfers In'].iloc[-1] * \
+                    budget_projections['Other Funds Transfers In'].iloc[-1] * \
                     other_transfer_factor
                 current_FY_rate_stabilization_fund_deposit = 0 # never a budgeted deposit to stabilization fund?
                 
@@ -1204,20 +1192,20 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 previous_FY_total_sales_revenues = \
                     past_FY_year_data.iloc[:,[8,9,10,11,12,13,14,15,16,17,18,19,21]].sum().sum()
                 previous_FY_acquisition_credits = \
-                    annual_budget_data['Acquisition Credits'].iloc[-1]
+                    annual_budget['Acquisition Credits'].iloc[-1]
                     
                 # positive here means the year had a net deposit into the fund, so should be negated in gross revenue calculation
                 # net transfer from stabilization fund in gross revenue calculation
                 # implicitly includes unencumbered funds as deposit to fund
                 # so this value is (-transfer out to be used as revenue + planned deposit to fund + unencumbered monies from previous FY)
                 previous_FY_rate_stabilization_net_transfer = \
-                    annual_budget_data['Rate Stabilization Fund (Net Change)'].iloc[-1]
+                    annual_budget['Rate Stabilization Fund (Net Change)'].iloc[-1]
                 previous_FY_non_sales_revenue = \
-                    annual_budget_data['Non-Sales Revenues'].iloc[-1]
+                    annual_budget['Non-Sales Revenues'].iloc[-1]
                 previous_FY_rate_stabilization_fund_balance = \
-                    annual_budget_data['Rate Stabilization Fund (Total)'].iloc[-1]
+                    annual_budget['Rate Stabilization Fund (Total)'].iloc[-1]
                 previous_FY_rate_stabilization_deposit = \
-                    annual_budget_data['Rate Stabilization Fund (Deposit)'].iloc[-1] # DOES NOT INCLUDE UNENCUMBERED FUNDS
+                    annual_budget['Rate Stabilization Fund (Deposit)'].iloc[-1] # DOES NOT INCLUDE UNENCUMBERED FUNDS
                 
                 previous_FY_gross_revenue = \
                     previous_FY_non_sales_revenue + \
@@ -1226,11 +1214,11 @@ def run_FinancialModelForSingleRealization(simulation_id,
                     previous_FY_acquisition_credits
                     
                 # check condition (a)
-                if annual_budget_data['R&R Fund (Total)'].iloc[-1] < previous_FY_gross_revenue * 0.05:
+                if annual_budget['R&R Fund (Total)'].iloc[-1] < previous_FY_gross_revenue * 0.05:
                     rr_fund_balance_failure_counter += COVENANT_FAILURE
                     current_FY_required_rr_deposit = \
                         previous_FY_gross_revenue * 0.05 - \
-                        annual_budget_data['R&R Fund (Total)'].iloc[-1]
+                        annual_budget['R&R Fund (Total)'].iloc[-1]
                     
                 # check conditions under (b) 
                 current_FY_gross_revenue = current_FY_total_sales_revenues + \
@@ -1246,12 +1234,12 @@ def run_FinancialModelForSingleRealization(simulation_id,
                     current_FY_fixed_operational_expenses - \
                     current_FY_variable_operational_expenses 
                     
-                if annual_budget_data['Utility Reserve Fund Balance (Total)'].iloc[-1] < \
+                if annual_budget['Utility Reserve Fund Balance (Total)'].iloc[-1] < \
                         current_FY_gross_revenue * 0.1:
                     reserve_fund_balance_failure_counter += COVENANT_FAILURE
                     current_FY_needed_reserve_deposit = \
                         current_FY_gross_revenue * 0.1 - \
-                        annual_budget_data['Utility Reserve Fund Balance (Total)'].iloc[-1]
+                        annual_budget['Utility Reserve Fund Balance (Total)'].iloc[-1]
                         
                 # there doesn't seem to be a codified mechanism to decide
                 # about required deposits for CIP Fund except to meet next
@@ -1272,14 +1260,14 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 if calculate_RateCoverageRatio(current_FY_net_revenue, 
                                                current_FY_debt_service,
                                                current_FY_required_cip_deposit + current_FY_required_rr_deposit,
-                                               annual_budget_data['Utility Reserve Fund Balance (Total)'].iloc[-1]) < \
+                                               annual_budget['Utility Reserve Fund Balance (Total)'].iloc[-1]) < \
                         covenant_threshold_net_revenue_plus_fund_balance:
                     rate_covenant_failure_counter += COVENANT_FAILURE
                     adjustment = \
                         (covenant_threshold_net_revenue_plus_fund_balance * \
                          current_FY_debt_service) - \
                         current_FY_net_revenue - \
-                        annual_budget_data['Utility Reserve Fund Balance (Total)'].iloc[-1]
+                        annual_budget['Utility Reserve Fund Balance (Total)'].iloc[-1]
                     current_FY_needed_reserve_deposit = \
                         np.max([current_FY_needed_reserve_deposit, adjustment])
                     
@@ -1362,7 +1350,7 @@ def run_FinancialModelForSingleRealization(simulation_id,
                     
                 if current_FY_final_budget_surplus < 0:
                     current_FY_final_reserve_fund_balance = \
-                        annual_budget_data['Utility Reserve Fund Balance (Total)'].iloc[-1] + \
+                        annual_budget['Utility Reserve Fund Balance (Total)'].iloc[-1] + \
                         current_FY_final_budget_surplus 
                     current_FY_rate_stabilization_fund_deposit = 0
                 else:
@@ -1371,12 +1359,12 @@ def run_FinancialModelForSingleRealization(simulation_id,
                     if current_FY_final_budget_surplus > \
                             current_FY_needed_reserve_deposit:
                         current_FY_final_reserve_fund_balance = \
-                            annual_budget_data['Utility Reserve Fund Balance (Total)'].iloc[-1] + \
+                            annual_budget['Utility Reserve Fund Balance (Total)'].iloc[-1] + \
                             current_FY_needed_reserve_deposit
                         current_FY_final_budget_surplus -= current_FY_needed_reserve_deposit
                     else:
                         current_FY_final_reserve_fund_balance = \
-                            annual_budget_data['Utility Reserve Fund Balance (Total)'].iloc[-1] + \
+                            annual_budget['Utility Reserve Fund Balance (Total)'].iloc[-1] + \
                             current_FY_final_budget_surplus
                         current_FY_final_budget_surplus = 0
                     
@@ -1408,7 +1396,7 @@ def run_FinancialModelForSingleRealization(simulation_id,
                     current_FY_required_rr_deposit 
                 current_FY_final_rr_fund_balance = \
                     current_FY_final_rr_net_transfer + \
-                    annual_budget_data['R&R Fund (Total)'].iloc[-1]
+                    annual_budget['R&R Fund (Total)'].iloc[-1]
                 
                 # set rate stabilization balance
                 # unencumbered funds deposited here at end of FY
@@ -1429,7 +1417,7 @@ def run_FinancialModelForSingleRealization(simulation_id,
                                                 current_FY_net_revenue, 
                                                 current_FY_debt_service, 
                                                 current_FY_required_cip_deposit + current_FY_required_rr_deposit, 
-                                                annual_budget_data['Utility Reserve Fund Balance (Total)'].iloc[-1]),
+                                                annual_budget['Utility Reserve Fund Balance (Total)'].iloc[-1]),
                                         debt_covenant_failure_counter, 
                                         rate_covenant_failure_counter,
                                         reserve_fund_balance_failure_counter,
@@ -1443,12 +1431,12 @@ def run_FinancialModelForSingleRealization(simulation_id,
                                                             FY_financial_metrics)))
                 
                 # record "actuals" of completed FY in historical record
-                # to match columns of annual_budget_data
+                # to match columns of annual_budget
                 # reminder, net rate stabilization transfer includes 
                 #   unencumbered funds
-                current_FY_uniform_rate = historical_annual_budget_projections['Uniform Rate'].iloc[-1]
-                current_FY_variable_rate = historical_annual_budget_projections['Variable Uniform Rate'].iloc[-1]
-                current_FY_tbc_rate = historical_annual_budget_projections['TBC Rate'].iloc[-1]
+                current_FY_uniform_rate = budget_projections['Uniform Rate'].iloc[-1]
+                current_FY_variable_rate = budget_projections['Variable Uniform Rate'].iloc[-1]
+                current_FY_tbc_rate = budget_projections['TBC Rate'].iloc[-1]
                 current_FY_final_rate_stabilization_net_transfer = \
                     current_FY_rate_stabilization_fund_deposit - \
                     current_FY_rate_stabilization_funds_transferred_in + \
@@ -1470,9 +1458,9 @@ def run_FinancialModelForSingleRealization(simulation_id,
                               current_FY_rate_stabilization_fund_deposit, 
                               current_FY_final_rate_stabilization_fund_balance, 
                               current_FY_final_rate_stabilization_net_transfer]
-                annual_budget_data = pd.DataFrame(np.vstack((annual_budget_data, 
+                annual_budget = pd.DataFrame(np.vstack((annual_budget, 
                                                              FY_actuals)))
-                annual_budget_data.columns = annual_budget_data_colnames
+                annual_budget.columns = annual_budget_colnames
                 
                 ### begin "budget development" for next FY --------------------
                 # (a) estimate debt service and split among bond issues
@@ -1525,11 +1513,11 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 # on the budget spreadsheet in the TBW reports, R&R budget is
                 # split out from fixed costs, in this calculation they aren't
                 next_FY_budgeted_fixed_operating_costs = \
-                    (historical_annual_budget_projections['Fixed Operating Expenses'].iloc[-1] + \
+                    (budget_projections['Fixed Operating Expenses'].iloc[-1] + \
                      accumulated_new_operational_fixed_costs_from_infra) * \
                     (1 + annual_budget_operating_cost_inflation_rate)
                 next_FY_budgeted_variable_operating_costs = \
-                    (historical_annual_budget_projections['Variable Operating Expenses'].iloc[-1] + \
+                    (budget_projections['Variable Operating Expenses'].iloc[-1] + \
                      accumulated_new_operational_variable_costs_from_infra) * \
                     (1 + annual_budget_operating_cost_inflation_rate)
                     
@@ -1557,7 +1545,7 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 next_FY_budgeted_tbc_rate = current_FY_tbc_rate
                 next_FY_budgeted_tbc_revenue = \
                     next_FY_budgeted_tampa_tbc_delivery * \
-                    next_FY_budgeted_tbc_rate * 1000
+                    next_FY_budgeted_tbc_rate * convert_kgal_to_MG
                     
                 # estimate any transfers in from funds
                 # budgets note that >=$1.5M is expected to be transferred in
@@ -1680,7 +1668,7 @@ def run_FinancialModelForSingleRealization(simulation_id,
                 # 1-1.5% per year. For now, will set growth rate steady
                 # based on what previous year's water demand was
                 next_FY_demand_estimate_mgd = \
-                    current_FY_data['Water Delivery - Uniform Sales Total'].sum()/365 * \
+                    current_FY_data['Water Delivery - Uniform Sales Total'].sum()/n_days_in_year * \
                     (1 + annual_demand_growth_rate)
                 
                 # given cost breakdowns, estimate water rates
@@ -1705,13 +1693,14 @@ def run_FinancialModelForSingleRealization(simulation_id,
                                           next_FY_uniform_rate)
                 
                 # collect all elements of new FY budget projection
-                # to match rows of historical_annual_budget_projections
+                # to match rows of budget_projections
                 # first, fill in other variables that haven't explicitly been 
                 # calculated yet. 
                 # in gross revenue calculation, not including litigation/
                 # insurance recovery or arbitrage (ranges from $0-1.1M)
                 next_FY_budgeted_uniform_sales_revenue = \
-                    next_FY_demand_estimate_mgd * next_FY_uniform_rate * 1000 *365
+                    next_FY_demand_estimate_mgd * next_FY_uniform_rate * \
+                    convert_kgal_to_MG * n_days_in_year
                 
                 next_FY_budgeted_water_sales_revenue = \
                     next_FY_budgeted_uniform_sales_revenue + \
@@ -1753,12 +1742,12 @@ def run_FinancialModelForSingleRealization(simulation_id,
                                               next_FY_budgeted_rr_transfer_in, 
                                               0, # never any other funds budgeted transferred in?
                                               next_FY_budgeted_interest_income] # basically saying interest is only non-sales revenue...
-                historical_annual_budget_projections = \
+                budget_projections = \
                     pd.DataFrame(
-                            np.vstack((historical_annual_budget_projections, 
+                            np.vstack((budget_projections, 
                                        next_FY_budget_projections)))
-                historical_annual_budget_projections.columns = \
-                    historical_annual_budget_projections_colnames
+                budget_projections.columns = \
+                    budget_projections_colnames
                 
                 # update most recent FY to be the current one
                 past_FY_year_data = current_FY_data 
@@ -1780,13 +1769,13 @@ def run_FinancialModelForSingleRealization(simulation_id,
     financial_metrics_final = pd.DataFrame(financial_metrics.iloc[1:,:])
     financial_metrics_final.columns = metrics_colnames
     
-    historical_annual_budget_projections.to_csv(financial_results_output_path + '/output/budget_projections_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    annual_budget_data.to_csv(financial_results_output_path + '/output/budget_actuals_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    budget_projections.to_csv(financial_results_output_path + '/output/budget_projections_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    annual_budget.to_csv(financial_results_output_path + '/output/budget_actuals_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     financial_metrics_final.to_csv(financial_results_output_path + '/output/financial_metrics_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     existing_issued_debt.to_csv(financial_results_output_path + '/output/final_debt_balance_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    monthly_water_deliveries_and_sales.to_csv(financial_results_output_path + '/output/water_deliveries_revenues_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    water_deliveries_and_sales.to_csv(financial_results_output_path + '/output/water_deliveries_revenues_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     
-    return historical_annual_budget_projections, annual_budget_data, financial_metrics_final, monthly_water_deliveries_and_sales, existing_issued_debt
+    return budget_projections, annual_budget, financial_metrics_final, water_deliveries_and_sales, existing_issued_debt
     
 
 
@@ -1800,6 +1789,28 @@ DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
 
 # read in deeply uncertain factors
 DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
+
+### -----------------------------------------------------------------------
+# step 0a: read in historical financial info
+#           in future, if this is run in a larger loop across realizations
+#           consider reading in historical data outside function once
+#           and passed here
+hist_financial_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials'
+
+monthly_water_deliveries_and_sales = build_HistoricalMonthlyWaterDeliveriesAndSalesData(hist_financial_path)
+annual_budget_data = build_HistoricalAnnualData(historical_financial_data_path = hist_financial_path)
+historical_annual_budget_projections = build_HistoricalProjectedAnnualBudgets(hist_financial_path)
+
+# step 0b: data for actual budget results goes to end of FY 2019 (Sept 31, 2019)
+#           but OROP/OMS water supply modeling begins "Jan 2021"
+#           BUT WE WILL ASSUME WATER SUPPLY MODELING ACTUALLY BEGINS JAN 2020
+#           AND OROP/OMS RESULTS REPRESENT 2020-2039 YEARS RATHER THAN 2021-2040
+#           so for now we need to use the approved FY2020 budget/uniform rates
+#           for calculation of revenue from observed water sales 
+observed_delivery_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data'
+monthly_water_deliveries_and_sales = append_Late2019DeliveryAndSalesData(monthly_record = monthly_water_deliveries_and_sales, 
+                                                                         FY2020_approved_budget = historical_annual_budget_projections.iloc[2,:], 
+                                                                         daily_delivery_path = observed_delivery_path)
 
 ### ---------------------------------------------------------------------------
 # run loop across DV sets
@@ -1822,12 +1833,14 @@ for sim in range(0,len(DVs)):
                     simulation_id = sim,
                     decision_variables = dvs, 
                     rdm_factors = dufs,
+                    annual_budget = annual_budget_data,
+                    budget_projections = historical_annual_budget_projections,
+                    water_deliveries_and_sales = monthly_water_deliveries_and_sales,
                     realization_id = r_id, 
                     additional_scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization',
                     orop_oms_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
                     financial_results_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125', 
-                    historical_financial_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials',
-                    observed_daily_deliveries_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data')
+                    historical_financial_data_path = hist_financial_path)
         
         ### -----------------------------------------------------------------------
         # collect data of some results across all realizations
