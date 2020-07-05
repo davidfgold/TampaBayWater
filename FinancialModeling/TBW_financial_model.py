@@ -1083,7 +1083,7 @@ def run_FinancialModelForSingleRealization(realization_id = 1,
             this_month_delivery_sales_data = \
                 [pd.datetime(int(year),int(month),n_days_per_month[int(month)-1]).timestamp()] + \
                 [x for x in (uniform_rate_member_deliveries.iloc[:,:-1].sum() - slack_by_member)] + \
-                [x for x in (uniform_rate_member_deliveries.iloc[:,-1].sum() - slack_by_member.sum())] + \
+                [(uniform_rate_member_deliveries.iloc[:,-1].sum() - slack_by_member.sum())] + \
                 [x for x in month_uniform_fixed_sales_by_member] + \
                 [x for x in month_uniform_variable_sales_by_member] + \
                 [month_TBC_raw_deliveries.sum(), month_tbc_sales]
@@ -1804,27 +1804,48 @@ for r_id in range(1,6):
     
     ### -----------------------------------------------------------------------
     # collect data of some results across all realizations
-    
     debt_covenant_years = np.vstack((debt_covenant_years, [x for x in outcomes['Debt Covenant Ratio']]))
     rate_covenant_years = np.vstack((rate_covenant_years, [x for x in outcomes['Rate Covenant Ratio']]))
     full_rate_years = np.vstack((full_rate_years, [x for x in actuals['Uniform Rate (Full)']]))
     variable_rate_years = np.vstack((variable_rate_years, [x for x in actuals['Uniform Rate (Variable Portion)']]))
     total_deliveries_months = np.vstack((total_deliveries_months, [x for x in water_vars['Water Delivery - Uniform Sales Total']]))
     
+    
 ### ---------------------------------------------------------------------------
-# reorganize and plot
+# reorganize data
 import pandas as pd
 DC = pd.DataFrame(debt_covenant_years[1:,:]); DC.columns = [int(x) for x in debt_covenant_years[0,:]]
-DC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/DC.png', format = 'png')
-
 RC = pd.DataFrame(rate_covenant_years[1:,:]); RC.columns = [int(x) for x in rate_covenant_years[0,:]]
-RC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/RC.png', format = 'png')
-
 UR = pd.DataFrame(full_rate_years[1:,:]); UR.columns = [int(x) for x in full_rate_years[0,:]]
-UR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/UR.png', format = 'png')
-
 VR = pd.DataFrame(variable_rate_years[1:,:]); VR.columns = [int(x) for x in variable_rate_years[0,:]]
-VR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/VR.png', format = 'png')
-    
 WD = pd.DataFrame(total_deliveries_months[1:,:]); WD.columns = [int(x) for x in total_deliveries_months[0,:]]
+
+### ---------------------------------------------------------------------------
+# calculate financial objectives
+# 1: debt covenant (fraction of realizations with covenant violation in year with most violations)
+DC_Violations = (DC < 1).sum()
+Objective_DC_Violations = max(DC_Violations)/len(DC)
+
+# 2: rate covenant (fraction of realizations with covenant violation in year with most violations)
+RC_Violations = (RC < 1.25).sum()
+Objective_RC_Violations = max(RC_Violations)/len(RC)
+
+# 3: uniform date (average of greatest annual rate across realizations)
+Objective_UR_Highs = UR.max(axis = 1).mean()
+
+# write objectives to outfile
+Objectives = pd.DataFrame([Objective_DC_Violations, 
+                           Objective_RC_Violations, 
+                           Objective_UR_Highs]).transpose()
+Objectives.columns = ['Debt Covenant Violation Frequency', 
+                      'Rate Covenant Violation Frequency', 
+                      'Peak Uniform Rate']
+Objectives.to_csv('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/Objectives.csv')
+
+### ---------------------------------------------------------------------------
+# plot Debt Covenant, Rate Covenant, Uniform Rate, Variable Rate, Water Deliveries
+DC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/DC.png', format = 'png')
+RC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/RC.png', format = 'png')
+UR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/UR.png', format = 'png')
+VR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/VR.png', format = 'png')
 WD.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/WD.png', format = 'png')
