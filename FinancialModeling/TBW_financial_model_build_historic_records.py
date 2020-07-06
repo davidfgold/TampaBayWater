@@ -406,13 +406,13 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      CAFR_FY18_cleaned['Approved'].iloc[10],
                      -CAFR_FY18_cleaned['Approved'].iloc[13] + CAFR_FY18_cleaned['Approved'].iloc[34],
                      -CAFR_FY18_cleaned['Approved'].iloc[9] + CAFR_FY18_cleaned['Approved'].iloc[37],
-                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[35:37]) + CAFR_FY18_cleaned['Approved'].iloc[38] + np.sum(CAFR_FY18_cleaned['Approved'].iloc[32:34]) - np.sum(CAFR_FY18_cleaned['Approved'].iloc[11:13])-2035834,
+                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[35:37]) + CAFR_FY18_cleaned['Approved'].iloc[38] + np.sum(CAFR_FY18_cleaned['Approved'].iloc[32:34]) - np.sum(CAFR_FY18_cleaned['Approved'].iloc[11:13])-692442,
                      2.559, # hard-coded numbers manually pulled from FY Operating Budget Report
                      0.3858,
                      0.157,
                      CAFR_FY18_cleaned['Approved'].iloc[9],
                      CAFR_FY18_cleaned['Approved'].iloc[13],
-                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[11:13])+2035834, # CIP expenditure from FY19 report, p.34 for now
+                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[11:13])+692442, # CIP expenditure from FY18 report, p.58
                      np.sum(CAFR_FY18_cleaned['Approved'].iloc[3:5])]
     
     # manually enter FY 2017 approved budget from its report
@@ -473,11 +473,11 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
 
 
 
-def append_Late2019DeliveryAndSalesData(monthly_record, 
-                                        FY2020_approved_budget, 
-                                        daily_delivery_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data'):
+def append_UpToJuly2020DeliveryAndSalesData(monthly_record, 
+                                            FY2020_approved_budget, 
+                                            daily_delivery_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/observed_deliveries'):
     # historic monthly record from finance data only goes through Sept 2019
-    # but need to extend through end of calendar year 2019
+    # but need to extend through end of calendar year 2020
     # this includes
     #   (1) getting observed deliveries at a monthly level from daily records
     #   (2) calculating TBC and variable sales revenue based on FY2020 rates from budget
@@ -491,22 +491,35 @@ def append_Late2019DeliveryAndSalesData(monthly_record,
     # (1) get monthly deliveries by member
     import pandas as pd
     import numpy as np
-    oct_nov_dec_2019_daily_water_deliveries = pd.read_excel(daily_delivery_path + '/UpdatedHistoricDailyDeliveryData.xlsx', 
-                                                            skiprows = 2922, nrows = 2922 + 31 + 30 + 31, sheet_name = '2011_through_2019_bymember') 
-    oct_nov_dec_2019_daily_water_deliveries.columns = ['Date','St. Pete','Pinellas','CoT','Hillsborough','Pasco','NPR','CoT TBC']
-    oct_nov_dec_2019_daily_water_deliveries['Date'] = pd.to_datetime(oct_nov_dec_2019_daily_water_deliveries['Date'])
-    oct_nov_dec_2019_monthly_water_deliveries = oct_nov_dec_2019_daily_water_deliveries.groupby(oct_nov_dec_2019_daily_water_deliveries['Date'].dt.month).sum().reset_index()
+    # read daily records starting at Oct 2019 -> June 2020
+    additional_daily_water_deliveries = pd.read_excel(daily_delivery_path + '/DeliveryandHarneyAug_up_to_June_2020.xlsx', 
+                                                      skiprows = 3652, sheet_name = 'Daily') 
+    additional_daily_water_deliveries.columns = ['Year','Month','Day','CoT','CoT TBC','NPR','NW Hillsborough','Pasco','Pinellas','SC Hillsborough','St. Pete']
+    additional_daily_water_deliveries['Date'] = pd.to_datetime(additional_daily_water_deliveries[['Year','Month','Day']])
+    additional_daily_water_deliveries['Hillsborough'] = additional_daily_water_deliveries['NW Hillsborough'] + additional_daily_water_deliveries['SC Hillsborough']
+    
+    organized_additional_daily_water_deliveries = additional_daily_water_deliveries[['Date','St. Pete','Pinellas','CoT','Hillsborough','Pasco','NPR','CoT TBC']]
+    additional_monthly_water_deliveries = organized_additional_daily_water_deliveries.groupby(organized_additional_daily_water_deliveries['Date'].dt.month).sum().reset_index()
+    
+    # put months back in order
+    additional_monthly_water_deliveries = additional_monthly_water_deliveries.iloc[[6,7,8,0,1,2,3,4,5],:]
     
     # (2) calculate variable sales revenue for each month
     # NOTE: A LOT OF INDICES HERE ARE HARD CODED AND WILL BE WRONG IF
     # MORE OR LESS COLUMNS ARE ADDED TO INPUT DATASETS
-    oct_nov_dec_2019_monthly_variable_water_sales = oct_nov_dec_2019_monthly_water_deliveries.iloc[:,1:-1] * FY2020_approved_budget[-6] * convert_kgal_to_MG
-    oct_nov_dec_2019_monthly_tbc_sales = oct_nov_dec_2019_monthly_water_deliveries.iloc[:,-1] * FY2020_approved_budget[-5] * convert_kgal_to_MG
+    additional_monthly_variable_water_sales = additional_monthly_water_deliveries.iloc[:,1:-1] * FY2020_approved_budget[-6] * convert_kgal_to_MG
+    additional_monthly_tbc_sales = additional_monthly_water_deliveries.iloc[:,-1] * FY2020_approved_budget[-5] * convert_kgal_to_MG
     
     # (3) calculate fixed sales
     fraction_FY_total_deliveries_by_member = monthly_record.iloc[-n_months_in_year:,1:7].sum() / monthly_record.iloc[-n_months_in_year:,1:7].sum().sum()
     fixed_costs_to_recover_in_FY20 = FY2020_approved_budget[1] - FY2020_approved_budget[5] # annual estimate - budgeted variable costs
     monthly_fixed_sales_by_member = np.vstack((fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
                                                fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
                                                fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year))
     
@@ -515,19 +528,33 @@ def append_Late2019DeliveryAndSalesData(monthly_record,
     # Date, water delivery by member (x6), uniform water delivery total,
     # fixed water sales by member (x6), variable water sales by member (x6),
     # tbc delivery, tbc sales
-    new_2019_months_collected = pd.DataFrame(np.hstack((pd.DataFrame([pd.datetime(2019,10,31).timestamp(), pd.datetime(2019,11,30).timestamp(), pd.datetime(2019,12,31).timestamp()]),
-                                                        oct_nov_dec_2019_monthly_water_deliveries.iloc[:,1:-1],
-                                                        pd.DataFrame(oct_nov_dec_2019_monthly_water_deliveries.iloc[:,1:-1].sum(1)),
-                                                        monthly_fixed_sales_by_member,
-                                                        oct_nov_dec_2019_monthly_variable_water_sales,
-                                                        pd.DataFrame(oct_nov_dec_2019_monthly_water_deliveries.iloc[:,-1].transpose()),
-                                                        pd.DataFrame(oct_nov_dec_2019_monthly_tbc_sales.transpose()))))
+    new_months_collected = pd.DataFrame(np.hstack((pd.DataFrame([pd.datetime(2019,10,31).timestamp(), 
+                                                                 pd.datetime(2019,11,30).timestamp(), 
+                                                                 pd.datetime(2019,12,31).timestamp(), 
+                                                                 pd.datetime(2020,1,31).timestamp(),
+                                                                 pd.datetime(2020,2,29).timestamp(),
+                                                                 pd.datetime(2020,3,31).timestamp(),
+                                                                 pd.datetime(2020,4,30).timestamp(),
+                                                                 pd.datetime(2020,5,31).timestamp(),
+                                                                 pd.datetime(2020,6,30).timestamp()]),
+        additional_monthly_water_deliveries.iloc[:,1:-1],
+        pd.DataFrame(additional_monthly_water_deliveries.iloc[:,1:-1].sum(1)),
+        monthly_fixed_sales_by_member,
+        additional_monthly_variable_water_sales,
+        pd.DataFrame(additional_monthly_water_deliveries.iloc[:,-1].transpose()),
+        pd.DataFrame(additional_monthly_tbc_sales.transpose()))))
     monthly_deliveries_and_sales = pd.DataFrame(np.vstack((monthly_record,
-                                                           new_2019_months_collected)))
+                                                           new_months_collected)))
     monthly_deliveries_and_sales.columns = [x for x in monthly_record.columns]
-    monthly_deliveries_and_sales['Date'].iloc[-3] = pd.to_datetime(pd.datetime(2019,10,31))
-    monthly_deliveries_and_sales['Date'].iloc[-2] = pd.to_datetime(pd.datetime(2019,11,30))
-    monthly_deliveries_and_sales['Date'].iloc[-1] = pd.to_datetime(pd.datetime(2019,12,31))
+    monthly_deliveries_and_sales['Date'].iloc[-9] = pd.to_datetime(pd.datetime(2019,10,31))
+    monthly_deliveries_and_sales['Date'].iloc[-8] = pd.to_datetime(pd.datetime(2019,11,30))
+    monthly_deliveries_and_sales['Date'].iloc[-7] = pd.to_datetime(pd.datetime(2019,12,31))
+    monthly_deliveries_and_sales['Date'].iloc[-6] = pd.to_datetime(pd.datetime(2020,1,31))
+    monthly_deliveries_and_sales['Date'].iloc[-5] = pd.to_datetime(pd.datetime(2020,2,29))
+    monthly_deliveries_and_sales['Date'].iloc[-4] = pd.to_datetime(pd.datetime(2020,3,31))
+    monthly_deliveries_and_sales['Date'].iloc[-3] = pd.to_datetime(pd.datetime(2020,4,30))
+    monthly_deliveries_and_sales['Date'].iloc[-2] = pd.to_datetime(pd.datetime(2020,5,31))
+    monthly_deliveries_and_sales['Date'].iloc[-1] = pd.to_datetime(pd.datetime(2020,6,30))
     
     # export fixed version
     # monthly_deliveries_and_sales.to_csv(daily_delivery_path + '/monthly_deliveries_and_sales_by_member_through2019.csv')
@@ -575,9 +602,9 @@ historical_annual_budget_projections = build_HistoricalProjectedAnnualBudgets(hi
 #           so for now we need to use the approved FY2020 budget/uniform rates
 #           for calculation of revenue from observed water sales 
 observed_delivery_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/observed_deliveries'
-monthly_water_deliveries_and_sales = append_Late2019DeliveryAndSalesData(monthly_record = monthly_water_deliveries_and_sales, 
-                                                                         FY2020_approved_budget = historical_annual_budget_projections.iloc[2,:], 
-                                                                         daily_delivery_path = observed_delivery_path)
+monthly_water_deliveries_and_sales = append_UpToJuly2020DeliveryAndSalesData(monthly_record = monthly_water_deliveries_and_sales, 
+                                                                             FY2020_approved_budget = historical_annual_budget_projections.iloc[4,:], 
+                                                                             daily_delivery_path = observed_delivery_path)
 
 # step 0c: collect existing and future debt/infrastructure project costs
 # get existing debt by issue
