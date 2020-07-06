@@ -313,8 +313,34 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                                'TBC Rate',
                                'Rate Stabilization Fund Transfers In', 
                                'R&R Fund Transfers In', 
-                               'Other Funds Transfers In',
+                               'Other Funds Transfers In', # Note: this is pretty much just CIP fund transfers in
                                'Non-Sales Revenues'] # interest income + litigation/insurance recoveries + misc income (misc income always zero...?)
+    
+    # manually record values from FY21 Proposed Operating Budget Report, p.31
+    # used in place of approved budget because 
+    # 1. they dont vary too much between proposed and approved
+    # 2. need FY21 budget estimate for last 3 months of 2020 in model
+    #    so that simulation can start in Jan 2021
+    FY21_proposed = [2021,
+                     178053678 + 10386195, 
+                     172518114+42000+392000 + 0 + 4233325 + 3211966 - 10231558, 
+                     172518114+42000+392000, 
+                     178053678+10386195-70093840-10231558-(12410244+13027527+500800), 
+                     12410244+13027527+500800, 
+                     (172518114+42000+392000 + 0 + 4233325 + 3211966 - 10231558) - (178053678-70093840-10231558), 
+                     70093840, 
+                     10231558, 
+                     4233325, 
+                     -10386195+3000000, 
+                     -0, 
+                     1500000+275965+0+0-10665328, 
+                     2.559, 
+                     0.3848,
+                     0.195,
+                     0,
+                     10386195,
+                     10665328, # CIP fund, p.58
+                     3211966]
     
     # manually record values from FY20 Approved Operating Budget Report, p.31
     FY20_approved = [2020,
@@ -329,13 +355,13 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      4168060, 
                      -6607280+4500000, 
                      -1600000, 
-                     2200000+143772+112872+1600000, 
+                     2200000+143772+112872+1600000-6047598, 
                      2.559, 
                      0.4028,
                      0.195,
                      1600000,
                      6607280,
-                     0,
+                     6047598, # CIP fund, p.58
                      1893889]
     
     # read in FY 2019 CAFR summary table and clean
@@ -353,13 +379,13 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      CAFR_FY19_cleaned['Approved'].iloc[10],
                      -CAFR_FY19_cleaned['Approved'].iloc[13] + CAFR_FY19_cleaned['Approved'].iloc[34],
                      -CAFR_FY19_cleaned['Approved'].iloc[9] + CAFR_FY19_cleaned['Approved'].iloc[37],
-                     np.sum(CAFR_FY19_cleaned['Approved'].iloc[35:37]) + CAFR_FY19_cleaned['Approved'].iloc[38] + np.sum(CAFR_FY19_cleaned['Approved'].iloc[32:34]) - np.sum(CAFR_FY19_cleaned['Approved'].iloc[11:13]),
+                     np.sum(CAFR_FY19_cleaned['Approved'].iloc[35:37]) + CAFR_FY19_cleaned['Approved'].iloc[38] + np.sum(CAFR_FY19_cleaned['Approved'].iloc[32:34]) - np.sum(CAFR_FY19_cleaned['Approved'].iloc[11:13])-2920690,
                      2.559, # hard-coded numbers manually pulled from FY Operating Budget Report
                      0.3988,
                      0.157,
                      CAFR_FY19_cleaned['Approved'].iloc[9],
                      CAFR_FY19_cleaned['Approved'].iloc[13],
-                     np.sum(CAFR_FY19_cleaned['Approved'].iloc[11:13]),
+                     np.sum(CAFR_FY19_cleaned['Approved'].iloc[11:13])+2920690, # added in CIP transfer, p. 60 of report
                      np.sum(CAFR_FY19_cleaned['Approved'].iloc[3:5])]
     
     
@@ -380,19 +406,66 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      CAFR_FY18_cleaned['Approved'].iloc[10],
                      -CAFR_FY18_cleaned['Approved'].iloc[13] + CAFR_FY18_cleaned['Approved'].iloc[34],
                      -CAFR_FY18_cleaned['Approved'].iloc[9] + CAFR_FY18_cleaned['Approved'].iloc[37],
-                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[35:37]) + CAFR_FY18_cleaned['Approved'].iloc[38] + np.sum(CAFR_FY18_cleaned['Approved'].iloc[32:34]) - np.sum(CAFR_FY18_cleaned['Approved'].iloc[11:13]),
+                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[35:37]) + CAFR_FY18_cleaned['Approved'].iloc[38] + np.sum(CAFR_FY18_cleaned['Approved'].iloc[32:34]) - np.sum(CAFR_FY18_cleaned['Approved'].iloc[11:13])-2035834,
                      2.559, # hard-coded numbers manually pulled from FY Operating Budget Report
                      0.3858,
                      0.157,
                      CAFR_FY18_cleaned['Approved'].iloc[9],
                      CAFR_FY18_cleaned['Approved'].iloc[13],
-                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[11:13]),
+                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[11:13])+2035834, # CIP expenditure from FY19 report, p.34 for now
                      np.sum(CAFR_FY18_cleaned['Approved'].iloc[3:5])]
-
+    
+    # manually enter FY 2017 approved budget from its report
+    FY17_approved = [2017,
+                     162049744, 
+                     154117850+42000+0 + 2870000 + 3072043 + 907870 - 10231558, 
+                     154117850+42000+0, 
+                     162049744-70129336-1023155-(9441417+12407551+1508178), 
+                     9441417+12407551+1508178, 
+                     (154117850+42000+0 + 2870000 + 3072043 + 907870 - 10231558) - (162049744-70129336-10231558), 
+                     70129336, 
+                     10231558, 
+                     3072043, 
+                     -4074146+3000000, 
+                     -2870000, 
+                     34165+0+0+0-4118109, 
+                     2.559, 
+                     0.3878,
+                     0.157,
+                     2870000,
+                     4074146,
+                     4118109, # CIP costs, p.58
+                     907870]
+    
+    # manually enter FY 2016 approved budget from its report
+    FY16_approved = [2016,
+                     165020845, 
+                     153602133+42000+0 + 5325000 + 3200826 + 859552 - 10231558, 
+                     153602133+42000+0, 
+                     165020845-72413958-10231558-(10665878+12003244+1544575), 
+                     10665878+12003244+1544575, 
+                     (153602133+42000+0 + 5325000 + 3200826 + 859552 - 10231558) - (165020845-72413958-10231558), 
+                     72413958, 
+                     10231558, 
+                     3200826, 
+                     -5018329+3000000, 
+                     -5325000, 
+                     26995+0+0+0-3340093, 
+                     2.559, 
+                     0.4034,
+                     0.157,
+                     5325000,
+                     5018329,
+                     3340093, # CIP, p.59
+                     859552]
+    
     # collect approved budget data for export
-    approved_budgets = pd.DataFrame(np.vstack((FY18_approved, 
+    approved_budgets = pd.DataFrame(np.vstack((FY16_approved, 
+                                               FY17_approved, 
+                                               FY18_approved, 
                                                FY19_approved, 
-                                               FY20_approved)))
+                                               FY20_approved, 
+                                               FY21_proposed)))
     approved_budgets.columns = ApprovedBudgetVariables
     # approved_budgets.to_csv('historical_approved_annual_budgets.csv')
     
