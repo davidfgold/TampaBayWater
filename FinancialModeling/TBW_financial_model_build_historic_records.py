@@ -556,6 +556,20 @@ def append_UpToJuly2020DeliveryAndSalesData(monthly_record,
     monthly_deliveries_and_sales['Date'].iloc[-2] = pd.to_datetime(pd.datetime(2020,5,31))
     monthly_deliveries_and_sales['Date'].iloc[-1] = pd.to_datetime(pd.datetime(2020,6,30))
     
+    # fix 2009 date typo
+    monthly_deliveries_and_sales['Date'].iloc[2] = pd.to_datetime(pd.datetime(2009,12,31))
+    
+    # Split out with Year, Fiscal Year, and Month Columns
+    monthly_deliveries_and_sales['Year'] = pd.DatetimeIndex(monthly_deliveries_and_sales['Date']).year
+    monthly_deliveries_and_sales['Month'] = pd.DatetimeIndex(monthly_deliveries_and_sales['Date']).month
+    
+    monthly_deliveries_and_sales['Fiscal Year'] = pd.DatetimeIndex(monthly_deliveries_and_sales['Date']).year
+    i = 0
+    for m in monthly_deliveries_and_sales['Month']:
+        if m in [10,11,12]:
+            monthly_deliveries_and_sales['Fiscal Year'].iloc[i] += 1
+        i += 1
+    
     # export fixed version
     # monthly_deliveries_and_sales.to_csv(daily_delivery_path + '/monthly_deliveries_and_sales_by_member_through2019.csv')
     
