@@ -1562,11 +1562,11 @@ for sim in range(0,len(DVs)): # sim = 0 for testing
     dvs = [x for x in DVs.iloc[sim,:]]
     dufs = [x for x in DUFs.iloc[sim,:]]
     
-#    debt_covenant_years = [int(x) for x in range(2020,2040)]
-#    rate_covenant_years = [int(x) for x in range(2020,2040)]
-#    full_rate_years = [int(x) for x in range(2010,2040)]
-#    variable_rate_years = [int(x) for x in range(2010,2040)]
-#    total_deliveries_months = [int(x) for x in range(1,364)]
+    debt_covenant_years = [int(x) for x in range(2020,2040)]
+    rate_covenant_years = [int(x) for x in range(2020,2040)]
+    full_rate_years = [int(x) for x in range(2019,2040)]
+    variable_rate_years = [int(x) for x in range(2019,2040)]
+    total_deliveries_months = [int(x) for x in range(1,253)]
     for r_id in range(1,3): # r_id = 1 for testing
         # run this line for testing : start_fiscal_year = 2020;end_fiscal_year = 2040;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;financial_results_output_path = financial_output_path;historical_financial_data_path = hist_financial_path
         
@@ -1589,55 +1589,55 @@ for sim in range(0,len(DVs)): # sim = 0 for testing
         
         ### -----------------------------------------------------------------------
         # collect data of some results across all realizations
-#        debt_covenant_years = np.vstack((debt_covenant_years, [x for x in outcomes['Debt Covenant Ratio']]))
-#        rate_covenant_years = np.vstack((rate_covenant_years, [x for x in outcomes['Rate Covenant Ratio']]))
-#        full_rate_years = np.vstack((full_rate_years, [x for x in actuals['Uniform Rate (Full)']]))
-#        variable_rate_years = np.vstack((variable_rate_years, [x for x in actuals['Uniform Rate (Variable Portion)']]))
-#        total_deliveries_months = np.vstack((total_deliveries_months, [x for x in water_vars['Water Delivery - Uniform Sales Total']]))
+        debt_covenant_years = np.vstack((debt_covenant_years, [x for x in outcomes['Debt Covenant Ratio']]))
+        rate_covenant_years = np.vstack((rate_covenant_years, [x for x in outcomes['Rate Covenant Ratio']]))
+        full_rate_years = np.vstack((full_rate_years, [x for x in actuals['Uniform Rate (Full)']]))
+        variable_rate_years = np.vstack((variable_rate_years, [x for x in actuals['Uniform Rate (Variable Portion)']]))
+        total_deliveries_months = np.vstack((total_deliveries_months, [x for x in water_vars['Water Delivery - Uniform Sales Total']]))
            
     ### ---------------------------------------------------------------------------
     # reorganize data
-#    DC = pd.DataFrame(debt_covenant_years[1:,:]); DC.columns = [int(x) for x in debt_covenant_years[0,:]]
-#    RC = pd.DataFrame(rate_covenant_years[1:,:]); RC.columns = [int(x) for x in rate_covenant_years[0,:]]
-#    UR = pd.DataFrame(full_rate_years[1:,:]); UR.columns = [int(x) for x in full_rate_years[0,:]]
-#    VR = pd.DataFrame(variable_rate_years[1:,:]); VR.columns = [int(x) for x in variable_rate_years[0,:]]
-#    WD = pd.DataFrame(total_deliveries_months[1:,:]); WD.columns = [int(x) for x in total_deliveries_months[0,:]]
+    DC = pd.DataFrame(debt_covenant_years[1:,:]); DC.columns = [int(x) for x in debt_covenant_years[0,:]]
+    RC = pd.DataFrame(rate_covenant_years[1:,:]); RC.columns = [int(x) for x in rate_covenant_years[0,:]]
+    UR = pd.DataFrame(full_rate_years[1:,:]); UR.columns = [int(x) for x in full_rate_years[0,:]]
+    VR = pd.DataFrame(variable_rate_years[1:,:]); VR.columns = [int(x) for x in variable_rate_years[0,:]]
+    WD = pd.DataFrame(total_deliveries_months[1:,:]); WD.columns = [int(x) for x in total_deliveries_months[0,:]]
     
     ### ---------------------------------------------------------------------------
     # calculate financial objectives
     # 1: debt covenant (fraction of realizations with covenant violation in year with most violations)
-#    DC_Violations = (DC < 1).sum()
-#    Objective_DC_Violations = max(DC_Violations)/len(DC)
+    DC_Violations = (DC < 1).sum()
+    Objective_DC_Violations = max(DC_Violations)/len(DC)
     
     # 2: rate covenant (fraction of realizations with covenant violation in year with most violations)
-#    RC_Violations = (RC < 1.25).sum()
-#    Objective_RC_Violations = max(RC_Violations)/len(RC)
+    RC_Violations = (RC < 1.25).sum()
+    Objective_RC_Violations = max(RC_Violations)/len(RC)
     
     # 3: uniform date (average of greatest annual rate across realizations)
-#    Objective_UR_Highs = UR.max(axis = 1).mean()
+    Objective_UR_Highs = UR.max(axis = 1).mean()
     
     # write objectives to outfile
-#    sim_objectives = np.vstack((sim_objectives, 
-#                                [sim,
-#                                 Objective_DC_Violations, 
-#                                 Objective_RC_Violations, 
-#                                 Objective_UR_Highs]))
+    sim_objectives = np.vstack((sim_objectives, 
+                                [sim,
+                                 Objective_DC_Violations, 
+                                 Objective_RC_Violations, 
+                                 Objective_UR_Highs]))
     
     ### ---------------------------------------------------------------------------
     # plot Debt Covenant, Rate Covenant, Uniform Rate, Variable Rate, Water Deliveries
-#    DC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/DC.png', format = 'png')
-#    RC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/RC.png', format = 'png')
-#    UR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/UR.png', format = 'png')
-#    VR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/VR.png', format = 'png')
-#    WD.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/WD.png', format = 'png')
-    
+    DC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/DC.png', format = 'png')
+    RC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/RC.png', format = 'png')
+    UR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/UR.png', format = 'png')
+    VR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/VR.png', format = 'png')
+    WD.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/WD.png', format = 'png')
+   
 ### ---------------------------------------------------------------------------
 # write output file for all objectives
-#Objectives = pd.DataFrame(sim_objectives[1:,:])
-#Objectives.columns = ['Simulation ID',
-#                      'Debt Covenant Violation Frequency', 
-#                      'Rate Covenant Violation Frequency', 
-#                      'Peak Uniform Rate']
-#Objectives.to_csv('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/Objectives.csv')
+Objectives = pd.DataFrame(sim_objectives[1:,:])
+Objectives.columns = ['Simulation ID',
+                      'Debt Covenant Violation Frequency', 
+                      'Rate Covenant Violation Frequency', 
+                      'Peak Uniform Rate']
+Objectives.to_csv('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/Objectives.csv')
     
     
