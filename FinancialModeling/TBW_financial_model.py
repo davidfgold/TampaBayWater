@@ -471,12 +471,23 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
                             annual_budget, budget_projections, water_deliveries_and_sales, 
                             AMPL_cleaned_data, TBC_raw_sales_to_CoT, Month, Year,
                             fiscal_years_to_keep, first_modeled_fy, n_months_in_year, 
-                            annual_demand_growth_rate, last_fy_month):
+                            annual_demand_growth_rate, last_fy_month,
+                            financial_results_output_path):
     # loop across every year modeling will occur, and needed historical years,
     # to collect data into proper datasets for use in realization loop
-    ndays_of_realization = len(AMPL_cleaned_data)
     for fy in fiscal_years_to_keep:
         # set up budgets dataset, there are historic budgets through FY 2021
+        # for historical simulation, must start at FY2017 or later, because
+        # I only have budgets back to FY2016 and need one previous-FY budget
+        # in the dataset for calculations
+        earliest_fy_budget_available = min(budget_projections['Fiscal Year'])
+        earliest_fy_actuals_available = min(annual_budget['Fiscal Year'])
+        earliest_fy_sales_available = min(water_deliveries_and_sales['Fiscal Year'])
+        assert (np.max([earliest_fy_budget_available,
+                        earliest_fy_actuals_available,
+                        earliest_fy_sales_available]) <= fy), \
+                "Must start at later FY: full historic records not available."
+        
         if fy <= first_modeled_fy+1:
             current_fy_index = [tf for tf in (budget_projections['Fiscal Year'] == fy)]
             annual_budgets.loc[annual_budgets.iloc[:,0] == fy,:] = [v for v in budget_projections.iloc[current_fy_index,:].values]
@@ -518,7 +529,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
             cot_historic_component = cot_historic_component[:(n_months_in_year-sum(last_fy_index))] * (1+annual_demand_growth_rate)
             
             # get slack-factored monthly water deliveries
-            model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == fy) for d in range(0,ndays_of_realization)]
+            model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == fy) for d in range(0,len(AMPL_cleaned_data))]
             model_months = pd.Series(Month).iloc[model_index]
             uniform_rate_member_deliveries, month_TBC_raw_deliveries = \
                 calculate_TrueDeliveriesWithSlack(m_index = model_index, 
@@ -538,7 +549,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
             # this logic statement: any month from current FY up to Sept
             #   (because model data is in terms of calendar years)
             #   along with previous year's Oct-Dec
-            model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == fy) or (int(Month[d]) > last_fy_month and int(Year[d]) == (fy-1)) for d in range(0,ndays_of_realization)]
+            model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == fy) or (int(Month[d]) > last_fy_month and int(Year[d]) == (fy-1)) for d in range(0,len(AMPL_cleaned_data))]
             model_months = pd.Series(Month).iloc[model_index]
             uniform_rate_member_deliveries, month_TBC_raw_deliveries = \
                 calculate_TrueDeliveriesWithSlack(m_index = model_index, 
@@ -550,13 +561,28 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
             water_delivery_sales.loc[(water_delivery_sales.iloc[:,0] == fy),2:(uniform_rate_member_deliveries.shape[1]+2)] = uniform_rate_member_deliveries.values
             water_delivery_sales['TBC Delivery - City of Tampa'].loc[(water_delivery_sales.iloc[:,0] == fy)] = month_TBC_raw_deliveries.values
 
+    # if this is just a historical simulation test, print copies of datasets now
+    # while they contain observed, real actuals for ease of comparison later
+    # (assumes this is being done for one simulation, one realization)
+    if max(fiscal_years_to_keep) < first_modeled_fy:
+        # also, because if end_fiscal_year = 2020, then the last fiscal_year_to_keep value
+        # will be 2019, so when doing historic simulation make sure one extra budget FY
+        # is included
+        last_fy_to_add = int(max(fiscal_years_to_keep)) + 1
+        current_fy_index = [tf for tf in (budget_projections['Fiscal Year'] == last_fy_to_add)]
+        annual_budgets.loc[annual_budgets.iloc[:,0] == last_fy_to_add,:] = [v for v in budget_projections.iloc[current_fy_index,:].values]
+        
+        annual_actuals.to_csv(financial_results_output_path + '/output/historic_actuals.csv')
+        annual_budgets.to_csv(financial_results_output_path + '/output/historic_budgets.csv')
+        water_delivery_sales.to_csv(financial_results_output_path + '/output/historic_sales.csv')
+
     return annual_actuals, annual_budgets, water_delivery_sales
 
 def pull_ModeledData(additional_scripts_path, orop_oms_output_path, realization_id, 
                      fiscal_years_to_keep, end_fiscal_year, first_modeled_fy, PRE_CLEANED = True):
     # get modeled water delivery data
     import os
-    AMPL_cleaned_data = np.nan; TBC_raw_sales_to_CoT = np.nan; Year = np.nan; Month = np.nan
+    AMPL_cleaned_data = [np.nan]; TBC_raw_sales_to_CoT = [np.nan]; Year = [np.nan]; Month = [np.nan]
     one_thousand_added_to_read_files = 1000; n_days_in_year = 365
     if end_fiscal_year > first_modeled_fy: # meaning the last FY modeled financially is 2020
         os.chdir(additional_scripts_path); from analysis_functions import read_AMPL_csv, read_AMPL_out
@@ -642,7 +668,7 @@ def calculate_WaterSalesForFY(FY, water_delivery_sales, annual_budgets):
 def calculate_FYActuals(FY, current_FY_data, past_FY_year_data, 
                         annual_budgets, annual_actuals, financial_metrics, 
                         dv_list, rdm_factor_list,
-                        ACTIVE_DEBUGGING = False):
+                        ACTIVE_DEBUGGING):
     # list constants and unroll RDM factors and DVs
     current_FY_required_rr_deposit = 0
     current_FY_required_cip_deposit = 0
@@ -677,7 +703,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_data.iloc[:,water_sales_revenue_columns].sum().sum()
     
     if ACTIVE_DEBUGGING:
-        print(FY + ': Current Sales Revenues are ' + str(current_FY_total_sales_revenues))
+        print(str(FY) + ': Current Sales Revenues are ' + str(current_FY_total_sales_revenues))
     
     # debt service, acquisition credits, funds carried forward
     # assumed as equal to approved budget without perturbation
@@ -900,7 +926,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # non-required deposits) - budgeted as 2.5% of prior year
     # water revenues
     if ACTIVE_DEBUGGING:
-        print(FY + ': Initial Budget Surplus is ' + str(current_FY_final_budget_surplus))
+        print(str(FY) + ': Initial Budget Surplus is ' + str(current_FY_final_budget_surplus))
         
     if current_FY_final_budget_surplus < 0:
         current_FY_final_reserve_fund_balance = \
@@ -939,9 +965,9 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             current_FY_final_budget_surplus
             
     if ACTIVE_DEBUGGING:        
-        print(FY + ': Final Budget Surplus is ' + str(current_FY_final_budget_surplus))
-        print(FY + ': Final Unencumbered is ' + str(current_FY_final_unencumbered_funds))
-        print(FY + ': Surplus Deposit in Rate Stabilization is ' + str(current_FY_rate_stabilization_fund_deposit))
+        print(str(FY) + ': Final Budget Surplus is ' + str(current_FY_final_budget_surplus))
+        print(str(FY) + ': Final Unencumbered is ' + str(current_FY_final_unencumbered_funds))
+        print(str(FY) + ': Surplus Deposit in Rate Stabilization is ' + str(current_FY_rate_stabilization_fund_deposit))
     
     # check R&R fund flows
     # positive value is money deposited to fund
@@ -1024,7 +1050,7 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
                             historical_financial_data_path,
                             dv_list, 
                             rdm_factor_list,
-                            ACTIVE_DEBUGGING = False):
+                            ACTIVE_DEBUGGING):
     # set constants and variables as necessary
     first_modeled_fy = 2020
     convert_kgal_to_MG = 1000
@@ -1153,9 +1179,9 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
     current_FY_final_gross_revenue = \
         annual_actuals['Gross Revenues'].loc[annual_actuals['Fiscal Year'] == FY].values[0]
     if ACTIVE_DEBUGGING:
-        print(FY + ': Initial Budgeted Transfer from Rate Stabilization is ' + str(next_FY_budgeted_rate_stabilization_transfer_in))
-        print(FY + ': Rate Stabilization Balance is ' + str(current_FY_final_rate_stabilization_fund_balance))
-        print(FY + ': Rate Stabilization Balance LOW TARGET is ' + str(current_FY_final_gross_revenue * rate_stabilization_minimum_ratio))
+        print(str(FY) + ': Initial Budgeted Transfer from Rate Stabilization is ' + str(next_FY_budgeted_rate_stabilization_transfer_in))
+        print(str(FY) + ': Rate Stabilization Balance is ' + str(current_FY_final_rate_stabilization_fund_balance))
+        print(str(FY) + ': Rate Stabilization Balance LOW TARGET is ' + str(current_FY_final_gross_revenue * rate_stabilization_minimum_ratio))
     
     if (current_FY_final_rate_stabilization_fund_balance - \
             next_FY_budgeted_rate_stabilization_transfer_in) / \
@@ -1182,7 +1208,9 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
 #                        current_FY_final_gross_revenue
      
     if ACTIVE_DEBUGGING:        
-        print(FY + ': Budgeted Transfer from Rate Stabilization is ' + str(next_FY_budgeted_rate_stabilization_transfer_in))
+        print(str(FY) + ': Budgeted Transfer from Rate Stabilization is ' + str(next_FY_budgeted_rate_stabilization_transfer_in))
+        print(str(FY) + ': Budgeted Total Expenditures (before Fund Adjustments) is ' + str(next_FY_budgeted_total_expenditures_before_fund_adjustment))
+        print(str(FY) + ': Budgeted Debt Service is ' + str(next_FY_budgeted_debt_service))
             
     # estimate transfers in to cover R&R expenses
     # bounded based on ratio of projected FY 21-25
@@ -1447,7 +1475,8 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                 annual_budget, budget_projections, water_deliveries_and_sales, 
                                 AMPL_cleaned_data, TBC_raw_sales_to_CoT, Month, Year,
                                 fiscal_years_to_keep, first_modeled_fy, n_months_in_year, 
-                                annual_demand_growth_rate, last_fy_month)
+                                annual_demand_growth_rate, last_fy_month, 
+                                financial_results_output_path)
 
     ### -----------------------------------------------------------------------
     # step 2: take an annual step loop over water supply outcomes for future
@@ -1464,7 +1493,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
             calculate_WaterSalesForFY(FY, water_delivery_sales, annual_budgets)
         
         # track if new infrastructure is triggered in the current FY
-        if (len(AMPL_cleaned_data) > 1) & (FY > first_modeled_fy): # if using model data
+        if ((len(AMPL_cleaned_data) > 1) and (FY > first_modeled_fy)): # if using model data
             model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
             triggered_project_ids = \
                 check_ForTriggeredProjects(
@@ -1494,7 +1523,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                 annual_budgets, annual_actuals, financial_metrics, 
                                 dv_list = decision_variables, 
                                 rdm_factor_list = rdm_factors,
-                                ACTIVE_DEBUGGING = False)
+                                ACTIVE_DEBUGGING = ACTIVE_DEBUGGING)
 
 
         ### begin "budget development" for next FY --------------------
@@ -1512,7 +1541,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                         historical_financial_data_path,
                                         dv_list = decision_variables, 
                                         rdm_factor_list = rdm_factors,
-                                        ACTIVE_DEBUGGING = False)
+                                        ACTIVE_DEBUGGING = ACTIVE_DEBUGGING)
     
     # step 4: end loop and export results, including objectives    
     annual_budgets.to_csv(financial_results_output_path + '/output/budget_projections_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
@@ -1555,24 +1584,26 @@ financial_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125'
 ### ---------------------------------------------------------------------------
 # run loop across DV sets
 sim_objectives = [0,0,0,0] # sim id + three objectives
-for sim in range(0,len(DVs)): # sim = 0 for testing
+#for sim in range(0,len(DVs)): # sim = 0 for testing
+start_fy = 2017; end_fy = 2020
+for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     ### ----------------------------------------------------------------------- ###
     ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
     ### ----------------------------------------------------------------------- ###  
     dvs = [x for x in DVs.iloc[sim,:]]
     dufs = [x for x in DUFs.iloc[sim,:]]
     
-    debt_covenant_years = [int(x) for x in range(2020,2040)]
-    rate_covenant_years = [int(x) for x in range(2020,2040)]
-    full_rate_years = [int(x) for x in range(2019,2040)]
-    variable_rate_years = [int(x) for x in range(2019,2040)]
-    total_deliveries_months = [int(x) for x in range(1,253)]
-    for r_id in range(1,3): # r_id = 1 for testing
-        # run this line for testing : start_fiscal_year = 2020;end_fiscal_year = 2040;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;financial_results_output_path = financial_output_path;historical_financial_data_path = hist_financial_path
+    debt_covenant_years = [int(x) for x in range(start_fy,end_fy)]
+    rate_covenant_years = [int(x) for x in range(start_fy,end_fy)]
+    full_rate_years = [int(x) for x in range(start_fy-1,end_fy)]
+    variable_rate_years = [int(x) for x in range(start_fy-1,end_fy)]
+    total_deliveries_months = [int(x) for x in range(1,(end_fy - start_fy + 1)*12+1)]
+    for r_id in range(1,2): # r_id = 1 for testing
+        # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2017;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;financial_results_output_path = financial_output_path;historical_financial_data_path = hist_financial_path
         
         budget_projection, actuals, outcomes, water_vars, final_debt = \
             run_FinancialModelForSingleRealization(
-                    start_fiscal_year = 2020, end_fiscal_year = 2040,
+                    start_fiscal_year = 2017, end_fiscal_year = 2020,
                     simulation_id = sim,
                     decision_variables = dvs, 
                     rdm_factors = dufs,
@@ -1585,7 +1616,8 @@ for sim in range(0,len(DVs)): # sim = 0 for testing
                     additional_scripts_path = scripts_path,
                     orop_oms_output_path = ampl_output_path, 
                     financial_results_output_path = financial_output_path, 
-                    historical_financial_data_path = hist_financial_path)
+                    historical_financial_data_path = hist_financial_path,
+                    PRE_CLEANED = True, ACTIVE_DEBUGGING = True)
         
         ### -----------------------------------------------------------------------
         # collect data of some results across all realizations
