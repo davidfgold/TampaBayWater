@@ -88,7 +88,8 @@ def getMonitoringWellViolations(AMPL_cleaned_data,
     for well in range(len(monitoring_wells)):
         wellfield = associated_wellfield[well]
         if 'targetoffset_neg__' + monitoring_wells[well] in AMPL_cleaned_data.columns:
-            # add violations to wellfield, divided by total number of wells 
+            # add violations to wellfield, divided by total number of wells
+            # cumulative sum of them over 6 months 
             well_violations = AMPL_cleaned_data['targetoffset_neg__' + 
                                                 monitoring_wells[well]].fillna(0)
             daily_wellfield_average_monitoring_violation_matrix[
@@ -148,6 +149,18 @@ def calculateLevelOfService(AMPL_cleaned_data):
     daily_CWUP_overage_vector, \
     daily_SCH_overage_vector, \
     daily_BUD_overage_vector = getGWPermitViolations(AMPL_cleaned_data)
+    
+    for i in range(0, len(daily_CWUP_overage_vector)):
+        if daily_CWUP_overage_vector[i] > 0:
+            daily_CWUP_overage_vector[i:i+6] = daily_CWUP_overage_vector[i]
+    
+    for i in range(0, len(daily_SCH_overage_vector)):
+        if daily_SCH_overage_vector[i] > 0:
+            daily_SCH_overage_vector[i:i+6] = daily_SCH_overage_vector[i]
+    
+    for i in range(0, len(daily_BUD_overage_vector)):
+        if daily_BUD_overage_vector[i] > 0:
+            daily_BUD_overage_vector[i:i+6] = daily_BUD_overage_vector[i]
     
     daily_Alafia_slack_vector, \
     daily_Reservoir_slack_vector, \
