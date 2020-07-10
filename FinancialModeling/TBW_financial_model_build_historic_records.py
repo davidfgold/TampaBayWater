@@ -314,7 +314,8 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                                'Rate Stabilization Fund Transfers In', 
                                'R&R Fund Transfers In', 
                                'Other Funds Transfers In', # Note: this is pretty much just CIP fund transfers in
-                               'Non-Sales Revenues'] # interest income + litigation/insurance recoveries + misc income (misc income always zero...?)
+                               'Non-Sales Revenues', # interest income + litigation/insurance recoveries + misc income (misc income always zero...?)
+                               'Deposits to Utility Reserve Fund'] # always budgeted at zero
     
     # manually record values from FY21 Proposed Operating Budget Report, p.31
     # used in place of approved budget because 
@@ -340,7 +341,8 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0,
                      10386195,
                      10665328, # CIP fund, p.58
-                     3211966]
+                     3211966, 
+                     0.0]
     
     # manually record values from FY20 Approved Operating Budget Report, p.31
     FY20_approved = [2020,
@@ -362,7 +364,8 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      1600000,
                      6607280,
                      6047598, # CIP fund, p.58
-                     1893889]
+                     1893889, 
+                     0.0]
     
     # read in FY 2019 CAFR summary table and clean
     CAFR_FY19 = pd.read_excel(financial_path + '/FY19 Budget Sources & Uses-FINAL.xlsx')
@@ -386,7 +389,8 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      CAFR_FY19_cleaned['Approved'].iloc[9],
                      CAFR_FY19_cleaned['Approved'].iloc[13],
                      np.sum(CAFR_FY19_cleaned['Approved'].iloc[11:13])+2920690, # added in CIP transfer, p. 60 of report
-                     np.sum(CAFR_FY19_cleaned['Approved'].iloc[3:5])]
+                     np.sum(CAFR_FY19_cleaned['Approved'].iloc[3:5]), 
+                     0.0]
     
     
     # read in FY 2018 CAFR summary table and clean
@@ -413,7 +417,8 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      CAFR_FY18_cleaned['Approved'].iloc[9],
                      CAFR_FY18_cleaned['Approved'].iloc[13],
                      np.sum(CAFR_FY18_cleaned['Approved'].iloc[11:13])+692442, # CIP expenditure from FY18 report, p.58
-                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[3:5])]
+                     np.sum(CAFR_FY18_cleaned['Approved'].iloc[3:5]), 
+                     0.0]
     
     # manually enter FY 2017 approved budget from its report
     FY17_approved = [2017,
@@ -435,7 +440,8 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      2870000,
                      4074146,
                      4118109, # CIP costs, p.58
-                     907870]
+                     907870, 
+                     0.0]
     
     # manually enter FY 2016 approved budget from its report
     FY16_approved = [2016,
@@ -457,7 +463,8 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      5325000,
                      5018329,
                      3340093, # CIP, p.59
-                     859552]
+                     859552, 
+                     0.0]
     
     # collect approved budget data for export
     approved_budgets = pd.DataFrame(np.vstack((FY16_approved, 
