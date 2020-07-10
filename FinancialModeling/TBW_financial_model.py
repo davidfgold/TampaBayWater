@@ -405,31 +405,31 @@ def estimate_UniformRate(annual_estimate,
     import numpy as np
     n_days_in_year = 365; convert_kgal_to_MG = 1000
     
-    if MANAGE_RATE:
-        # in this scenario, will need to pull from rate stabilization
-        # fund to balance budget - increase transfer in if 
-        # rate would naturally be greater than desired
-        if current_uniform_rate * (1 + increase_rate_cap) > \
-                annual_estimate / (demand_estimate * n_days_in_year) / convert_kgal_to_MG:
-            # increase rate stabilization transfer in by as much as necessary,
-            # capped if transfer depletes fund
-            rs_transfer_in_shift = \
-                np.min([\
-                ((annual_estimate / (demand_estimate * n_days_in_year) / convert_kgal_to_MG) - \
-                 (current_uniform_rate * (1 + increase_rate_cap))) * \
-                (demand_estimate * n_days_in_year) * convert_kgal_to_MG, 
-                rs_fund_total - \
-                rs_transfer_in])
-                
-            # need to re-calculate annual estimate accordingly
-            # before doing final calculation
-            updated_annual_estimate = \
-                annual_estimate - rs_transfer_in_shift
-                
-            uniform_rate = updated_annual_estimate / \
-                (demand_estimate * n_days_in_year) / convert_kgal_to_MG
-                
-            rs_transfer_in += rs_transfer_in_shift
+    # in this scenario, will need to pull from rate stabilization
+    # fund to balance budget - increase transfer in if 
+    # rate would naturally be greater than desired
+    capped_next_FY_uniform_rate = current_uniform_rate * (1 + increase_rate_cap)
+    uncapped_next_FY_uniform_rate = annual_estimate / (demand_estimate * n_days_in_year) / convert_kgal_to_MG
+    if (MANAGE_RATE) and (capped_next_FY_uniform_rate < uncapped_next_FY_uniform_rate):
+        # increase rate stabilization transfer in by as much as necessary,
+        # capped if transfer depletes fund
+        rs_transfer_in_shift = \
+            np.min([\
+            ((annual_estimate / (demand_estimate * n_days_in_year) / convert_kgal_to_MG) - \
+             (current_uniform_rate * (1 + increase_rate_cap))) * \
+            (demand_estimate * n_days_in_year) * convert_kgal_to_MG, 
+            rs_fund_total - \
+            rs_transfer_in])
+            
+        # need to re-calculate annual estimate accordingly
+        # before doing final calculation
+        updated_annual_estimate = \
+            annual_estimate - rs_transfer_in_shift
+            
+        uniform_rate = updated_annual_estimate / \
+            (demand_estimate * n_days_in_year) / convert_kgal_to_MG
+            
+        rs_transfer_in += rs_transfer_in_shift
     else:
         uniform_rate = annual_estimate / \
             (demand_estimate * n_days_in_year) / convert_kgal_to_MG
@@ -472,7 +472,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
                             AMPL_cleaned_data, TBC_raw_sales_to_CoT, Month, Year,
                             fiscal_years_to_keep, first_modeled_fy, n_months_in_year, 
                             annual_demand_growth_rate, last_fy_month,
-                            financial_results_output_path):
+                            financial_results_output_path, outpath):
     # loop across every year modeling will occur, and needed historical years,
     # to collect data into proper datasets for use in realization loop
     for fy in fiscal_years_to_keep:
@@ -572,9 +572,9 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
         current_fy_index = [tf for tf in (budget_projections['Fiscal Year'] == last_fy_to_add)]
         annual_budgets.loc[annual_budgets.iloc[:,0] == last_fy_to_add,:] = [v for v in budget_projections.iloc[current_fy_index,:].values]
         
-        annual_actuals.to_csv(financial_results_output_path + '/output/historic_actuals.csv')
-        annual_budgets.to_csv(financial_results_output_path + '/output/historic_budgets.csv')
-        water_delivery_sales.to_csv(financial_results_output_path + '/output/historic_sales.csv')
+        annual_actuals.to_csv(outpath + '/historic_actuals.csv')
+        annual_budgets.to_csv(outpath + '/historic_budgets.csv')
+        water_delivery_sales.to_csv(outpath + '/historic_sales.csv')
 
     return annual_actuals, annual_budgets, water_delivery_sales
 
@@ -801,7 +801,8 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             annual_actuals['R&R Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
         
     # check conditions under (b) 
-    current_FY_gross_revenue = current_FY_total_sales_revenues + \
+    current_FY_gross_revenue = \
+        current_FY_total_sales_revenues + \
         current_FY_unencumbered_funds_carried_forward + \
         current_FY_rate_stabilization_funds_transferred_in + \
         current_FY_rr_funds_transferred_in + \
@@ -831,26 +832,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     current_FY_required_cip_deposit = \
         np.random.uniform(low = 0.006, high = 0.04) * \
         required_cip_factor * current_FY_gross_revenue
-       
-    # this is not the "true" debt coverage test (done below) but 
-    # "calibrates" whether required transfers in from different 
-    # funds is necessary/different than budgeted. we can track
-    # when required transfers are made/how much they are and
-    # what the final "leftover" must be covered from other sources
-    if calculate_RateCoverageRatio(current_FY_net_revenue, 
-                                   current_FY_debt_service,
-                                   current_FY_required_cip_deposit + current_FY_required_rr_deposit,
-                                   annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]) < \
-            covenant_threshold_net_revenue_plus_fund_balance:
-        rate_covenant_failure_counter += COVENANT_FAILURE
-        adjustment = \
-            (covenant_threshold_net_revenue_plus_fund_balance * \
-             current_FY_debt_service) - \
-            current_FY_net_revenue - \
-            annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
-        current_FY_needed_reserve_deposit = \
-            np.max([current_FY_needed_reserve_deposit, adjustment])
-        
+    
     # check condition (c)
     # here, I assume that any failure to meet the above covenants
     # or fund requirements will try to be addressed through 
@@ -865,6 +847,28 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             current_FY_required_cip_deposit + \
             current_FY_required_rr_deposit - \
             current_FY_net_revenue
+            
+    # this is not the "true" debt coverage test (done below) but 
+    # "calibrates" whether required transfers in from different 
+    # funds is necessary/different than budgeted. we can track
+    # when required transfers are made/how much they are and
+    # what the final "leftover" must be covered from other sources
+    if calculate_RateCoverageRatio(current_FY_net_revenue, 
+                                   current_FY_debt_service,
+                                   current_FY_required_cip_deposit + current_FY_required_rr_deposit,
+                                   annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]) < \
+            covenant_threshold_net_revenue_plus_fund_balance:
+        rate_covenant_failure_counter += COVENANT_FAILURE
+        adjustment = \
+            (covenant_threshold_net_revenue_plus_fund_balance * \
+             (current_FY_debt_service + current_FY_required_cip_deposit + current_FY_required_rr_deposit)) - \
+            current_FY_net_revenue - \
+            annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
+        current_FY_needed_reserve_deposit = \
+            np.max([current_FY_needed_reserve_deposit, adjustment])
+        current_FY_rate_stabilization_funds_transferred_in = \
+            np.max([current_FY_rate_stabilization_funds_transferred_in,
+                    adjustment])
     
     # annual transfer in from rate stabilization account is capped
     # at the smallest of either:
@@ -876,7 +880,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                 current_FY_unencumbered_funds_carried_forward, # (b)
                 previous_FY_rate_stabilization_deposit, # (c)
                 previous_FY_rate_stabilization_fund_balance]) # can't make fund go negative
-        
+    
     # if it occurs that the maximum transfer in from the rate 
     # stabilization fund cannot balance the budget, assume other 
     # funds can be drawn from to meet the difference
@@ -887,7 +891,8 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             current_FY_rate_stabilization_transfer_cap
         current_FY_rate_stabilization_funds_transferred_in = \
             current_FY_rate_stabilization_transfer_cap
-    
+            
+            
     ### take record of current FY performance ---------------------
     # first, re-calculate "actual" current gross revenues and
     # net revenues, total costs including required deposits,
@@ -927,25 +932,23 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # water revenues
     if ACTIVE_DEBUGGING:
         print(str(FY) + ': Initial Budget Surplus is ' + str(current_FY_final_budget_surplus))
-        
+    
+    # July 2020: any required transfers from 'other' funds
+    # to cover budget shortfalls above will be pulled from 
+    # reserve fund balance
+    current_FY_final_reserve_fund_balance = \
+        annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
     if current_FY_final_budget_surplus < 0:
-        current_FY_final_reserve_fund_balance = \
-            annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] + \
-            current_FY_final_budget_surplus 
+        current_FY_final_reserve_fund_balance += current_FY_final_budget_surplus
         current_FY_rate_stabilization_fund_deposit = 0
     else:
         # if surplus is large enough, increase fund balance
         # if not, increase it as much as possible
-        if current_FY_final_budget_surplus > \
-                current_FY_needed_reserve_deposit:
-            current_FY_final_reserve_fund_balance = \
-                annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] + \
-                current_FY_needed_reserve_deposit
+        if current_FY_final_budget_surplus > current_FY_needed_reserve_deposit:
+            current_FY_final_reserve_fund_balance += current_FY_needed_reserve_deposit
             current_FY_final_budget_surplus -= current_FY_needed_reserve_deposit
         else:
-            current_FY_final_reserve_fund_balance = \
-                annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] + \
-                current_FY_final_budget_surplus
+            current_FY_final_reserve_fund_balance += current_FY_final_budget_surplus
             current_FY_final_budget_surplus = 0
         
         # mark some funds unencumbered
@@ -961,7 +964,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             
         # any remaining funds go into rate stabilization
         # this deposit gets very large, why?
-        current_FY_rate_stabilization_fund_deposit = \
+        current_FY_rate_stabilization_fund_deposit += \
             current_FY_final_budget_surplus
             
     if ACTIVE_DEBUGGING:        
@@ -986,7 +989,6 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         previous_FY_rate_stabilization_fund_balance + \
         current_FY_final_unencumbered_funds
         
-
     # finally, record outcomes
     financial_metrics.loc[financial_metrics['Fiscal Year'] == FY] = \
         pd.DataFrame([FY,
@@ -1360,7 +1362,8 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
                                   next_FY_budgeted_rate_stabilization_transfer_in, 
                                   next_FY_budgeted_rr_transfer_in, 
                                   0, # never any other funds budgeted transferred in?
-                                  next_FY_budgeted_interest_income]).transpose().values # basically saying interest is only non-sales revenue... 
+                                  next_FY_budgeted_interest_income, 
+                                  next_FY_budgeted_reserve_fund_deposit]).transpose().values # basically saying interest is only non-sales revenue... 
 
     
     return annual_budgets, existing_issued_debt, potential_projects, \
@@ -1388,6 +1391,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            orop_oms_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
                                            financial_results_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125', 
                                            historical_financial_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials',
+                                           outpath = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output',
                                            PRE_CLEANED = True,
                                            ACTIVE_DEBUGGING = False):
     # get necessary packages
@@ -1406,7 +1410,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     # give number of variables tracked in outputs
     n_financial_metric_outcomes = 13
     n_actual_budget_outcomes = 16
-    n_proposed_budget_outcomes = 20
+    n_proposed_budget_outcomes = 21
     n_deliveries_sales_variables = 23
                 
     ### -----------------------------------------------------------------------
@@ -1476,7 +1480,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                 AMPL_cleaned_data, TBC_raw_sales_to_CoT, Month, Year,
                                 fiscal_years_to_keep, first_modeled_fy, n_months_in_year, 
                                 annual_demand_growth_rate, last_fy_month, 
-                                financial_results_output_path)
+                                financial_results_output_path, outpath)
 
     ### -----------------------------------------------------------------------
     # step 2: take an annual step loop over water supply outcomes for future
@@ -1544,11 +1548,11 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                         ACTIVE_DEBUGGING = ACTIVE_DEBUGGING)
     
     # step 4: end loop and export results, including objectives    
-    annual_budgets.to_csv(financial_results_output_path + '/output/budget_projections_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    annual_actuals.to_csv(financial_results_output_path + '/output/budget_actuals_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    financial_metrics.to_csv(financial_results_output_path + '/output/financial_metrics_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    existing_issued_debt.to_csv(financial_results_output_path + '/output/final_debt_balance_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    water_delivery_sales.to_csv(financial_results_output_path + '/output/water_deliveries_revenues_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    annual_budgets.to_csv(outpath + '/budget_projections_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    annual_actuals.to_csv(outpath + '/budget_actuals_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    financial_metrics.to_csv(outpath + '/financial_metrics_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    existing_issued_debt.to_csv(outpath + '/final_debt_balance_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    water_delivery_sales.to_csv(outpath + '/water_deliveries_revenues_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     
     return annual_budgets, annual_actuals, financial_metrics, water_delivery_sales, existing_issued_debt
     
@@ -1580,13 +1584,14 @@ hist_financial_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina
 scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization'
 ampl_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned'
 financial_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125'
+output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
 
 ### ---------------------------------------------------------------------------
 # run loop across DV sets
 sim_objectives = [0,0,0,0] # sim id + three objectives
+start_fy = 2017; end_fy = 2020; n_reals_tested = 12
 #for sim in range(0,len(DVs)): # sim = 0 for testing
-start_fy = 2017; end_fy = 2020
-for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
+for sim in range(1,2): # FOR RUNNING HISTORICALLY ONLY
     ### ----------------------------------------------------------------------- ###
     ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
     ### ----------------------------------------------------------------------- ###  
@@ -1598,12 +1603,13 @@ for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     full_rate_years = [int(x) for x in range(start_fy-1,end_fy)]
     variable_rate_years = [int(x) for x in range(start_fy-1,end_fy)]
     total_deliveries_months = [int(x) for x in range(1,(end_fy - start_fy + 1)*12+1)]
+#    for r_id in range(1,n_reals_tested):
     for r_id in range(1,2): # r_id = 1 for testing
         # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2017;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;financial_results_output_path = financial_output_path;historical_financial_data_path = hist_financial_path
         
         budget_projection, actuals, outcomes, water_vars, final_debt = \
             run_FinancialModelForSingleRealization(
-                    start_fiscal_year = 2017, end_fiscal_year = 2020,
+                    start_fiscal_year = start_fy, end_fiscal_year = end_fy,
                     simulation_id = sim,
                     decision_variables = dvs, 
                     rdm_factors = dufs,
@@ -1617,7 +1623,8 @@ for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
                     orop_oms_output_path = ampl_output_path, 
                     financial_results_output_path = financial_output_path, 
                     historical_financial_data_path = hist_financial_path,
-                    PRE_CLEANED = True, ACTIVE_DEBUGGING = True)
+                    outpath = output_path,
+                    PRE_CLEANED = True, ACTIVE_DEBUGGING = False)
         
         ### -----------------------------------------------------------------------
         # collect data of some results across all realizations
@@ -1657,11 +1664,11 @@ for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     
     ### ---------------------------------------------------------------------------
     # plot Debt Covenant, Rate Covenant, Uniform Rate, Variable Rate, Water Deliveries
-    DC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/DC.png', format = 'png')
-    RC.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/RC.png', format = 'png')
-    UR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/UR.png', format = 'png')
-    VR.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/VR.png', format = 'png')
-    WD.transpose().plot().get_figure().savefig('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/WD.png', format = 'png')
+    DC.transpose().plot(legend = False).get_figure().savefig(output_path + '/DC_s' + str(sim) + '.png', format = 'png')
+    RC.transpose().plot(legend = False).get_figure().savefig(output_path + '/RC_s' + str(sim) + '.png', format = 'png')
+    UR.transpose().plot(legend = False).get_figure().savefig(output_path + '/UR_s' + str(sim) + '.png', format = 'png')
+    VR.transpose().plot(legend = False).get_figure().savefig(output_path + '/VR_s' + str(sim) + '.png', format = 'png')
+    WD.transpose().plot(legend = False).get_figure().savefig(output_path + '/WD_s' + str(sim) + '.png', format = 'png')
    
 ### ---------------------------------------------------------------------------
 # write output file for all objectives
@@ -1670,6 +1677,6 @@ Objectives.columns = ['Simulation ID',
                       'Debt Covenant Violation Frequency', 
                       'Rate Covenant Violation Frequency', 
                       'Peak Uniform Rate']
-Objectives.to_csv('C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output/Objectives.csv')
+Objectives.to_csv(output_path + '/Objectives.csv')
     
     
