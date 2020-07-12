@@ -380,7 +380,7 @@ def set_BudgetedDebtService(existing_debt, last_year_net_revenue,
 
 def add_NewOperationalCosts(possible_projs, 
                             new_projs_this_FY, 
-                            fraction_fixed_cost = 0.85):
+                            fraction_variable_cost = 0.15):
     # if a new bond is issued to cover an infrastructure project
     # add that project's O&M costs to budget
     new_fixed_costs = 0; new_variable_costs = 0
@@ -388,10 +388,10 @@ def add_NewOperationalCosts(possible_projs,
         if proj in new_projs_this_FY:
             new_fixed_costs += \
                 possible_projs['Annual O&M Cost'].iloc[proj] * \
-                fraction_fixed_cost
+                (1-fraction_variable_cost)
             new_variable_costs += \
                 possible_projs['Annual O&M Cost'].iloc[proj] * \
-                (1-fraction_fixed_cost)
+                fraction_variable_cost
     
     return new_fixed_costs, new_variable_costs
 
@@ -401,41 +401,87 @@ def estimate_UniformRate(annual_estimate,
                          rs_transfer_in,
                          rs_fund_total,
                          increase_rate_cap = 0.01,
+                         decrease_rate_cap = 0.01,
                          MANAGE_RATE = False):
     import numpy as np
     n_days_in_year = 365; convert_kgal_to_MG = 1000
     
-    # in this scenario, will need to pull from rate stabilization
-    # fund to balance budget - increase transfer in if 
-    # rate would naturally be greater than desired
-    capped_next_FY_uniform_rate = current_uniform_rate * (1 + increase_rate_cap)
-    uncapped_next_FY_uniform_rate = annual_estimate / (demand_estimate * n_days_in_year) / convert_kgal_to_MG
-    if (MANAGE_RATE) and (capped_next_FY_uniform_rate < uncapped_next_FY_uniform_rate):
-        # increase rate stabilization transfer in by as much as necessary,
-        # capped if transfer depletes fund
-        rs_transfer_in_shift = \
-            np.min([\
-            ((annual_estimate / (demand_estimate * n_days_in_year) / convert_kgal_to_MG) - \
-             (current_uniform_rate * (1 + increase_rate_cap))) * \
-            (demand_estimate * n_days_in_year) * convert_kgal_to_MG, 
-            rs_fund_total - \
-            rs_transfer_in])
-            
-        # need to re-calculate annual estimate accordingly
-        # before doing final calculation
-        updated_annual_estimate = \
-            annual_estimate - rs_transfer_in_shift
-            
-        uniform_rate = updated_annual_estimate / \
-            (demand_estimate * n_days_in_year) / convert_kgal_to_MG
-            
-        rs_transfer_in += rs_transfer_in_shift
+    # if the rates of increase and decrease allowed are very close to zero,
+    # assume the goal is to maintain the UR and skip all below calcs
+    # no change to Annual Estimate because that is sum of expenditures,
+    # which will not change if UR changes
+    if (MANAGE_RATE) and (increase_rate_cap < 0.001) and (decrease_rate_cap < 0.001):
+        uniform_rate = current_uniform_rate
+        
+        # this may require change in fund transfers
+        # here, negative shift means the fixed rate will more than cover costs
+        # if positive, need to increase RS transfer in as revenue to cover
+        expected_revenue = uniform_rate * (demand_estimate * n_days_in_year) * convert_kgal_to_MG
+        rs_transfer_in_shift = annual_estimate - expected_revenue
+        print(rs_transfer_in_shift)
+        # be sure that transfer doesn't get too large or small
+        if rs_transfer_in_shift <= 0:
+            rs_transfer_in += np.max([rs_transfer_in_shift, -rs_transfer_in])
+        else:
+            rs_transfer_in += np.min([rs_transfer_in_shift, rs_fund_total])
     else:
-        uniform_rate = annual_estimate / \
-            (demand_estimate * n_days_in_year) / convert_kgal_to_MG
-        updated_annual_estimate = annual_estimate
+        # in this scenario, will need to pull from rate stabilization
+        # fund to balance budget - increase transfer in if 
+        # rate would naturally be greater than desired
+        high_capped_next_FY_uniform_rate = current_uniform_rate * (1 + increase_rate_cap)
+        low_capped_next_FY_uniform_rate = current_uniform_rate * (1 - decrease_rate_cap)
+        uncapped_next_FY_uniform_rate = annual_estimate / (demand_estimate * n_days_in_year) / convert_kgal_to_MG
+        if (MANAGE_RATE) and (high_capped_next_FY_uniform_rate < uncapped_next_FY_uniform_rate):
+            # increase rate stabilization transfer in by as much as necessary,
+            # capped if transfer depletes fund
+            rs_transfer_in_shift = \
+                np.min([\
+                (uncapped_next_FY_uniform_rate - \
+                 high_capped_next_FY_uniform_rate) * \
+                (demand_estimate * n_days_in_year) * convert_kgal_to_MG, 
+                rs_fund_total - \
+                rs_transfer_in])
+                
+            # need to re-calculate annual estimate accordingly
+            # before doing final calculation
+            updated_annual_estimate = \
+                annual_estimate - rs_transfer_in_shift
+                
+            uniform_rate = updated_annual_estimate / \
+                (demand_estimate * n_days_in_year) / convert_kgal_to_MG
+                
+            rs_transfer_in += rs_transfer_in_shift
+            
+        # to maintain a flat rate, also add in ability to trap rate within bounds
+        # so that it doesn't drop too far either
+        elif (MANAGE_RATE) and (low_capped_next_FY_uniform_rate > uncapped_next_FY_uniform_rate):
+            # decrease rate stabilization transfer in by as much as necessary,
+            # capped if transfer zeroes out
+            rs_transfer_in_shift = \
+                np.min([\
+                (low_capped_next_FY_uniform_rate - \
+                 uncapped_next_FY_uniform_rate) * \
+                (demand_estimate * n_days_in_year) * convert_kgal_to_MG, 
+                rs_transfer_in])
+                
+            # need to re-calculate annual estimate accordingly
+            # before doing final calculation
+            updated_annual_estimate = \
+                annual_estimate + rs_transfer_in_shift
+                
+            uniform_rate = updated_annual_estimate / \
+                (demand_estimate * n_days_in_year) / convert_kgal_to_MG
+                
+            rs_transfer_in -= rs_transfer_in_shift
+        else:
+            uniform_rate = annual_estimate / \
+                (demand_estimate * n_days_in_year) / convert_kgal_to_MG
+            updated_annual_estimate = annual_estimate
     
-    return uniform_rate, updated_annual_estimate, rs_transfer_in
+    # NOTE: updated annual estimate is only used to estimate new UR,
+    #       a change in the UR will not impact expenditures other than
+    #       potential TBW fund transfers (RS fund transfers in)
+    return uniform_rate, annual_estimate, rs_transfer_in
 
 
 def calculate_TrueDeliveriesWithSlack(m_index, m_month, AMPL_data, TBC_data):
@@ -1061,15 +1107,17 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
     # decision variables
     KEEP_UNIFORM_RATE_STABLE = bool(np.round(dv_list[2])) # if range is [0,1], will round to either bound for T/F value
     managed_uniform_rate_increase_rate = dv_list[3]
+    managed_uniform_rate_decrease_rate = dv_list[4]
     
     # deeply uncertain factors
     rate_stabilization_minimum_ratio = rdm_factor_list[0]
 #    rate_stabilization_maximum_ratio = rdm_factor_list[1]
-    fraction_fixed_operational_cost = rdm_factor_list[2]
+    fraction_variable_operational_cost = rdm_factor_list[2]
     budgeted_unencumbered_fraction = rdm_factor_list[3]
-    annual_budget_operating_cost_inflation_rate = rdm_factor_list[4]
+    annual_budget_fixed_operating_cost_inflation_rate = rdm_factor_list[4]
     annual_demand_growth_rate = rdm_factor_list[5]
     next_FY_budgeted_tampa_tbc_delivery = rdm_factor_list[6] # volume in MG/fiscal year
+    annual_budget_variable_operating_cost_inflation_rate = rdm_factor_list[14]
     
     # check if debt for a new project has been issued
     # add to existing debt based on supply model triggered projects
@@ -1097,7 +1145,7 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
     new_fixed, new_variable = add_NewOperationalCosts(
             potential_projects, 
             new_projects_to_finance, 
-            fraction_fixed_operational_cost)
+            fraction_variable_operational_cost)
     accumulated_new_operational_fixed_costs_from_infra += new_fixed
     accumulated_new_operational_variable_costs_from_infra += new_variable
     
@@ -1124,11 +1172,11 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
     next_FY_budgeted_fixed_operating_costs = \
         (annual_budgets['Fixed Operating Expenses'].loc[annual_budgets['Fiscal Year'] == FY].values[0] + \
          accumulated_new_operational_fixed_costs_from_infra) * \
-        (1 + annual_budget_operating_cost_inflation_rate)
+        (1 + annual_budget_fixed_operating_cost_inflation_rate)
     next_FY_budgeted_variable_operating_costs = \
         (annual_budgets['Variable Operating Expenses'].loc[annual_budgets['Fiscal Year'] == FY].values[0] + \
          accumulated_new_operational_variable_costs_from_infra) * \
-        (1 + annual_budget_operating_cost_inflation_rate)
+        (1 + annual_budget_variable_operating_cost_inflation_rate)
         
     next_FY_budgeted_total_expenditures_before_fund_adjustment = \
         next_FY_budgeted_fixed_operating_costs + \
@@ -1305,6 +1353,7 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
                              rs_transfer_in = next_FY_budgeted_rate_stabilization_transfer_in,
                              rs_fund_total = current_FY_final_rate_stabilization_fund_balance,
                              increase_rate_cap = managed_uniform_rate_increase_rate,
+                             decrease_rate_cap = managed_uniform_rate_decrease_rate,
                              MANAGE_RATE = KEEP_UNIFORM_RATE_STABLE)
             
     next_FY_variable_uniform_rate = \
@@ -1589,7 +1638,7 @@ output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
 ### ---------------------------------------------------------------------------
 # run loop across DV sets
 sim_objectives = [0,0,0,0] # sim id + three objectives
-start_fy = 2017; end_fy = 2020; n_reals_tested = 12
+start_fy = 2015; end_fy = 2020; n_reals_tested = 12
 #for sim in range(0,len(DVs)): # sim = 0 for testing
 for sim in range(1,2): # FOR RUNNING HISTORICALLY ONLY
     ### ----------------------------------------------------------------------- ###
