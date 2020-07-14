@@ -839,13 +839,41 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         previous_FY_acquisition_credits
         
     # check condition (a)
-    if annual_actuals['R&R Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] < \
-            (previous_FY_gross_revenue * 0.05):
+    # R&R fund budgeted transfer in from fund always covers 100% of planned
+    # projects. There is also a budgeted deposit - if the net change in fund
+    # size violates the fund size rule, reduce the transfer in
+    previous_FY_rr_fund_balance = \
+        annual_actuals['R&R Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
+    current_FY_rr_budgeted_deposit = \
+        current_FY_rr_funds_transferred_in + \
+        annual_budgets['Net R&R Fund Transfer'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
+    current_FY_rr_net_deposit = \
+        current_FY_rr_funds_transferred_in - current_FY_rr_budgeted_deposit
+    if ((previous_FY_gross_revenue * 0.05) > previous_FY_rr_fund_balance + current_FY_rr_net_deposit) and (current_FY_rr_net_deposit > 0):
+        # reduce budgeted transfer in if it would deplete the fund
+        # so that the transfer in and deposit are equal (no net fund change)
+        current_FY_rr_funds_transferred_in -= current_FY_rr_net_deposit
+    
+    if ((previous_FY_gross_revenue * 0.05) > previous_FY_rr_fund_balance):
+        # if the current fund level is already in violation, cancel transfer in
+        # and ensure that planned deposit is at least large enough to compensate
+        # only count a "failure" if reducing the budgeted transfer in
+        # from the fund cannot satisfy this condition
+        current_FY_rr_funds_transferred_in = 0
         rr_fund_balance_failure_counter += COVENANT_FAILURE
-        current_FY_required_rr_deposit = \
-            previous_FY_gross_revenue * 0.05 - \
-            annual_actuals['R&R Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
         
+        # figure out what the necessary deposit is, and ensure the budgeted 
+        # deposit is at least that large
+        current_FY_required_rr_deposit = \
+            previous_FY_gross_revenue * 0.05 - previous_FY_rr_fund_balance
+        current_FY_rr_budgeted_deposit = np.max([current_FY_required_rr_deposit, 
+                                                 current_FY_rr_budgeted_deposit])
+    elif ((previous_FY_gross_revenue * 0.05) > previous_FY_rr_fund_balance + current_FY_rr_net_deposit):
+        # if there is already a net transfer out of the fund (net deposit is negative)
+        # and this violates the rule, reduce the transfer in 
+        # (add the negative difference)
+        current_FY_rr_funds_transferred_in += current_FY_rr_net_deposit
+
     # check conditions under (b) 
     current_FY_gross_revenue = \
         current_FY_total_sales_revenues + \
@@ -861,12 +889,14 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_fixed_operational_expenses - \
         current_FY_variable_operational_expenses 
         
-    if annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] < \
-            (current_FY_gross_revenue * 0.1):
+    previous_FY_reserve_fund_balance = \
+        annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
+    # there is never a budgeted deposit to the reserve fund, so don't need to
+    # repeat all the trouble above like with the R&R Fund
+    if previous_FY_reserve_fund_balance < (current_FY_gross_revenue * 0.1):
         reserve_fund_balance_failure_counter += COVENANT_FAILURE
         current_FY_needed_reserve_deposit = \
-            current_FY_gross_revenue * 0.1 - \
-            annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
+            current_FY_gross_revenue * 0.1 - previous_FY_reserve_fund_balance
             
     # there doesn't seem to be a codified mechanism to decide
     # about required deposits for CIP Fund except to meet next
@@ -902,14 +932,13 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     if calculate_RateCoverageRatio(current_FY_net_revenue, 
                                    current_FY_debt_service,
                                    current_FY_required_cip_deposit + current_FY_required_rr_deposit,
-                                   annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]) < \
+                                   previous_FY_reserve_fund_balance) < \
             covenant_threshold_net_revenue_plus_fund_balance:
         rate_covenant_failure_counter += COVENANT_FAILURE
         adjustment = \
             (covenant_threshold_net_revenue_plus_fund_balance * \
              (current_FY_debt_service + current_FY_required_cip_deposit + current_FY_required_rr_deposit)) - \
-            current_FY_net_revenue - \
-            annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
+            current_FY_net_revenue - previous_FY_reserve_fund_balance
         current_FY_needed_reserve_deposit = \
             np.max([current_FY_needed_reserve_deposit, adjustment])
         current_FY_rate_stabilization_funds_transferred_in = \
@@ -1217,6 +1246,13 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
                 high = current_FY_data.iloc[:,water_sales_revenue_columns].sum().sum() * 0.04 / 1000000),
                  decimals = 1) * 1000000
         
+    # estimate transfers in for CIP from CIP Fund
+    # (aka capital improvement not covered by uniform rate, R&R fund, or debt)
+    # from historical budgets, this varies from 0-9% of budgeted debt service
+    next_FY_budgeted_cip_fund_transfer_in = \
+        np.round(np.random.uniform(low = 0, 
+                                   high = next_FY_budgeted_debt_service * 0.09))
+        
     # SECONDARY NOTE: IF THE RATE STABILIZATION FUND BECOMES VERY
     # LARGE, OR MANAGEMENT WISHES TO REDUCE THE UNIFORM RATE, 
     # MORE CAN BE TRANSFERRED IN. FOR NOW, WE ASSUME THAT THE 
@@ -1412,7 +1448,8 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
                                   next_FY_budgeted_rr_transfer_in, 
                                   0, # never any other funds budgeted transferred in?
                                   next_FY_budgeted_interest_income, 
-                                  next_FY_budgeted_reserve_fund_deposit]).transpose().values # basically saying interest is only non-sales revenue... 
+                                  next_FY_budgeted_reserve_fund_deposit,
+                                  next_FY_budgeted_cip_fund_transfer_in]).transpose().values # basically saying interest is only non-sales revenue... 
 
     
     return annual_budgets, existing_issued_debt, potential_projects, \
@@ -1459,7 +1496,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     # give number of variables tracked in outputs
     n_financial_metric_outcomes = 13
     n_actual_budget_outcomes = 16
-    n_proposed_budget_outcomes = 21
+    n_proposed_budget_outcomes = 22
     n_deliveries_sales_variables = 23
                 
     ### -----------------------------------------------------------------------
@@ -1654,7 +1691,7 @@ for sim in range(1,2): # FOR RUNNING HISTORICALLY ONLY
     total_deliveries_months = [int(x) for x in range(1,(end_fy - start_fy + 1)*12+1)]
 #    for r_id in range(1,n_reals_tested):
     for r_id in range(1,2): # r_id = 1 for testing
-        # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2017;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;financial_results_output_path = financial_output_path;historical_financial_data_path = hist_financial_path
+        # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2015;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;financial_results_output_path = financial_output_path;historical_financial_data_path = hist_financial_path
         
         budget_projection, actuals, outcomes, water_vars, final_debt = \
             run_FinancialModelForSingleRealization(
