@@ -39,7 +39,7 @@ for col in [x for x in model_budgets.columns[2:].values]:
                                  'Modeled': model_budgets[col].values})
     data_to_plot.set_index('Fiscal Year').plot(title = col + ' Comparison').get_figure().savefig(data_path + '/' + col + '_historic_comp.png')
     
-for col in [x for x in model_water_delivery_sales.columns[9:22].values]:
+for col in [x for x in model_water_delivery_sales.columns[2:22].values]:
     data_to_plot = pd.DataFrame({'Fiscal Year': model_water_delivery_sales['Fiscal Year'].values, 
                                  'Historic': hist_water_delivery_sales[col].values, 
                                  'Modeled': model_water_delivery_sales[col].values}).groupby('Fiscal Year').sum()
