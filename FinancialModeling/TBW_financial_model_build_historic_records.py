@@ -315,10 +315,11 @@ def build_HistoricalAnnualData(n_fiscal_years = 10, most_recent_year = 2020,
                               12759993, 12089243, 12790683, 12908523, 17086535]
     
     # repeat overwrite for R&R and CIP Fund flows
-    rr_fund_transfer_in = [np.nan, np.nan, 300626, 1401864, 1522804, 
-                           1318097, 2516508, 3139817, 1438279, 0]
+    # don't have R&R transfer in for FY19 yet, back it out with other actuals
     rr_fund_deposit = [np.nan, np.nan, 775437, 3533711, 6019372, 
                        2891688, 3155183, 3242539, 3325468, 5509008]
+    rr_fund_transfer_in = [np.nan, np.nan, 300626, 1401864, 1522804, 
+                           1318097, 2516508, 3139817, 1438279, rr_fund_deposit[-1] - (rr_fund_total[-1] - rr_fund_total[-2])]
     
     cip_fund_transfer_in = [np.nan, np.nan, 4825958, 2011207, 947670, 
                             3640572, 1553479, 1918031, 344247, 653919]
