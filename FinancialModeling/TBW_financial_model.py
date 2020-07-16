@@ -334,7 +334,7 @@ def calculate_DebtCoverageRatio(net_revenues,
 
 def calculate_RateCoverageRatio(net_revenues, 
                                 debt_service, 
-                                required_deposits, 
+                                required_deposits, # DOESN'T ACTUALLY INCLUDE THESE
                                 fund_balance):
     # if ratio < 1.25, covenant failure
     return (net_revenues + fund_balance) / (debt_service + required_deposits)
@@ -723,9 +723,16 @@ def calculate_WaterSalesForFY(FY, water_delivery_sales,
     # annual estimate is too large to fit the determined uniform rate
     # if that is the case, adjust the rate stabilization transfer in 
     # needed to balance it
+    # note: when checking the "actual" revenues against what the AE requires,
+    # the AE as calculated above does not account for additional deposits/transfers
+    # so we need to include them here to isolate a comparison against
+    # water sales revenues only
+    current_FY_budgeted_annual_estimate_adjusted = \
+        current_FY_budgeted_annual_estimate - \
+        current_FY_budgeted_rate_stabilization_transfer_in
     adjusted_uniform_rate, current_FY_budgeted_annual_estimate, \
     adjusted_rate_stabilization_transfer_in = \
-        estimate_UniformRate(annual_estimate = current_FY_budgeted_annual_estimate, 
+        estimate_UniformRate(annual_estimate = current_FY_budgeted_annual_estimate_adjusted, 
                              demand_estimate = current_FY_demand_estimate_mgd, 
                              current_uniform_rate = current_FY_budgeted_uniform_rate,
                              rs_transfer_in = current_FY_budgeted_rate_stabilization_transfer_in,
@@ -781,7 +788,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     debt_covenant_required_ratio = dv_list[1]
     
     # deeply uncertain factors
-    budgeted_unencumbered_fraction = rdm_factor_list[3]
+    budgeted_unencumbered_fraction = rdm_factor_list[3] # historically, 2%
     fixed_op_ex_factor = rdm_factor_list[7]
     variable_op_ex_factor = rdm_factor_list[8] # fyi, budgets seem very hard to balance unless these are below 0.9
     non_sales_rev_factor = rdm_factor_list[9]
@@ -945,7 +952,15 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     if ((previous_FY_raw_gross_revenue * 0.05) > previous_FY_rr_fund_balance + current_FY_rr_net_deposit) and (current_FY_rr_net_deposit > 0):
         # reduce budgeted transfer in if it would deplete the fund
         # so that the transfer in and deposit are equal (no net fund change)
-        current_FY_rr_funds_transfer_in -= current_FY_rr_net_deposit
+        # but prevent it from going negative
+        current_FY_rr_funds_transfer_in = np.max([current_FY_rr_funds_transfer_in - current_FY_rr_net_deposit,
+                                                  0.0])
+                
+        # if there is remaining need, increase the deposit
+        current_FY_rr_net_deposit = \
+            current_FY_budgeted_rr_deposit - current_FY_rr_funds_transfer_in
+        if (previous_FY_raw_gross_revenue * 0.05) > previous_FY_rr_fund_balance + current_FY_rr_net_deposit:
+            current_FY_budgeted_rr_deposit += current_FY_rr_net_deposit
     
     if ((previous_FY_raw_gross_revenue * 0.05) > previous_FY_rr_fund_balance):
         # if the current fund level is already in violation, cancel transfer in
@@ -988,15 +1003,17 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # value here within bounds seen in past budgets
     # From FY 2013-2019, CIP required deposits were between
     #   1-3% of actual previous fy raw gross revenues
+    #   use the 2-3% range because that seems to match better 
+    #   with last 6 FYs (lowest value was FY 2013 outlier)
     # also include a deeply uncertain factor to be used if wanted
     current_FY_cip_deposit = \
-        np.random.uniform(low = 0.01, high = 0.03) * \
+        np.random.uniform(low = 0.02, high = 0.03) * \
         required_cip_factor * previous_FY_raw_gross_revenue
         
     # similarly, apply a random factor to set CIP fund transfer in
     # based on past FY actuals, transfer in is between 0.2-2%
     # of past fy raw gross revenues
-    current_FY_cip_deposit = \
+    current_FY_cip_transfer_in = \
         np.random.uniform(low = 0.002, high = 0.02) * \
         required_cip_factor * previous_FY_raw_gross_revenue
         
@@ -1036,7 +1053,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # what the final "leftover" must be covered from other sources
     if calculate_RateCoverageRatio(current_FY_netted_net_revenue,
                                    current_FY_debt_service,
-                                   current_FY_cip_deposit + current_FY_budgeted_rr_deposit,
+                                   0,
                                    previous_FY_reserve_fund_balance) < \
             covenant_threshold_net_revenue_plus_fund_balance:
         rate_covenant_failure_counter += COVENANT_FAILURE
@@ -1145,14 +1162,18 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # any remaining funds go into rate stabilization
         # and reserve fund - split remaining balance 50/50
         current_FY_rate_stabilization_fund_deposit += \
-            current_FY_budget_surplus * 0.5
+            current_FY_budget_surplus * 0.95
         current_FY_final_reserve_fund_balance += \
-            current_FY_budget_surplus * 0.5
+            current_FY_budget_surplus * 0.05
             
     if ACTIVE_DEBUGGING:        
         print(str(FY) + ': Final Budget Surplus is ' + str(current_FY_budget_surplus))
         print(str(FY) + ': Final Unencumbered is ' + str(current_FY_final_unencumbered_funds))
         print(str(FY) + ': Surplus Deposit in Rate Stabilization is ' + str(current_FY_rate_stabilization_fund_deposit))
+    
+    print(str(FY) + ': Initial Budget Surplus is ' + str(current_FY_budget_surplus))
+    print(str(FY) + ': Surplus Deposit in Rate Stabilization is ' + str(current_FY_rate_stabilization_fund_deposit))
+    
     
     # finally, take the final budget calculations of gross/net revenues
     # "raw" values and "netted" values
@@ -1182,13 +1203,10 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
 #        current_FY_acquisition_credits
     
     # check R&R fund flows
-    # positive value is money deposited to fund
-    current_FY_final_rr_net_transfer = \
-        -current_FY_rr_funds_transfer_in + \
-        current_FY_budgeted_rr_deposit 
     current_FY_final_rr_fund_balance = \
-        current_FY_final_rr_net_transfer + \
-        previous_FY_rr_fund_balance
+        previous_FY_rr_fund_balance - \
+        current_FY_rr_funds_transfer_in + \
+        current_FY_budgeted_rr_deposit
     
     # set rate stabilization balance
     # unencumbered funds deposited here at end of FY
@@ -1196,7 +1214,8 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         -current_FY_rate_stabilization_final_transfer_in + \
         current_FY_rate_stabilization_fund_deposit + \
         previous_FY_rate_stabilization_fund_balance + \
-        current_FY_final_unencumbered_funds
+        current_FY_final_unencumbered_funds - \
+        current_FY_unencumbered_funds
         
     # finally, record outcomes
     financial_metrics.loc[financial_metrics['Fiscal Year'] == FY] = \
@@ -1208,7 +1227,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                         calculate_RateCoverageRatio(
                                 current_FY_final_netted_net_revenue, 
                                 current_FY_debt_service, 
-                                current_FY_cip_deposit + current_FY_budgeted_rr_deposit, 
+                                0, 
                                 previous_FY_reserve_fund_balance),
                         debt_covenant_failure_counter, 
                         rate_covenant_failure_counter,
@@ -1250,7 +1269,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                       current_FY_rate_stabilization_fund_deposit,
                       current_FY_final_rate_stabilization_fund_balance,
                       current_FY_rate_stabilization_final_transfer_in,
-                      current_FY_unencumbered_funds,
+                      current_FY_final_unencumbered_funds,
                       current_FY_final_cip_fund_balance,
                       current_FY_cip_deposit,
                       current_FY_cip_transfer_in,
@@ -1383,9 +1402,10 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
     # 8.5% maintained (don't know what this percentage is for)
     # assume a floor of $1.5M transfer in, can be randomly greater
     # in increments of $100k up to 4% of current year sales revenue
+    # historically, can get as low as $0
     next_FY_budgeted_rate_stabilization_transfer_in = \
         np.round(np.random.uniform(
-                low = 1.5, 
+                low = 0, 
                 high = current_FY_data.iloc[:,water_sales_revenue_columns].sum().sum() * 0.04 / 1000000),
                  decimals = 1) * 1000000
         
@@ -1490,8 +1510,9 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
     # after FY2022, this hovers around $250k a year, before that
     # could be up to $2.2M. Will make it a uniform random value
     # between $200k and $2M
+    # historically, it has often been $0 or less than $2M, so do that range
     next_FY_budgeted_other_deposits = np.random.uniform(
-                low = 200000, high = 2000000)
+                low = 0, high = 2000000)
     
     # estimate CIP Fund deposit - in the past are
     # 0.001-1% of last FY raw gross revenue
@@ -1512,13 +1533,15 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
             current_FY_final_gross_revenue * 0.1 - \
             current_FY_final_reserve_fund_balance
     
-    # finalize Annual Estimate estimation
+    # finalize Annual Estimate
+    # to be consistent with numbers pulled from budget reports, the AE
+    # is all costs before deposits into reserve funds
     next_FY_annual_estimate = \
-        next_FY_budgeted_total_expenditures_before_fund_adjustment + \
-        next_FY_budgeted_rr_deposit + \
-        next_FY_budgeted_other_deposits + \
-        next_FY_budgeted_reserve_fund_deposit + \
-        next_FY_budgeted_cip_fund_deposit
+        next_FY_budgeted_total_expenditures_before_fund_adjustment # + \
+#        next_FY_budgeted_rr_deposit + \
+#        next_FY_budgeted_other_deposits + \
+#        next_FY_budgeted_reserve_fund_deposit + \
+#        next_FY_budgeted_cip_fund_deposit
     
     # estimate water demand for upcoming FY
     # future budget projections based on water demand of 180.8 MGD
@@ -1533,11 +1556,16 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
     # also based on projection of total water demand
     #   from monthly data (or budgetary factor?)
     # reminder, rates in $/kgal
-    # NOTE: MAY WANT TO TEST EFFECT OF MAINTAINING SAME RATE
-    # OR ENSURING SLOWER INCREASE OF IT YEAR-TO-YEAR
+    # note: when checking the "actual" revenues against what the AE requires,
+    # the AE as calculated above does not account for additional deposits/transfers
+    # so we need to include them here to isolate a comparison against
+    # water sales revenues only
+    next_FY_annual_estimate_adjusted = \
+        next_FY_annual_estimate - \
+        next_FY_budgeted_rate_stabilization_transfer_in
     next_FY_uniform_rate, next_FY_annual_estimate, \
     next_FY_budgeted_rate_stabilization_transfer_in = \
-        estimate_UniformRate(annual_estimate = next_FY_annual_estimate, 
+        estimate_UniformRate(annual_estimate = next_FY_annual_estimate_adjusted, 
                              demand_estimate = next_FY_demand_estimate_mgd, 
                              current_uniform_rate = annual_budgets['Uniform Rate'].loc[annual_budgets['Fiscal Year'] == FY].values[0],
                              rs_transfer_in = next_FY_budgeted_rate_stabilization_transfer_in,
@@ -1572,10 +1600,13 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
         next_FY_budgeted_unencumbered_funds + \
         next_FY_budgeted_rr_transfer_in
         
+    print(str(FY) + ": next FY budgeted RS transfer in is " + str(next_FY_budgeted_rate_stabilization_transfer_in))
+        
     next_FY_budgeted_raw_net_revenue = \
         next_FY_budgeted_raw_gross_revenues - \
         next_FY_budgeted_fixed_operating_costs - \
-        next_FY_budgeted_variable_operating_costs
+        next_FY_budgeted_variable_operating_costs - \
+        next_FY_budgeted_acquisition_credit
     
     next_FY_budgeted_other_transfer_in = 0
     next_FY_budgeted_rate_stabilization_deposit = 0
@@ -1911,6 +1942,11 @@ for sim in range(1,2): # FOR RUNNING HISTORICALLY ONLY
     UR.transpose().plot(legend = False).get_figure().savefig(output_path + '/UR_s' + str(sim) + '.png', format = 'png')
     VR.transpose().plot(legend = False).get_figure().savefig(output_path + '/VR_s' + str(sim) + '.png', format = 'png')
     WD.transpose().plot(legend = False).get_figure().savefig(output_path + '/WD_s' + str(sim) + '.png', format = 'png')
+    
+    # export the objective sets for quantile plotting
+    DC.to_csv(output_path + '/DC_s' + str(sim) + '.csv')
+    RC.to_csv(output_path + '/RC_s' + str(sim) + '.csv')
+    UR.to_csv(output_path + '/UR_s' + str(sim) + '.csv')
    
 ### ---------------------------------------------------------------------------
 # write output file for all objectives
