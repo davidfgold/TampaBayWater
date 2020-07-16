@@ -16,10 +16,12 @@ hist_actuals = pd.read_csv(data_path + '/historic_actuals.csv')
 hist_budgets = pd.read_csv(data_path + '/historic_budgets.csv')
 hist_water_delivery_sales = pd.read_csv(data_path + '/historic_sales.csv')
 
-# note: FY 18 and 19 covenant levels are misleading because they don't
+# note: FY 18 and 19 debt covenant levels are misleading because they don't
 # factor in R&R and CIP Fund required deposits
 hist_rate_covenant = [1.43,1.48,1.49,1.51,1.58] # from FY15 -> 19
 hist_debt_covenant = [1.0,1.01,1.0,1.11,1.16] # from FY15 -> 19
+hist_debt_covenant[3] = 78079017 / (70133615 + 4215354 + 3325468)
+hist_debt_covenant[4] = 81451346 / (70122276 + 5509008 + 5356993)
 
 # read modeled data
 sim = 1; r_id = 1

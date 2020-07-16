@@ -326,6 +326,11 @@ def build_HistoricalAnnualData(n_fiscal_years = 10, most_recent_year = 2020,
     cip_fund_deposit = [np.nan, np.nan, 976653, 1727032, 2583103, 
                         2986952, 4592553, 5158861, 4215354, 5356993]
     cip_fund_total = RestrictedAssets['Capital Improvement Funds'].values[::-1]
+    
+    # there is a debt service actuals discrepancy in 2015-16, so will overwrite
+    # with numbers from budget reports as well
+    debt_service = [np.nan, np.nan, 73084766, 75447974, 75337316, 
+                    72668588, 71414576, 70129335, 70133614, 70122276]
         
     # collect data to output for table
     annual_streams.iloc[:,0] = [2010,2011,2012,2013,2014,2015,2016,2017,2018,2019]
