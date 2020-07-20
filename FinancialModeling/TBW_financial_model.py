@@ -980,12 +980,12 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # (add the negative difference)
         current_FY_rr_funds_transfer_in += current_FY_rr_net_deposit
 
-    print(str(FY) + ': GR: Unencumbered is ' + str(current_FY_unencumbered_funds))
-    print(str(FY) + ': GR: RS Transfer In is ' + str(current_FY_rate_stabilization_final_transfer_in))
-    print(str(FY) + ': GR: R&R Transfer In is ' + str(current_FY_rr_funds_transfer_in))
-    print(str(FY) + ': GR: Other Transfer In is ' + str(current_FY_other_funds_transferred_in))
-    print(str(FY) + ': GR: Non-Sales Rev is ' + str(current_FY_non_sales_revenue))
-    print(str(FY) + ': GR: RS Deposit is ' + str(current_FY_rate_stabilization_fund_deposit))
+#    print(str(FY) + ': GR: Unencumbered is ' + str(current_FY_unencumbered_funds))
+#    print(str(FY) + ': GR: RS Transfer In is ' + str(current_FY_rate_stabilization_final_transfer_in))
+#    print(str(FY) + ': GR: R&R Transfer In is ' + str(current_FY_rr_funds_transfer_in))
+#    print(str(FY) + ': GR: Other Transfer In is ' + str(current_FY_other_funds_transferred_in))
+#    print(str(FY) + ': GR: Non-Sales Rev is ' + str(current_FY_non_sales_revenue))
+#    print(str(FY) + ': GR: RS Deposit is ' + str(current_FY_rate_stabilization_fund_deposit))
         
     # check conditions under (b) 
     # there is never a budgeted deposit to the reserve fund, so don't need to
@@ -1171,8 +1171,8 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         print(str(FY) + ': Final Unencumbered is ' + str(current_FY_final_unencumbered_funds))
         print(str(FY) + ': Surplus Deposit in Rate Stabilization is ' + str(current_FY_rate_stabilization_fund_deposit))
     
-    print(str(FY) + ': Initial Budget Surplus is ' + str(current_FY_budget_surplus))
-    print(str(FY) + ': Surplus Deposit in Rate Stabilization is ' + str(current_FY_rate_stabilization_fund_deposit))
+#    print(str(FY) + ': Initial Budget Surplus is ' + str(current_FY_budget_surplus))
+#    print(str(FY) + ': Surplus Deposit in Rate Stabilization is ' + str(current_FY_rate_stabilization_fund_deposit))
     
     
     # finally, take the final budget calculations of gross/net revenues
@@ -1600,7 +1600,7 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
         next_FY_budgeted_unencumbered_funds + \
         next_FY_budgeted_rr_transfer_in
         
-    print(str(FY) + ": next FY budgeted RS transfer in is " + str(next_FY_budgeted_rate_stabilization_transfer_in))
+#    print(str(FY) + ": next FY budgeted RS transfer in is " + str(next_FY_budgeted_rate_stabilization_transfer_in))
         
     next_FY_budgeted_raw_net_revenue = \
         next_FY_budgeted_raw_gross_revenues - \
@@ -1862,9 +1862,9 @@ output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
 ### ---------------------------------------------------------------------------
 # run loop across DV sets
 sim_objectives = [0,0,0,0] # sim id + three objectives
-start_fy = 2015; end_fy = 2020; n_reals_tested = 12
-#for sim in range(0,len(DVs)): # sim = 0 for testing
-for sim in range(1,2): # FOR RUNNING HISTORICALLY ONLY
+start_fy = 2020; end_fy = 2040; n_reals_tested = 199
+for sim in range(0,len(DVs)): # sim = 0 for testing
+#for sim in range(1,2): # FOR RUNNING HISTORICALLY ONLY
     ### ----------------------------------------------------------------------- ###
     ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
     ### ----------------------------------------------------------------------- ###  
@@ -1876,8 +1876,13 @@ for sim in range(1,2): # FOR RUNNING HISTORICALLY ONLY
     full_rate_years = [int(x) for x in range(start_fy-2,end_fy)]
     variable_rate_years = [int(x) for x in range(start_fy-2,end_fy)]
     total_deliveries_months = [int(x) for x in range(1,(end_fy - start_fy + 1)*12+1)]
-#    for r_id in range(1,n_reals_tested):
-    for r_id in range(1,2): # r_id = 1 for testing
+    for r_id in range(1,n_reals_tested):
+        print(r_id)
+        # seems to be an issue with run 95 .mat file, skip this realization
+        if r_id == 95:
+            continue
+        
+#    for r_id in range(1,2): # r_id = 1 for testing
         # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2015;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;financial_results_output_path = financial_output_path;historical_financial_data_path = hist_financial_path
         
         budget_projection, actuals, outcomes, water_vars, final_debt = \
