@@ -518,7 +518,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
                             AMPL_cleaned_data, TBC_raw_sales_to_CoT, Month, Year,
                             fiscal_years_to_keep, first_modeled_fy, n_months_in_year, 
                             annual_demand_growth_rate, last_fy_month,
-                            financial_results_output_path, outpath):
+                            outpath):
     
     earliest_fy_budget_available = min(budget_projections['Fiscal Year'])
     earliest_fy_actuals_available = min(annual_budget['Fiscal Year'])
@@ -1658,7 +1658,6 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            realization_id = 1,
                                            additional_scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization',
                                            orop_oms_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
-                                           financial_results_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125', 
                                            historical_financial_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials',
                                            outpath = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output',
                                            PRE_CLEANED = True,
@@ -1749,7 +1748,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                 AMPL_cleaned_data, TBC_raw_sales_to_CoT, Month, Year,
                                 fiscal_years_to_keep, first_modeled_fy, n_months_in_year, 
                                 annual_demand_growth_rate, last_fy_month, 
-                                financial_results_output_path, outpath)
+                                outpath)
 
     ### -----------------------------------------------------------------------
     # step 2: take an annual step loop over water supply outcomes for future
@@ -1853,16 +1852,14 @@ infrastructure_options = pd.read_csv(historical_data_path + '/potential_projects
 
 ### ---------------------------------------------------------------------------
 # set additional required paths
-hist_financial_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials'
 scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization'
 ampl_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned'
-financial_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125'
 output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
 
 ### ---------------------------------------------------------------------------
 # run loop across DV sets
 sim_objectives = [0,0,0,0] # sim id + three objectives
-start_fy = 2020; end_fy = 2040; n_reals_tested = 199
+start_fy = 2020; end_fy = 2040; n_reals_tested = 1
 for sim in range(0,len(DVs)): # sim = 0 for testing
 #for sim in range(1,2): # FOR RUNNING HISTORICALLY ONLY
     ### ----------------------------------------------------------------------- ###
@@ -1876,14 +1873,14 @@ for sim in range(0,len(DVs)): # sim = 0 for testing
     full_rate_years = [int(x) for x in range(start_fy-2,end_fy)]
     variable_rate_years = [int(x) for x in range(start_fy-2,end_fy)]
     total_deliveries_months = [int(x) for x in range(1,(end_fy - start_fy + 1)*12+1)]
-    for r_id in range(1,n_reals_tested):
+    for r_id in range(1,n_reals_tested+1):
         print(r_id)
         # seems to be an issue with run 95 .mat file, skip this realization
         if r_id == 95:
             continue
         
 #    for r_id in range(1,2): # r_id = 1 for testing
-        # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2015;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;financial_results_output_path = financial_output_path;historical_financial_data_path = hist_financial_path
+        # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2015;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;historical_financial_data_path = hist_financial_path
         
         budget_projection, actuals, outcomes, water_vars, final_debt = \
             run_FinancialModelForSingleRealization(
@@ -1899,8 +1896,7 @@ for sim in range(0,len(DVs)): # sim = 0 for testing
                     realization_id = r_id, 
                     additional_scripts_path = scripts_path,
                     orop_oms_output_path = ampl_output_path, 
-                    financial_results_output_path = financial_output_path, 
-                    historical_financial_data_path = hist_financial_path,
+                    historical_financial_data_path = historical_data_path,
                     outpath = output_path,
                     PRE_CLEANED = True, ACTIVE_DEBUGGING = False)
         
