@@ -298,12 +298,15 @@ def add_NewDebt(current_year,
     # check if new debt should be issued for triggered projects 
     # maturity date, year principal payments start, interest rate, 
     import numpy as np; import pandas as pd
+    FIRST_YEAR_OF_LOW_DEBT_SERVICE = 2032 # if debt issued before 2032, delay repayment
+    BOND_LENGTH = 30 # years for debt repayment after issuance
+    DEBT_INTEREST_RATE = 4
     debt_colnames = existing_debt.columns
     for infra_id in np.unique(triggered_project_ids):
         if infra_id != -1:
-            new_debt_issue = [current_year + 3, # year principal payment starts, default to current year + 3 (repayment starts after infrastructure comes online?)
-                              current_year + 30, # maturity year, assume 30-year amortization schedule
-                              4, # min or actual interest rate, assume flat 4% rate for future stuff
+            new_debt_issue = [np.max([current_year, FIRST_YEAR_OF_LOW_DEBT_SERVICE]), # year principal payments start
+                              current_year + BOND_LENGTH, # maturity year, assume 30-year amortization schedule
+                              DEBT_INTEREST_RATE, # min or actual interest rate, assume flat 4% rate for future stuff
                               np.nan, # max (if there is one) interest rate, assume not
                               potential_projects['Total Capital Cost'].iloc[infra_id], # current/initial principal on bond
                               potential_projects['Total Capital Cost'].iloc[infra_id], # original principal amount bonded
@@ -318,13 +321,14 @@ def check_ForTriggeredProjects(daily_ampl_tracking_variable):
     # if it changes from -1 to any other number, that project is triggered in 
     # water supply modeling to change the system configuration and bonds must
     # be issued to cover its capital costs
-    # NOTE: ASSUMES IDS OF POTENTIAL PROJECTS ARE ALL > -1
+    # NOTE: ASSUMES IDS OF POTENTIAL PROJECTS ARE ALL not -1
     import numpy as np
-    new_project_id = -1 # default value, nothing built this month
-    if len(np.unique(daily_ampl_tracking_variable)) > 1: # should have -1 as only unique value unless new project is triggered
-        new_project_id = np.unique(daily_ampl_tracking_variable)[1:] # get next value(s)
+    new_project_id = [] # default value, nothing built this month
+    for pid in np.unique(daily_ampl_tracking_variable):
+        if pid != -1:
+            new_project_id.append(pid)
 
-    return [x for x in [new_project_id]]
+    return new_project_id
 
 def calculate_DebtCoverageRatio(net_revenues, 
                                 debt_service, 
@@ -333,25 +337,20 @@ def calculate_DebtCoverageRatio(net_revenues,
     return net_revenues / (debt_service + required_deposits)
 
 def calculate_RateCoverageRatio(net_revenues, 
-                                debt_service, 
-                                required_deposits, # DOESN'T ACTUALLY INCLUDE THESE
+                                debt_service,
                                 fund_balance):
     # if ratio < 1.25, covenant failure
-    return (net_revenues + fund_balance) / (debt_service + required_deposits)
+    return (net_revenues + fund_balance) / (debt_service)
 
 def set_BudgetedDebtService(existing_debt, last_year_net_revenue, 
-                            finance_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials', 
-                            year = '2020', start_year = 2020):
+                            existing_debt_targets, 
+                            year = 2020, start_year = 2020):
     # read in approximate "caps" on annual debt service out to 2038
     # based on existing debt only - will need to add debt
     # as new projects come online
-    import pandas as pd; import numpy as np
-    existing_debt_targets = pd.read_excel(
-            finance_path + '/Current_Future_BondIssues.xlsx', 
-            sheet_name = 'FutureDSTotals')
-    
+    import numpy as np
     total_budgeted_debt_service = \
-        existing_debt_targets['Total'].iloc[int(year) - start_year]
+        existing_debt_targets['Total'].iloc[year - start_year]
     
     # check for new debt/projects and adjust targets
     # existing debt in 2019 has ID nan, any debt issued
@@ -359,23 +358,29 @@ def set_BudgetedDebtService(existing_debt, last_year_net_revenue,
     for bond in range(0,len(existing_debt['ID'])):
         if ~np.isnan(existing_debt['ID'].iloc[bond]):
             # how much should even annual payments mean to
-            # add to this year?
+            # add to this year?            
+            total_principal_owed = existing_debt['Original Amount'].iloc[bond]
+            repayment_years = existing_debt['Maturity'].iloc[bond] - existing_debt['Principal Payments Start '].iloc[bond]
+            interest_rate = existing_debt['Interest Rate (actual or min)'].iloc[bond]/100
             remaining_principal_owed = existing_debt['Outstanding Principal'].iloc[bond]
-            remaining_repayment_years = existing_debt['Maturity'].iloc[bond] - int(year)
-            interest_rate = existing_debt['Interest Rate (actual or min)'].iloc[bond]
             
             # calculate even annual payments, including interest
             # TO ADD: CAP IF TOTAL DEBT SERVICE RISES TOO HIGH
-            level_debt_service_payment = \
-                remaining_principal_owed * \
-                (interest_rate/10 * (1 + interest_rate/10)**remaining_repayment_years) / \
-                ((1 + interest_rate/10)**(remaining_repayment_years-1))
-            total_budgeted_debt_service += \
-                level_debt_service_payment
-            existing_debt['Outstanding Principal'].iloc[bond] -= \
-                level_debt_service_payment - \
-                interest_rate/100*remaining_principal_owed
-        
+            if remaining_principal_owed > 1e4:
+                if existing_debt['Principal Payments Start '].iloc[bond] >= year:
+                    level_debt_service_payment = \
+                        total_principal_owed * \
+                        (interest_rate * (1 + interest_rate)**repayment_years) / \
+                        ((1 + interest_rate)**(repayment_years)-1)
+                    existing_debt['Outstanding Principal'].iloc[bond] -= \
+                        level_debt_service_payment - \
+                        interest_rate*remaining_principal_owed
+                else: # only pay interest before principal repayment begins
+                    level_debt_service_payment = \
+                        remaining_principal_owed * interest_rate
+                        
+                total_budgeted_debt_service += level_debt_service_payment
+            
     return total_budgeted_debt_service, existing_debt
 
 def add_NewOperationalCosts(possible_projs, 
@@ -1053,7 +1058,6 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # what the final "leftover" must be covered from other sources
     if calculate_RateCoverageRatio(current_FY_netted_net_revenue,
                                    current_FY_debt_service,
-                                   0,
                                    previous_FY_reserve_fund_balance) < \
             covenant_threshold_net_revenue_plus_fund_balance:
         rate_covenant_failure_counter += COVENANT_FAILURE
@@ -1133,6 +1137,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # July 2020: any required transfers from 'other' funds
     # to cover budget shortfalls above will be pulled from 
     # reserve fund balance
+    current_FY_final_unencumbered_funds = 0
     current_FY_final_reserve_fund_balance = \
         annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
     if current_FY_budget_surplus < 0:
@@ -1226,8 +1231,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                                 current_FY_cip_deposit + current_FY_budgeted_rr_deposit),  
                         calculate_RateCoverageRatio(
                                 current_FY_final_netted_net_revenue, 
-                                current_FY_debt_service, 
-                                0, 
+                                current_FY_debt_service,
                                 previous_FY_reserve_fund_balance),
                         debt_covenant_failure_counter, 
                         rate_covenant_failure_counter,
@@ -1280,10 +1284,9 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     
 def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data, 
                             annual_budgets, annual_actuals, financial_metrics, 
-                            existing_issued_debt, new_projects_to_finance, potential_projects,
+                            existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
                             accumulated_new_operational_fixed_costs_from_infra,
                             accumulated_new_operational_variable_costs_from_infra,
-                            historical_financial_data_path,
                             dv_list, 
                             rdm_factor_list,
                             ACTIVE_DEBUGGING):
@@ -1325,8 +1328,8 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
         next_FY_budgeted_debt_service, existing_issued_debt = \
             set_BudgetedDebtService(existing_issued_debt, 
                                     current_FY_final_net_revenue, 
-                                    historical_financial_data_path, 
-                                    str(FY+1), first_modeled_fy)
+                                    existing_debt_targets, 
+                                    FY+1, first_modeled_fy)
     else:
         next_FY_budgeted_debt_service = annual_budgets['Debt Service'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
     
@@ -1654,11 +1657,11 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            budget_projections,
                                            water_deliveries_and_sales,
                                            existing_issued_debt,
+                                           existing_debt_targets,
                                            potential_projects,
                                            realization_id = 1,
                                            additional_scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization',
                                            orop_oms_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
-                                           historical_financial_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials',
                                            outpath = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output',
                                            PRE_CLEANED = True,
                                            ACTIVE_DEBUGGING = False):
@@ -1771,6 +1774,14 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
         # track if new infrastructure is triggered in the current FY
         if ((len(AMPL_cleaned_data) > 1) and (FY > first_modeled_fy)): # if using model data
             model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
+            # for initial tests and model runs, "artificially" include
+            # SHC Balm pipeline debt starting 3 years before FY2028
+            # when it is expected to be built, for now hard-coded at
+            # 2025 to trigger project ID 5, which is the 36in diameter pipe
+            # supplying a max capacity of 12.5 MGDs
+            if FY == 2025:
+                AMPL_cleaned_data['Trigger Variable'].loc[model_index] = 5
+            
             triggered_project_ids = \
                 check_ForTriggeredProjects(
                         AMPL_cleaned_data['Trigger Variable'].loc[model_index])
@@ -1796,7 +1807,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
         # lower than approved.
         annual_actuals, annual_budgets, financial_metrics = \
             calculate_FYActuals(FY, current_FY_data, past_FY_year_data, 
-                                annual_budgets, annual_actuals, financial_metrics, 
+                                annual_budgets, annual_actuals, financial_metrics,
                                 dv_list = decision_variables, 
                                 rdm_factor_list = rdm_factors,
                                 ACTIVE_DEBUGGING = ACTIVE_DEBUGGING)
@@ -1811,10 +1822,9 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                 accumulated_new_operational_variable_costs_from_infra = \
             calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data, 
                                         annual_budgets, annual_actuals, financial_metrics, 
-                                        existing_issued_debt, new_projects_to_finance, potential_projects,
+                                        existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
                                         accumulated_new_operational_fixed_costs_from_infra,
                                         accumulated_new_operational_variable_costs_from_infra,
-                                        historical_financial_data_path,
                                         dv_list = decision_variables, 
                                         rdm_factor_list = rdm_factors,
                                         ACTIVE_DEBUGGING = ACTIVE_DEBUGGING)
@@ -1849,6 +1859,7 @@ historical_annual_budget_projections = pd.read_csv(historical_data_path + '/hist
 annual_budget_data = pd.read_csv(historical_data_path + '/historical_actuals.csv')
 existing_debt = pd.read_csv(historical_data_path + '/existing_debt.csv')
 infrastructure_options = pd.read_csv(historical_data_path + '/potential_projects.csv')
+current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
 
 ### ---------------------------------------------------------------------------
 # set additional required paths
@@ -1880,7 +1891,7 @@ for sim in range(0,len(DVs)): # sim = 0 for testing
             continue
         
 #    for r_id in range(1,2): # r_id = 1 for testing
-        # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2015;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;historical_financial_data_path = hist_financial_path
+        # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2015;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;
         
         budget_projection, actuals, outcomes, water_vars, final_debt = \
             run_FinancialModelForSingleRealization(
@@ -1892,11 +1903,11 @@ for sim in range(0,len(DVs)): # sim = 0 for testing
                     budget_projections = historical_annual_budget_projections,
                     water_deliveries_and_sales = monthly_water_deliveries_and_sales,
                     existing_issued_debt = existing_debt,
+                    existing_debt_targets = current_debt_targets,
                     potential_projects = infrastructure_options,
                     realization_id = r_id, 
                     additional_scripts_path = scripts_path,
-                    orop_oms_output_path = ampl_output_path, 
-                    historical_financial_data_path = historical_data_path,
+                    orop_oms_output_path = ampl_output_path,
                     outpath = output_path,
                     PRE_CLEANED = True, ACTIVE_DEBUGGING = False)
         
