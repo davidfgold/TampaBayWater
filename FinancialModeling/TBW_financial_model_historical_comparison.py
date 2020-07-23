@@ -36,20 +36,20 @@ for col in [x for x in model_actuals.columns[2:].values]:
     data_to_plot = pd.DataFrame({'Fiscal Year': model_actuals['Fiscal Year'].values, 
                                  'Historic': hist_actuals[col].values, 
                                  'Modeled': model_actuals[col].values})
-    data_to_plot.set_index('Fiscal Year').plot(title = col + '- Actuals Comparison').get_figure().savefig(data_path + '/' + col + '_actual_historic_comp.png')
+    data_to_plot.set_index('Fiscal Year').loc[[2015,2016,2017,2018,2019]].plot(title = col + '- Actuals Comparison').get_figure().savefig(data_path + '/' + col + '_actual_historic_comp.png')
     
 for col in [x for x in model_budgets.columns[2:].values]:
     data_to_plot = pd.DataFrame({'Fiscal Year': model_budgets['Fiscal Year'].values, 
                                  'Historic': hist_budgets[col].values, 
                                  'Modeled': model_budgets[col].values})
-    data_to_plot.set_index('Fiscal Year').plot(title = col + '- Budget Comparison').get_figure().savefig(data_path + '/' + col + '_budget_historic_comp.png')
+    data_to_plot.set_index('Fiscal Year').loc[[2016,2017,2018,2019,2020]].plot(title = col + '- Budget Comparison').get_figure().savefig(data_path + '/' + col + '_budget_historic_comp.png')
     
 modeled_sum = 0; historic_sum = 0    
-for col in [x for x in model_water_delivery_sales.columns[2:22].values]:
+for col in [x for x in model_water_delivery_sales.columns[3:22].values]:
     data_to_plot = pd.DataFrame({'Fiscal Year': model_water_delivery_sales['Fiscal Year'].values, 
                                  'Historic': hist_water_delivery_sales[col].values, 
                                  'Modeled': model_water_delivery_sales[col].values}).groupby('Fiscal Year').sum()
-    data_to_plot.plot(title = col + ' Comparison').get_figure().savefig(data_path + '/' + col + '_delivery_historic_comp.png')
+    data_to_plot.loc[[2015,2016,2017,2018,2019]].plot(title = col + ' Comparison').get_figure().savefig(data_path + '/' + col + '_delivery_historic_comp.png')
     
     # plot of aggregated fixed water sales
     if col in ['Fixed Water Sales - City of St. Petersburg',
