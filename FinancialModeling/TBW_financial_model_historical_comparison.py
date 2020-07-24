@@ -23,56 +23,57 @@ hist_debt_covenant = [1.0,1.01,1.0,1.11,1.16] # from FY15 -> 19
 hist_debt_covenant[3] = 78079017 / (70133615 + 4215354 + 3325468)
 hist_debt_covenant[4] = 81451346 / (70122276 + 5509008 + 5356993)
 
+# make a set of colors for the plots
+n_reals = 49; sim = 1
+my_color_set = ['m'] * (n_reals-1) + ['k']
+
 # read modeled data
-sim = 1; r_id = 1
-model_actuals = pd.read_csv(data_path + '/budget_actuals_s' + str(sim) + '_r' + str(r_id) + '.csv')
-model_budgets = pd.read_csv(data_path + '/budget_projections_s' + str(sim) + '_r' + str(r_id) + '.csv')
-model_water_delivery_sales = pd.read_csv(data_path + '/water_deliveries_revenues_s' + str(sim) + '_r' + str(r_id) + '.csv')
-model_metrics = pd.read_csv(data_path + '/financial_metrics_s' + str(sim) + '_r' + str(r_id) + '.csv')
-
-
-# organize comparisons, plot and export
-for col in [x for x in model_actuals.columns[2:].values]:
-    data_to_plot = pd.DataFrame({'Fiscal Year': model_actuals['Fiscal Year'].values, 
-                                 'Historic': hist_actuals[col].values, 
-                                 'Modeled': model_actuals[col].values})
-    data_to_plot.set_index('Fiscal Year').loc[[2015,2016,2017,2018,2019]].plot(title = col + '- Actuals Comparison').get_figure().savefig(data_path + '/' + col + '_actual_historic_comp.png')
+for col in [x for x in hist_actuals.columns[2:].values]:
+    data_to_plot = pd.DataFrame({'Fiscal Year': hist_actuals['Fiscal Year'].values})
+    for r_id in range(1,n_reals):
+        model_actuals = pd.read_csv(data_path + '/budget_actuals_s' + str(sim) + '_r' + str(r_id) + '.csv')
+        data_to_plot.insert(data_to_plot.shape[1], 'Modeled ' + str(r_id), model_actuals[col])
+    data_to_plot.insert(data_to_plot.shape[1], 'Historic', hist_actuals[col].values)
+    data_to_plot.set_index('Fiscal Year').loc[[2015,2016,2017,2018,2019]].plot(
+            title = col + '- Actuals Comparison', legend = False,
+            color = my_color_set, linewidth = 2).get_figure().savefig(data_path + '/' + col + '_actual_historic_comp.png')
     
-for col in [x for x in model_budgets.columns[2:].values]:
-    data_to_plot = pd.DataFrame({'Fiscal Year': model_budgets['Fiscal Year'].values, 
-                                 'Historic': hist_budgets[col].values, 
-                                 'Modeled': model_budgets[col].values})
-    data_to_plot.set_index('Fiscal Year').loc[[2016,2017,2018,2019,2020]].plot(title = col + '- Budget Comparison').get_figure().savefig(data_path + '/' + col + '_budget_historic_comp.png')
+for col in [x for x in hist_budgets.columns[2:].values]:
+    data_to_plot = pd.DataFrame({'Fiscal Year': hist_budgets['Fiscal Year'].values})
+    for r_id in range(1,n_reals):
+        model_budgets = pd.read_csv(data_path + '/budget_projections_s' + str(sim) + '_r' + str(r_id) + '.csv')
+        data_to_plot.insert(data_to_plot.shape[1], 'Modeled ' + str(r_id), model_budgets[col])
+    data_to_plot.insert(data_to_plot.shape[1], 'Historic', hist_budgets[col].values)
+    data_to_plot.set_index('Fiscal Year').loc[[2016,2017,2018,2019,2020]].plot(
+            title = col + '- Budget Comparison', legend = False,
+            color = my_color_set, linewidth = 2).get_figure().savefig(data_path + '/' + col + '_budget_historic_comp.png')
     
-modeled_sum = 0; historic_sum = 0    
-for col in [x for x in model_water_delivery_sales.columns[3:22].values]:
-    data_to_plot = pd.DataFrame({'Fiscal Year': model_water_delivery_sales['Fiscal Year'].values, 
-                                 'Historic': hist_water_delivery_sales[col].values, 
-                                 'Modeled': model_water_delivery_sales[col].values}).groupby('Fiscal Year').sum()
-    data_to_plot.loc[[2015,2016,2017,2018,2019]].plot(title = col + ' Comparison').get_figure().savefig(data_path + '/' + col + '_delivery_historic_comp.png')
-    
-    # plot of aggregated fixed water sales
-    if col in ['Fixed Water Sales - City of St. Petersburg',
-               'Fixed Water Sales - Pinellas County',
-               'Fixed Water Sales - City of Tampa (Uniform)',
-               'Fixed Water Sales - Hillsborough County',
-               'Fixed Water Sales - Pasco County',
-               'Fixed Water Sales - City of New Port Richey']:
-        modeled_sum += model_water_delivery_sales[col].values 
-        historic_sum += hist_water_delivery_sales[col].values 
-        if col == 'Fixed Water Sales - City of New Port Richey':
-                data_to_plot = pd.DataFrame({'Fiscal Year': model_water_delivery_sales['Fiscal Year'].values, 
-                                             'Historic': historic_sum, 
-                                             'Modeled': modeled_sum}).groupby('Fiscal Year').sum()
-                data_to_plot.plot(title = 'Total Fixed Sales Comparison').get_figure().savefig(data_path + '/total_fixed_sales_historic_comp.png')
-    
+for col in [x for x in hist_water_delivery_sales.columns[3:22].values]:
+    data_to_plot = pd.DataFrame({'Fiscal Year': hist_water_delivery_sales['Fiscal Year'].values})
+    for r_id in range(1,n_reals):
+        model_water_delivery_sales = pd.read_csv(data_path + '/water_deliveries_revenues_s' + str(sim) + '_r' + str(r_id) + '.csv')
+        data_to_plot.insert(data_to_plot.shape[1], 'Modeled ' + str(r_id), model_water_delivery_sales[col])
+    data_to_plot.insert(data_to_plot.shape[1], 'Historic', hist_water_delivery_sales[col].values)
+    data_to_plot.groupby('Fiscal Year').sum().loc[[2015,2016,2017,2018,2019]].plot(
+            title = col + '- Comparison', legend = False,
+            color = my_color_set, linewidth = 2).get_figure().savefig(data_path + '/' + col + '_delivery_historic_comp.png')
 
 # exceptions for covenants
-DC = pd.DataFrame({'Fiscal Year': model_metrics['Fiscal Year'].values, 
-                   'Historic': hist_debt_covenant, 
-                   'Modeled': model_metrics['Debt Covenant Ratio'].values})
-RC = pd.DataFrame({'Fiscal Year': model_metrics['Fiscal Year'].values, 
-                   'Historic': hist_rate_covenant, 
-                   'Modeled': model_metrics['Rate Covenant Ratio'].values})
-DC.set_index('Fiscal Year').plot(title = 'Debt Covenant Comparison').get_figure().savefig(data_path + '/DC_historic_comp.png')
-RC.set_index('Fiscal Year').plot(title = 'Rate Covenant Comparison').get_figure().savefig(data_path + '/RC_historic_comp.png')
+DC = pd.DataFrame({'Fiscal Year': [2015,2016,2017,2018,2019]})
+RC = pd.DataFrame({'Fiscal Year': [2015,2016,2017,2018,2019]})
+for r_id in range(1,n_reals):
+    model_metrics = pd.read_csv(data_path + '/financial_metrics_s' + str(sim) + '_r' + str(r_id) + '.csv')
+    Modeled = model_metrics['Debt Covenant Ratio']
+    DC.insert(DC.shape[1], 'Modeled ' + str(r_id), Modeled.values)
+    
+    Modeled = model_metrics['Rate Covenant Ratio']
+    RC.insert(RC.shape[1], 'Modeled ' + str(r_id), Modeled.values)
+
+# append historic record last so it is plotted on top
+DC.insert(DC.shape[1], 'Historic', hist_debt_covenant)
+RC.insert(RC.shape[1], 'Historic', hist_rate_covenant)
+DC.set_index('Fiscal Year').plot(title = 'Debt Covenant Comparison', linewidth = 2,
+            color = my_color_set, legend = False).get_figure().savefig(data_path + '/DC_historic_comp.png')
+RC.set_index('Fiscal Year').plot(title = 'Rate Covenant Comparison', linewidth = 2,
+            color = my_color_set, legend = False).get_figure().savefig(data_path + '/RC_historic_comp.png')
+

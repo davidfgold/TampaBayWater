@@ -171,7 +171,8 @@ def build_HistoricalAnnualData(n_fiscal_years = 10, most_recent_year = 2020,
                                 'CIP Fund (Deposit)',
                                 'CIP Fund (Transfer In)',
                                 'Misc. Income',
-                                'Insurance-Litigation-Arbitrage Income']
+                                'Insurance-Litigation-Arbitrage Income',
+                                'Uniform Sales Revenues']
     
     import pandas as pd; import numpy as np
     annual_streams = pd.DataFrame(np.empty(shape = (n_fiscal_years, len(AnnualStreamsForModeling)+1)))
@@ -331,6 +332,11 @@ def build_HistoricalAnnualData(n_fiscal_years = 10, most_recent_year = 2020,
     # with numbers from budget reports as well
     debt_service = [np.nan, np.nan, 73084766, 75447974, 75337316, 
                     72668588, 71414576, 70129335, 70133614, 70122276]
+    
+    # collect actual sales revenues 
+    # includes tbc sales
+    total_sales_revenue = [np.nan, np.nan, 157523970+592097, 156134324+358558, 155291597+42000, 
+                           154691290+33269, 153126957+46080+72526, 156135112+39555+570433, 160487626+36736+315441, 165973331+66855+146980]
         
     # collect data to output for table
     annual_streams.iloc[:,0] = [2010,2011,2012,2013,2014,2015,2016,2017,2018,2019]
@@ -356,6 +362,7 @@ def build_HistoricalAnnualData(n_fiscal_years = 10, most_recent_year = 2020,
     annual_streams.iloc[:,20] = cip_fund_transfer_in
     annual_streams.iloc[:,21] = misc_income
     annual_streams.iloc[:,22] = insurance_litigation_arbitrage_income
+    annual_streams.iloc[:,23] = total_sales_revenue
     
     return annual_streams
 
@@ -802,15 +809,14 @@ monthly_water_deliveries_and_sales = append_UpToJuly2020DeliveryAndSalesData(mon
 
 # step 0c: collect existing and future debt/infrastructure project costs
 # get existing debt by issue
-historical_financial_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials'
-existing_issued_debt = get_ExistingDebt(historical_financial_data_path)
+model_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data'
+existing_issued_debt = get_ExistingDebt(model_path)
 
 # get potential projects and their specs
-potential_projects = get_PotentialInfrastructureProjects(historical_financial_data_path)
+potential_projects = get_PotentialInfrastructureProjects(model_path)
 
 ### step 0d: export each dataset to be read by financial model
 # (exporting steps removed from above functions to be done here at end)
-model_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data'
 existing_issued_debt.to_csv(model_path + '/existing_debt.csv', index = None)
 potential_projects.to_csv(model_path + '/potential_projects.csv', index = None)
 monthly_water_deliveries_and_sales.to_csv(model_path + '/water_sales_and_deliveries_all_2020.csv', index = None)
