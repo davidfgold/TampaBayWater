@@ -7,6 +7,10 @@ compare historic vs modeled hind-cast results
 """
 
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
 data_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
 
 # read historic data
@@ -25,42 +29,91 @@ hist_debt_covenant[4] = 81451346 / (70122276 + 5509008 + 5356993)
 
 # make a set of colors for the plots
 n_reals = 49; sim = 1
-my_color_set = ['m'] * (n_reals-1) + ['k']
 
 # read modeled data
 for col in [x for x in hist_actuals.columns[2:].values]:
     data_to_plot = pd.DataFrame({'Fiscal Year': hist_actuals['Fiscal Year'].values})
+    fig = plt.figure(figsize = (6,5)); ax = fig.add_subplot(1,1,1)
     for r_id in range(1,n_reals):
         model_actuals = pd.read_csv(data_path + '/budget_actuals_s' + str(sim) + '_r' + str(r_id) + '.csv')
-        data_to_plot.insert(data_to_plot.shape[1], 'Modeled ' + str(r_id), model_actuals[col])
-    data_to_plot.insert(data_to_plot.shape[1], 'Historic', hist_actuals[col].values)
-    data_to_plot.set_index('Fiscal Year').loc[[2015,2016,2017,2018,2019]].plot(
-            title = col + '- Actuals Comparison', legend = False,
-            color = my_color_set, linewidth = 2).get_figure().savefig(data_path + '/' + col + '_actual_historic_comp.png')
+        if col in ['Uniform Rate (Full)', 
+                   'Uniform Rate (Variable Portion)', 
+                   'TBC Sales Rate']:
+            y_label = '$/kgal'; y_divider = 1 # plot in $/kgal rate
+        else:
+            y_divider = 1000000; y_label = '$ Millions' # plot in millions of dollars
+        data_to_plot.insert(data_to_plot.shape[1], 'Modeled ' + str(r_id), model_actuals[col]/y_divider)
+        
+    ax.fill_between(data_to_plot['Fiscal Year'][2:], 
+                    np.max(data_to_plot.iloc[2:,1:], axis = 1), 
+                    np.min(data_to_plot.iloc[2:,1:], axis = 1), 
+                    color = 'm', alpha = 0.75, edgecolor = 'm')
+    ax.plot(data_to_plot['Fiscal Year'][2:], 
+            hist_actuals[col].values[2:]/y_divider, 
+            color = 'k', linewidth = 5)
+    ax.set_xticks(range(2015,2020))
+    ax.set_xticklabels(range(2015,2020))
+    plt.xlabel('Fiscal Year')
+    plt.ylabel(y_label)
+    plt.title(col + '- Actuals Comparison')
+    plt.savefig(data_path + '/' + col + '_actual_historic_comp.png', bbox_inches= 'tight')
+    plt.close()
     
 for col in [x for x in hist_budgets.columns[2:].values]:
     data_to_plot = pd.DataFrame({'Fiscal Year': hist_budgets['Fiscal Year'].values})
+    fig = plt.figure(figsize = (6,5)); ax = fig.add_subplot(1,1,1)
     for r_id in range(1,n_reals):
         model_budgets = pd.read_csv(data_path + '/budget_projections_s' + str(sim) + '_r' + str(r_id) + '.csv')
-        data_to_plot.insert(data_to_plot.shape[1], 'Modeled ' + str(r_id), model_budgets[col])
-    data_to_plot.insert(data_to_plot.shape[1], 'Historic', hist_budgets[col].values)
-    data_to_plot.set_index('Fiscal Year').loc[[2016,2017,2018,2019,2020]].plot(
-            title = col + '- Budget Comparison', legend = False,
-            color = my_color_set, linewidth = 2).get_figure().savefig(data_path + '/' + col + '_budget_historic_comp.png')
+        if col in ['Uniform Rate', 
+                   'Variable Uniform Rate', 
+                   'TBC Rate']:
+            y_label = '$/kgal'; y_divider = 1 # plot in $/kgal rate
+        else:
+            y_divider = 1000000; y_label = '$ Millions' # plot in millions of dollars
+        data_to_plot.insert(data_to_plot.shape[1], 'Modeled ' + str(r_id), model_budgets[col]/y_divider)
+
+    ax.fill_between(data_to_plot['Fiscal Year'][2:], 
+                    np.max(data_to_plot.iloc[2:,1:], axis = 1), 
+                    np.min(data_to_plot.iloc[2:,1:], axis = 1), 
+                    color = 'm', alpha = 0.75, edgecolor = 'm')
+    ax.plot(data_to_plot['Fiscal Year'][2:], 
+            hist_budgets[col].values[2:]/y_divider, 
+            color = 'k', linewidth = 5)
+    ax.set_xticks(range(2016,2021))
+    ax.set_xticklabels(range(2016,2021))
+    plt.xlabel('Fiscal Year')
+    plt.ylabel(y_label)
+    plt.title(col + '- Budget Comparison')
+    plt.savefig(data_path + '/' + col + '_budget_historic_comp.png', bbox_inches= 'tight')
+    plt.close()
     
-for col in [x for x in hist_water_delivery_sales.columns[3:22].values]:
+y_divider = 1000000; y_label = '$ Millions' # plot in millions of dollars
+for col in [x for x in hist_water_delivery_sales.columns[10:22].values]:
     data_to_plot = pd.DataFrame({'Fiscal Year': hist_water_delivery_sales['Fiscal Year'].values})
+    fig = plt.figure(figsize = (6,5)); ax = fig.add_subplot(1,1,1)
     for r_id in range(1,n_reals):
         model_water_delivery_sales = pd.read_csv(data_path + '/water_deliveries_revenues_s' + str(sim) + '_r' + str(r_id) + '.csv')
-        data_to_plot.insert(data_to_plot.shape[1], 'Modeled ' + str(r_id), model_water_delivery_sales[col])
-    data_to_plot.insert(data_to_plot.shape[1], 'Historic', hist_water_delivery_sales[col].values)
-    data_to_plot.groupby('Fiscal Year').sum().loc[[2015,2016,2017,2018,2019]].plot(
-            title = col + '- Comparison', legend = False,
-            color = my_color_set, linewidth = 2).get_figure().savefig(data_path + '/' + col + '_delivery_historic_comp.png')
+        data_to_plot.insert(data_to_plot.shape[1], 'Modeled ' + str(r_id), model_water_delivery_sales[col]/y_divider)
+        
+    ax.fill_between(np.unique(data_to_plot['Fiscal Year'])[1:], 
+                    np.max(data_to_plot.groupby('Fiscal Year').sum().iloc[1:,1:], axis = 1), 
+                    np.min(data_to_plot.groupby('Fiscal Year').sum().iloc[1:,1:], axis = 1), 
+                    color = 'm', alpha = 0.75, edgecolor = 'm')
+    ax.plot(np.unique(data_to_plot['Fiscal Year'])[1:], 
+            hist_water_delivery_sales[col].groupby(hist_water_delivery_sales['Fiscal Year']).sum().values[1:]/y_divider, 
+            color = 'k', linewidth = 5)
+    ax.set_xticks(range(2015,2020))
+    ax.set_xticklabels(range(2015,2020))
+    plt.xlabel('Fiscal Year')
+    plt.ylabel(y_label)
+    plt.title(col + '- Comparison')
+    plt.savefig(data_path + '/' + col + '_delivery_historic_comp.png', bbox_inches= 'tight')
+    plt.close()
 
 # exceptions for covenants
 DC = pd.DataFrame({'Fiscal Year': [2015,2016,2017,2018,2019]})
 RC = pd.DataFrame({'Fiscal Year': [2015,2016,2017,2018,2019]})
+fig, (ax1, ax2) = plt.subplots(1,2, sharey = False, figsize = (12,5))
 for r_id in range(1,n_reals):
     model_metrics = pd.read_csv(data_path + '/financial_metrics_s' + str(sim) + '_r' + str(r_id) + '.csv')
     Modeled = model_metrics['Debt Covenant Ratio']
@@ -69,11 +122,28 @@ for r_id in range(1,n_reals):
     Modeled = model_metrics['Rate Covenant Ratio']
     RC.insert(RC.shape[1], 'Modeled ' + str(r_id), Modeled.values)
 
-# append historic record last so it is plotted on top
-DC.insert(DC.shape[1], 'Historic', hist_debt_covenant)
-RC.insert(RC.shape[1], 'Historic', hist_rate_covenant)
-DC.set_index('Fiscal Year').plot(title = 'Debt Covenant Comparison', linewidth = 2,
-            color = my_color_set, legend = False).get_figure().savefig(data_path + '/DC_historic_comp.png')
-RC.set_index('Fiscal Year').plot(title = 'Rate Covenant Comparison', linewidth = 2,
-            color = my_color_set, legend = False).get_figure().savefig(data_path + '/RC_historic_comp.png')
+ax1.fill_between(DC['Fiscal Year'], 
+                 np.max(DC.iloc[:,1:], axis = 1), 
+                 np.min(DC.iloc[:,1:], axis = 1), 
+                 color = 'm', alpha = 0.75, edgecolor = 'm')
+ax1.plot(DC['Fiscal Year'], hist_debt_covenant, 
+        color = 'k', linewidth = 5)
+ax2.fill_between(RC['Fiscal Year'], 
+                 np.max(RC.iloc[:,1:], axis = 1), 
+                 np.min(RC.iloc[:,1:], axis = 1), 
+                 color = 'm', alpha = 0.75, edgecolor = 'm')
+ax2.plot(RC['Fiscal Year'], hist_rate_covenant, 
+        color = 'k', linewidth = 5)
+
+ax1.set_xticks(range(2015,2020))
+ax1.set_xticklabels(range(2015,2020))
+ax2.set_xticks(range(2015,2020))
+ax2.set_xticklabels(range(2015,2020))
+ax1.set_xlabel('Fiscal Year')
+ax2.set_xlabel('Fiscal Year')
+ax1.set_ylabel('Covenant Ratio')
+ax1.set_title('Debt Covenant Comparison')
+ax2.set_title('Rate Covenant Comparison')
+plt.savefig(data_path + '/Covenant_Comparisons.png', bbox_inches= 'tight')
+plt.close()
 
