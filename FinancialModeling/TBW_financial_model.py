@@ -1924,9 +1924,9 @@ output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
 ### ---------------------------------------------------------------------------
 # run loop across DV sets
 sim_objectives = [0,0,0,0] # sim id + three objectives
-start_fy = 2015; end_fy = 2020; n_reals_tested = 50
+start_fy = 2020; end_fy = 2040; n_reals_tested = 10
 #for sim in range(0,len(DVs)): # sim = 0 for testing
-for sim in range(1,2): # FOR RUNNING HISTORICALLY ONLY
+for sim in range(0,3): # FOR RUNNING HISTORICALLY ONLY
     ### ----------------------------------------------------------------------- ###
     ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
     ### ----------------------------------------------------------------------- ###  
