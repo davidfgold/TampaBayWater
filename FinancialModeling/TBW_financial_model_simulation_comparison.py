@@ -15,7 +15,7 @@ data_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
 
 # plot data across simulations/evaluations and all realizations
 n_sims = 3; sim_colors = ['g', 'b', 'r']; sim_type = ['Un-Managed', 'Fixed', 'Controlled Growth']
-fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (13,5))
+fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (14,5))
 for sim in range(0,n_sims):
     # read data
     ur_data = pd.read_csv(data_path + '/UR_s' + str(sim) + '.csv', index_col = 0)
@@ -32,11 +32,11 @@ for sim in range(0,n_sims):
     dc_data = dc_data[col_range]
     
     # make plot
-    ax1.fill_between(ur_data.columns, 
+    ax1.fill_between(ur_data.columns,
                      np.max(ur_data, axis = 0), 
                      np.min(ur_data, axis = 0), 
                      color = sim_colors[sim], 
-                     alpha = 0.75, 
+                     alpha = 0.75,  linewidth = 2,
                      edgecolor = sim_colors[sim], label = sim_type[sim])
     ax2.fill_between(dc_data.columns, 
                      np.max(dc_data, axis = 0), 
@@ -51,27 +51,32 @@ for sim in range(0,n_sims):
                      alpha = 0.75, 
                      edgecolor = sim_colors[sim], label = sim_type[sim])
     
-ax2.plot(dc_data.columns, [1] * len(dc_data.columns), 
-         color = 'k', linewidth = 3, linestyle = '--')
-ax3.plot(rc_data.columns, [1.25] * len(rc_data.columns), 
-         color = 'k', linewidth = 3, linestyle = '--')
-ax3.legend(loc = 'lower right', title = 'Uniform Rate Policy')
+    ax2.plot(dc_data.columns, [1] * len(dc_data.columns), 
+             color = 'k', linewidth = 3, linestyle = '--')
+    ax3.plot(rc_data.columns, [1.25] * len(rc_data.columns), 
+             color = 'k', linewidth = 3, linestyle = '--')
+    ax3.legend(loc = 'lower right', title = 'Uniform Rate Policy')
+    
+    ax1.set_ylim((2,4))
+    ax2.set_ylim((0,2))
+    ax3.set_ylim((0,3))
+    
+    ax1.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax1.set_xticklabels([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax2.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax2.set_xticklabels([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax3.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax3.set_xticklabels([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax1.set_xlabel('Fiscal Year')
+    ax2.set_xlabel('Fiscal Year')
+    ax3.set_xlabel('Fiscal Year')
+    ax1.set_ylabel('$/kgal')
+    ax2.set_ylabel('Covenant Ratio')
+    ax1.set_title('Uniform Rate')
+    ax2.set_title('Debt Covenant')
+    ax3.set_title('Rate Covenant')
+    plt.savefig(data_path + '/Simulation_Covenant_Comparisons' + '_animated' + str(sim) + '.png', bbox_inches= 'tight')
 
-ax1.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
-ax1.set_xticklabels([str(x) for x in range(int(min_year),int(max_year+2),5)])
-ax2.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
-ax2.set_xticklabels([str(x) for x in range(int(min_year),int(max_year+2),5)])
-ax3.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
-ax3.set_xticklabels([str(x) for x in range(int(min_year),int(max_year+2),5)])
-ax1.set_xlabel('Fiscal Year')
-ax2.set_xlabel('Fiscal Year')
-ax3.set_xlabel('Fiscal Year')
-ax1.set_ylabel('$/kgal')
-ax2.set_ylabel('Covenant Ratio')
-ax1.set_title('Uniform Rate')
-ax2.set_title('Debt Covenant')
-ax3.set_title('Rate Covenant')
-plt.savefig(data_path + '/Simulation_Covenant_Comparisons.png', bbox_inches= 'tight')
 plt.close()
 
 # quick plot to show difference in debt schedule between existing debt

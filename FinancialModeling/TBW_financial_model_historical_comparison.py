@@ -55,7 +55,7 @@ for col in [x for x in hist_actuals.columns[2:].values]:
     ax.set_xticklabels(range(2015,2020))
     plt.xlabel('Fiscal Year')
     plt.ylabel(y_label)
-    plt.title(col + '- Actuals Comparison')
+    plt.title(col + ' - Actuals Comparison')
     plt.savefig(data_path + '/' + col + '_actual_historic_comp.png', bbox_inches= 'tight')
     plt.close()
     
@@ -79,11 +79,16 @@ for col in [x for x in hist_budgets.columns[2:].values]:
     ax.plot(data_to_plot['Fiscal Year'][2:], 
             hist_budgets[col].values[2:]/y_divider, 
             color = 'k', linewidth = 5)
+    
+    if col in ['Water Sales Revenue', 'Annual Estimate']:
+        ax.set_ylim(bottom = 100, top = 200)
+    if col in ['Variable Uniform Rate']:
+        ax.set_ylim(bottom = 0.25, top = 0.50)
     ax.set_xticks(range(2016,2021))
     ax.set_xticklabels(range(2016,2021))
     plt.xlabel('Fiscal Year')
     plt.ylabel(y_label)
-    plt.title(col + '- Budget Comparison')
+    plt.title(col + ' - Budget Comparison')
     plt.savefig(data_path + '/' + col + '_budget_historic_comp.png', bbox_inches= 'tight')
     plt.close()
     
@@ -106,7 +111,7 @@ for col in [x for x in hist_water_delivery_sales.columns[10:22].values]:
     ax.set_xticklabels(range(2015,2020))
     plt.xlabel('Fiscal Year')
     plt.ylabel(y_label)
-    plt.title(col + '- Comparison')
+    plt.title(col + ' - Comparison')
     plt.savefig(data_path + '/' + col + '_delivery_historic_comp.png', bbox_inches= 'tight')
     plt.close()
 

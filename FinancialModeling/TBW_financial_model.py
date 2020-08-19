@@ -1152,12 +1152,29 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # reserve fund balance, however this can zero out the reserve fund
     # and cause it to go negative, so if there is a budget surplus
     # afterward, it can be pushed into the reserve fund to replenish
+    previous_FY_cip_fund_balance = \
+        annual_actuals['CIP Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
     current_FY_final_reserve_fund_balance -= required_other_funds_transferred_in
     
     if current_FY_budget_surplus <= 0:
-        current_FY_final_reserve_fund_balance += current_FY_budget_surplus * 0.5
-        current_FY_rate_stabilization_final_transfer_in -= current_FY_budget_surplus * 0.5
+        reserve_fund_adjustment = np.max([current_FY_budget_surplus * 0.2, -current_FY_final_reserve_fund_balance]) # negative number
+        current_FY_final_reserve_fund_balance += reserve_fund_adjustment
+        
+        rs_fund_adjustment = np.max([current_FY_budget_surplus * 0.8, -previous_FY_rate_stabilization_fund_balance]) # negative number
+        current_FY_rate_stabilization_final_transfer_in -= rs_fund_adjustment
         current_FY_rate_stabilization_fund_deposit = 0
+        
+        # if there is still deficit left, pull from R&R fund
+        current_FY_budget_surplus += (reserve_fund_adjustment + rs_fund_adjustment)
+        if current_FY_budget_surplus > 0:
+            current_FY_rr_funds_transfer_in -= np.max([current_FY_budget_surplus, -previous_FY_rr_fund_balance]) # negative number
+            current_FY_budgeted_rr_deposit = 0
+            
+        # ...then from CIP fund
+        current_FY_budget_surplus += np.max([current_FY_budget_surplus, -previous_FY_cip_fund_balance])
+        if current_FY_budget_surplus > 0:
+            current_FY_cip_transfer_in -= np.max([current_FY_budget_surplus, -previous_FY_cip_fund_balance]) # negative number
+            current_FY_cip_deposit = 0
     else:
         # if surplus is large enough, increase fund balance
         # if not, increase it as much as possible
@@ -1201,8 +1218,6 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # remaining surplus going to rate stabilization
         current_FY_rate_stabilization_fund_deposit += \
             current_FY_budget_surplus
-#        current_FY_final_reserve_fund_balance += \
-#            current_FY_budget_surplus * 0.5
             
     if ACTIVE_DEBUGGING:        
         print(str(FY) + ': Final Budget Surplus is ' + str(current_FY_budget_surplus))
@@ -1288,7 +1303,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     current_FY_variable_rate = annual_budgets['Variable Uniform Rate'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
     current_FY_tbc_rate = annual_budgets['TBC Rate'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
     current_FY_final_cip_fund_balance = \
-        annual_actuals['CIP Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] + \
+        previous_FY_cip_fund_balance + \
         current_FY_cip_deposit - current_FY_cip_transfer_in
 
     annual_actuals.loc[annual_actuals['Fiscal Year'] == FY] = \
@@ -1924,7 +1939,7 @@ output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
 ### ---------------------------------------------------------------------------
 # run loop across DV sets
 sim_objectives = [0,0,0,0] # sim id + three objectives
-start_fy = 2020; end_fy = 2040; n_reals_tested = 10
+start_fy = 2020; end_fy = 2040; n_reals_tested = 50
 #for sim in range(0,len(DVs)): # sim = 0 for testing
 for sim in range(0,3): # FOR RUNNING HISTORICALLY ONLY
     ### ----------------------------------------------------------------------- ###
