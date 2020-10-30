@@ -790,7 +790,7 @@ def get_PotentialInfrastructureProjects(data_path = 'C:/Users/dgorelic/OneDrive 
 #           in future, if this is run in a larger loop across realizations
 #           consider reading in historical data outside function once
 #           and passed here
-hist_financial_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials'
+hist_financial_path = 'f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/financials'
 
 monthly_water_deliveries_and_sales = build_HistoricalMonthlyWaterDeliveriesAndSalesData(hist_financial_path)
 annual_budget_data = build_HistoricalAnnualData(historical_financial_data_path = hist_financial_path)
@@ -802,14 +802,14 @@ historical_annual_budget_projections = build_HistoricalProjectedAnnualBudgets(hi
 #           AND OROP/OMS RESULTS REPRESENT 2020-2039 YEARS RATHER THAN 2021-2040
 #           so for now we need to use the approved FY2020 budget/uniform rates
 #           for calculation of revenue from observed water sales 
-observed_delivery_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/observed_deliveries'
+observed_delivery_path = 'f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/observed_deliveries'
 monthly_water_deliveries_and_sales = append_UpToJuly2020DeliveryAndSalesData(monthly_record = monthly_water_deliveries_and_sales, 
                                                                              FY2020_approved_budget = historical_annual_budget_projections.iloc[4,:], 
                                                                              daily_delivery_path = observed_delivery_path)
 
 # step 0c: collect existing and future debt/infrastructure project costs
 # get existing debt by issue
-model_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data'
+model_path = 'f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data'
 existing_issued_debt = get_ExistingDebt(model_path)
 
 # get potential projects and their specs
