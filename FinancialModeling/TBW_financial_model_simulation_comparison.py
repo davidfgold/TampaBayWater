@@ -11,16 +11,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-data_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
+data_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_output'
 
 # plot data across simulations/evaluations and all realizations
+run_id = 125
 n_sims = 3; sim_colors = ['g', 'b', 'r']; sim_type = ['Un-Managed', 'Fixed', 'Controlled Growth']
 fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (14,5))
 for sim in range(0,n_sims):
     # read data
-    ur_data = pd.read_csv(data_path + '/UR_s' + str(sim) + '.csv', index_col = 0)
-    rc_data = pd.read_csv(data_path + '/RC_s' + str(sim) + '.csv', index_col = 0)
-    dc_data = pd.read_csv(data_path + '/DC_s' + str(sim) + '.csv', index_col = 0)
+    ur_data = pd.read_csv(data_path + '/UR_f' + str(run_id) + '_s' + str(sim) + '.csv', index_col = 0)
+    rc_data = pd.read_csv(data_path + '/RC_f' + str(run_id) + '_s' + str(sim) + '.csv', index_col = 0)
+    dc_data = pd.read_csv(data_path + '/DC_f' + str(run_id) + '_s' + str(sim) + '.csv', index_col = 0)
     
     # trim to start/end on same years
     min_year = np.max([float(min(ur_data.columns)), float(min(rc_data.columns)), float(min(dc_data.columns))])
@@ -75,15 +76,15 @@ for sim in range(0,n_sims):
     ax1.set_title('Uniform Rate')
     ax2.set_title('Debt Covenant')
     ax3.set_title('Rate Covenant')
-    plt.savefig(data_path + '/Simulation_Covenant_Comparisons' + '_animated' + str(sim) + '.png', bbox_inches= 'tight')
+    plt.savefig(data_path + '/Simulation_Covenant_Comparisons_f' + str(run_id) + '_animated' + str(sim) + '.png', bbox_inches= 'tight')
 
 plt.close()
 
 # quick plot to show difference in debt schedule between existing debt
 # and future with SHC pipeline added
-sim = 1; real = 1
-modeled_data = pd.read_csv(data_path + '/budget_actuals_s' + str(sim) + '_r' + str(real) + '.csv', index_col = 0)
-historic_data = pd.read_excel('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data' + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
+sim = 1; real = 1; run = 125
+modeled_data = pd.read_csv(data_path + '/budget_actuals_f' + str(run) + '_s' + str(sim) + '_r' + str(real) + '.csv', index_col = 0)
+historic_data = pd.read_excel('f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data' + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
 
 # make plot
 fig, ax = plt.subplots(1,1, sharey = False, figsize = (5,5))

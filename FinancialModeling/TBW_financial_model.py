@@ -1731,6 +1731,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            orop_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
                                            oms_output_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_125',
                                            outpath = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output',
+                                           formulation_id = 125,
                                            PRE_CLEANED = True,
                                            ACTIVE_DEBUGGING = False):
     # get necessary packages
@@ -1899,12 +1900,14 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                         rdm_factor_list = rdm_factors,
                                         ACTIVE_DEBUGGING = ACTIVE_DEBUGGING)
     
-    # step 4: end loop and export results, including objectives    
-    annual_budgets.to_csv(outpath + '/budget_projections_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    annual_actuals.to_csv(outpath + '/budget_actuals_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    financial_metrics.to_csv(outpath + '/financial_metrics_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    existing_issued_debt.to_csv(outpath + '/final_debt_balance_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    water_delivery_sales.to_csv(outpath + '/water_deliveries_revenues_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    # step 4: end loop and export results, including objectives
+    # Nov 2020: adjust paths to also show current model formulation (infrastructure pathway)
+    
+    annual_budgets.to_csv(outpath + '/budget_projections_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    annual_actuals.to_csv(outpath + '/budget_actuals_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    financial_metrics.to_csv(outpath + '/financial_metrics_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    existing_issued_debt.to_csv(outpath + '/final_debt_balance_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    water_delivery_sales.to_csv(outpath + '/water_deliveries_revenues_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     
     return annual_budgets, annual_actuals, financial_metrics, water_delivery_sales, existing_issued_debt
     
@@ -1942,9 +1945,9 @@ output_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_output'
 ### ---------------------------------------------------------------------------
 # run loop across DV sets
 sim_objectives = [0,0,0,0] # sim id + three objectives
-start_fy = 2020; end_fy = 2040; n_reals_tested = 2
-#for sim in range(0,len(DVs)): # sim = 0 for testing
-for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
+start_fy = 2020; end_fy = 2040; n_reals_tested = 5
+for sim in range(0,len(DVs)): # sim = 0 for testing
+#for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     ### ----------------------------------------------------------------------- ###
     ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
     ### ----------------------------------------------------------------------- ###  
@@ -1981,7 +1984,7 @@ for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
                     additional_scripts_path = scripts_path,
                     orop_output_path = ampl_output_path,
                     oms_output_path = oms_path,
-                    outpath = output_path,
+                    outpath = output_path, formulation_id = run_id,
                     PRE_CLEANED = True, ACTIVE_DEBUGGING = False)
         
         ### -----------------------------------------------------------------------
@@ -2022,16 +2025,16 @@ for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     
     ### ---------------------------------------------------------------------------
     # plot Debt Covenant, Rate Covenant, Uniform Rate, Variable Rate, Water Deliveries
-    DC.transpose().plot(legend = False).get_figure().savefig(output_path + '/DC_s' + str(sim) + '.png', format = 'png')
-    RC.transpose().plot(legend = False).get_figure().savefig(output_path + '/RC_s' + str(sim) + '.png', format = 'png')
-    UR.transpose().plot(legend = False).get_figure().savefig(output_path + '/UR_s' + str(sim) + '.png', format = 'png')
-    VR.transpose().plot(legend = False).get_figure().savefig(output_path + '/VR_s' + str(sim) + '.png', format = 'png')
-    WD.transpose().plot(legend = False).get_figure().savefig(output_path + '/WD_s' + str(sim) + '.png', format = 'png')
+    DC.transpose().plot(legend = False).get_figure().savefig(output_path + '/DC_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
+    RC.transpose().plot(legend = False).get_figure().savefig(output_path + '/RC_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
+    UR.transpose().plot(legend = False).get_figure().savefig(output_path + '/UR_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
+    VR.transpose().plot(legend = False).get_figure().savefig(output_path + '/VR_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
+    WD.transpose().plot(legend = False).get_figure().savefig(output_path + '/WD_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
     
     # export the objective sets for quantile plotting
-    DC.to_csv(output_path + '/DC_s' + str(sim) + '.csv')
-    RC.to_csv(output_path + '/RC_s' + str(sim) + '.csv')
-    UR.to_csv(output_path + '/UR_s' + str(sim) + '.csv')
+    DC.to_csv(output_path + '/DC_f' + str(run_id) + '_s' + str(sim) + '.csv')
+    RC.to_csv(output_path + '/RC_f' + str(run_id) + '_s' + str(sim) + '.csv')
+    UR.to_csv(output_path + '/UR_f' + str(run_id) + '_s' + str(sim) + '.csv')
    
 ### ---------------------------------------------------------------------------
 # write output file for all objectives
@@ -2040,6 +2043,6 @@ Objectives.columns = ['Simulation ID',
                       'Debt Covenant Violation Frequency', 
                       'Rate Covenant Violation Frequency', 
                       'Peak Uniform Rate']
-Objectives.to_csv(output_path + '/Objectives.csv')
+Objectives.to_csv(output_path + '/Objectives_f' + str(run_id) + '.csv')
     
     
