@@ -88,7 +88,7 @@ historic_data = pd.read_excel('C:/Users/dgorelic/OneDrive - University of North 
 # make plot
 fig, ax = plt.subplots(1,1, sharey = False, figsize = (5,5))
 ax.fill_between(modeled_data['Fiscal Year'].iloc[2:], modeled_data['Debt Service'].iloc[2:]/1000000, 
-                color = 'b', label = 'SCH Pipeline online 2028')
+                color = 'b', label = 'Balm area (SCH) Pipeline')
 ax.fill_between(historic_data['Fiscal Year'].iloc[:-1], historic_data['Total'].iloc[:-1]/1000000, 
                 color = 'k', alpha = 0.7, label = 'Existing Debt')
 ax.set_xlabel('Fiscal Year')
