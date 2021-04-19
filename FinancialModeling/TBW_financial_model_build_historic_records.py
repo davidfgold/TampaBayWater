@@ -840,7 +840,7 @@ historical_annual_budget_projections = build_HistoricalProjectedAnnualBudgets(hi
 #           AND OROP/OMS RESULTS REPRESENT 2020-2039 YEARS RATHER THAN 2021-2040
 #           so for now we need to use the approved FY2020 budget/uniform rates
 #           for calculation of revenue from observed water sales 
-observed_delivery_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/observed_deliveries'
+observed_delivery_path = 'f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/observed_deliveries'
 monthly_water_deliveries_and_sales = append_UpToJan2021DeliveryAndSalesData(monthly_record = monthly_water_deliveries_and_sales, 
                                                                              FY2020_approved_budget = historical_annual_budget_projections.iloc[6,:], 
                                                                              FY2021_proposed_budget = historical_annual_budget_projections.iloc[7,:], 
