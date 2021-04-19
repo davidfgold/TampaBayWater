@@ -99,3 +99,51 @@ for run_id in [125,126,128]:
     
     plt.savefig(data_path + '/DebtService_Sample_Comparison_f' + str(run_id) + '.png', bbox_inches= 'tight')
     plt.close()
+
+    ax2.plot(dc_data.columns, [1] * len(dc_data.columns), 
+             color = 'k', linewidth = 3, linestyle = '--')
+    ax3.plot(rc_data.columns, [1.25] * len(rc_data.columns), 
+             color = 'k', linewidth = 3, linestyle = '--')
+    ax3.legend(loc = 'lower right', title = 'Uniform Rate Policy')
+    
+    ax1.set_ylim((2,4))
+    ax2.set_ylim((0,2))
+    ax3.set_ylim((0,3))
+    
+    ax1.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax1.set_xticklabels([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax2.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax2.set_xticklabels([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax3.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax3.set_xticklabels([str(x) for x in range(int(min_year),int(max_year+2),5)])
+    ax1.set_xlabel('Fiscal Year')
+    ax2.set_xlabel('Fiscal Year')
+    ax3.set_xlabel('Fiscal Year')
+    ax1.set_ylabel('$/kgal')
+    ax2.set_ylabel('Covenant Ratio')
+    ax1.set_title('Uniform Rate')
+    ax2.set_title('Debt Covenant')
+    ax3.set_title('Rate Covenant')
+    plt.savefig(data_path + '/Simulation_Covenant_Comparisons' + '_animated' + str(sim) + '.png', bbox_inches= 'tight')
+
+plt.close()
+
+# quick plot to show difference in debt schedule between existing debt
+# and future with SHC pipeline added
+sim = 1; real = 1
+modeled_data = pd.read_csv(data_path + '/budget_actuals_s' + str(sim) + '_r' + str(real) + '.csv', index_col = 0)
+historic_data = pd.read_excel('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data' + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
+
+# make plot
+fig, ax = plt.subplots(1,1, sharey = False, figsize = (5,5))
+ax.fill_between(modeled_data['Fiscal Year'].iloc[2:], modeled_data['Debt Service'].iloc[2:]/1000000, 
+                color = 'b', label = 'Balm area (SCH) Pipeline')
+ax.fill_between(historic_data['Fiscal Year'].iloc[:-1], historic_data['Total'].iloc[:-1]/1000000, 
+                color = 'k', alpha = 0.7, label = 'Existing Debt')
+ax.set_xlabel('Fiscal Year')
+ax.set_ylabel('$ Millions')
+ax.set_title('Debt Service')
+ax.legend(loc = (0.1,0.1), title = 'Debt Service')
+
+plt.savefig(data_path + '/DebtService_Sample_Comparison.png', bbox_inches= 'tight')
+plt.close()

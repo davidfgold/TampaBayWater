@@ -660,8 +660,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
 
 
 
-def append_UpToJuly2020DeliveryAndSalesData(monthly_record, 
+def append_UpToJan2021DeliveryAndSalesData(monthly_record, 
                                             FY2020_approved_budget, 
+                                            FY2021_proposed_budget, 
                                             daily_delivery_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/observed_deliveries'):
     # historic monthly record from finance data only goes through Sept 2019
     # but need to extend through end of calendar year 2020
@@ -670,45 +671,69 @@ def append_UpToJuly2020DeliveryAndSalesData(monthly_record,
     #   (2) calculating TBC and variable sales revenue based on FY2020 rates from budget
     #   (3) calculating fixed sales revenues based on estimated FY2020 fixed costs to be recovered
     #       and FY2019 demands by each member relative to each other
-    n_months_in_year = 12; convert_kgal_to_MG = 1000
+    # UPDATE MARCH 2021:
+    #   NEW DELIVERY DATA THROUGH 12/31/20 IS NOW AVAILABLE, SO THIS FUNCTION WILL
+    #   BE SIMPLIFIED TO JUST READ IN OBSERVED DELIVERIES THROUGH 2020 AND 
+    #   CALCULATE REVENUES BASED ON PAST BUDGETS AND PROJECTED FY21 BUDGET
+    n_months_in_year = 12; convert_kgal_to_MG = 1000; n_known_months_of_fy21 = 3
     
     # (0) get approved budget variables in list format
     FY2020_approved_budget = [x for x in FY2020_approved_budget]
+    FY2021_proposed_budget = [x for x in FY2021_proposed_budget]
     
     # (1) get monthly deliveries by member
     import pandas as pd
     import numpy as np
-    # read daily records starting at Oct 2019 -> June 2020
-    additional_daily_water_deliveries = pd.read_excel(daily_delivery_path + '/DeliveryandHarneyAug_up_to_June_2020.xlsx', 
-                                                      skiprows = 3652, sheet_name = 'Daily') 
-    additional_daily_water_deliveries.columns = ['Year','Month','Day','CoT','CoT TBC','NPR','NW Hillsborough','Pasco','Pinellas','SC Hillsborough','St. Pete']
-    additional_daily_water_deliveries['Date'] = pd.to_datetime(additional_daily_water_deliveries[['Year','Month','Day']])
+    # read daily records starting at Oct 2019 -> Dec 2020 (inclusive)
+    # dataset has a 'Maytum' column, referring to the Maytum WTP delivery point in New Port Richey
+    additional_daily_water_deliveries = pd.read_excel(daily_delivery_path + '/DeliveryandHarneyAug_up_to_Jan2021.xlsx', 
+                                                      skiprows = 3652, sheet_name = 'All Data') 
+    additional_daily_water_deliveries.columns = ['Date', 'Total Demand', 'NPR', 'Pinellas', 'St. Pete', 
+                                                 'NW Hillsborough', 'SC Hillsborough', 'CoT TBC', 'Pasco', 'CoT']
+#    additional_daily_water_deliveries['Date'] = pd.to_datetime(additional_daily_water_deliveries[['Year','Month','Day']]) now included in excel file
     additional_daily_water_deliveries['Hillsborough'] = additional_daily_water_deliveries['NW Hillsborough'] + additional_daily_water_deliveries['SC Hillsborough']
     
     organized_additional_daily_water_deliveries = additional_daily_water_deliveries[['Date','St. Pete','Pinellas','CoT','Hillsborough','Pasco','NPR','CoT TBC']]
-    additional_monthly_water_deliveries = organized_additional_daily_water_deliveries.groupby(organized_additional_daily_water_deliveries['Date'].dt.month).sum().reset_index()
+    additional_monthly_water_deliveries = organized_additional_daily_water_deliveries.groupby(organized_additional_daily_water_deliveries['Date'].dt.to_period("M")).sum().reset_index()
     
-    # put months back in order
-    additional_monthly_water_deliveries = additional_monthly_water_deliveries.iloc[[6,7,8,0,1,2,3,4,5],:]
+    # put months back in order (Mar 2021: now they already are in chronological order)
+#    additional_monthly_water_deliveries = additional_monthly_water_deliveries.iloc[[6,7,8,0,1,2,3,4,5],:]
     
-    # (2) calculate variable sales revenue for each month
-    # NOTE: A LOT OF INDICES HERE ARE HARD CODED AND WILL BE WRONG IF
-    # MORE OR LESS COLUMNS ARE ADDED TO INPUT DATASETS
-    additional_monthly_variable_water_sales = additional_monthly_water_deliveries.iloc[:,1:-1] * FY2020_approved_budget[-6] * convert_kgal_to_MG
-    additional_monthly_tbc_sales = additional_monthly_water_deliveries.iloc[:,-1] * FY2020_approved_budget[-5] * convert_kgal_to_MG
+    # (2) calculate variable sales revenue for each month of 2019 and 2020
+    # NOTE: A LOT OF INDICES HERE ARE HARD CODED AND WILL BE WRONG IF MORE OR LESS COLUMNS ARE ADDED TO INPUT DATASETS
+    # MAR 2021: UPDATED FOR ADDITIONAL MONTHS OF 2020
+    additional_monthly_variable_water_sales_FY20 = additional_monthly_water_deliveries.iloc[:12,1:-1] * FY2020_approved_budget[-8] * convert_kgal_to_MG
+    additional_monthly_tbc_sales_FY20 = additional_monthly_water_deliveries.iloc[:12,-1] * FY2020_approved_budget[-7] * convert_kgal_to_MG
+    additional_monthly_variable_water_sales_FY21 = additional_monthly_water_deliveries.iloc[12:,1:-1] * FY2021_proposed_budget[-8] * convert_kgal_to_MG
+    additional_monthly_tbc_sales_FY21 = additional_monthly_water_deliveries.iloc[12:,-1] * FY2021_proposed_budget[-7] * convert_kgal_to_MG
     
-    # (3) calculate fixed sales
-    fraction_FY_total_deliveries_by_member = monthly_record.iloc[-n_months_in_year:,1:7].sum() / monthly_record.iloc[-n_months_in_year:,1:7].sum().sum()
+    additional_monthly_variable_water_sales = additional_monthly_variable_water_sales_FY20.append(additional_monthly_variable_water_sales_FY21)
+    additional_monthly_tbc_sales = additional_monthly_tbc_sales_FY20.append(additional_monthly_tbc_sales_FY21)
+    
+    # (3) calculate fixed sales, based on use in previous FY
+    # the monthly_record set here ends after 10/2019 (end of FY19)
     fixed_costs_to_recover_in_FY20 = FY2020_approved_budget[1] - FY2020_approved_budget[5] # annual estimate - budgeted variable costs
-    monthly_fixed_sales_by_member = np.vstack((fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
-                                               fraction_FY_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year))
+    fraction_FY19_total_deliveries_by_member = monthly_record.iloc[-n_months_in_year:,1:7].sum() / monthly_record.iloc[-n_months_in_year:,1:7].sum().sum()
+
+    fixed_costs_to_recover_in_FY21 = FY2021_proposed_budget[1] - FY2021_proposed_budget[5] # annual estimate - budgeted variable costs
+    fraction_FY20_total_deliveries_by_member = additional_monthly_water_deliveries.iloc[:12,1:-1].sum() / additional_monthly_water_deliveries.iloc[:12,1:-1].sum().sum()
+
+    # FUTURE NOTE: there's gotta be a way to handle this repetition cleaner...
+    monthly_fixed_sales_by_member = np.vstack((fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY19_total_deliveries_by_member * fixed_costs_to_recover_in_FY20 / n_months_in_year,
+                                               fraction_FY20_total_deliveries_by_member * fixed_costs_to_recover_in_FY21 / n_months_in_year,
+                                               fraction_FY20_total_deliveries_by_member * fixed_costs_to_recover_in_FY21 / n_months_in_year,
+                                               fraction_FY20_total_deliveries_by_member * fixed_costs_to_recover_in_FY21 / n_months_in_year))
     
     # (4) append to existing record and return
     # order of columns in monthly_record spreadsheet is:
@@ -723,25 +748,38 @@ def append_UpToJuly2020DeliveryAndSalesData(monthly_record,
                                                                  pd.datetime(2020,3,31).timestamp(),
                                                                  pd.datetime(2020,4,30).timestamp(),
                                                                  pd.datetime(2020,5,31).timestamp(),
-                                                                 pd.datetime(2020,6,30).timestamp()]),
+                                                                 pd.datetime(2020,6,30).timestamp(),
+                                                                 pd.datetime(2020,7,31).timestamp(),
+                                                                 pd.datetime(2020,8,31).timestamp(),
+                                                                 pd.datetime(2020,9,30).timestamp(),
+                                                                 pd.datetime(2020,10,31).timestamp(),
+                                                                 pd.datetime(2020,11,30).timestamp(),
+                                                                 pd.datetime(2020,12,31).timestamp()]),
         additional_monthly_water_deliveries.iloc[:,1:-1],
         pd.DataFrame(additional_monthly_water_deliveries.iloc[:,1:-1].sum(1)),
         monthly_fixed_sales_by_member,
         additional_monthly_variable_water_sales,
         pd.DataFrame(additional_monthly_water_deliveries.iloc[:,-1].transpose()),
         pd.DataFrame(additional_monthly_tbc_sales.transpose()))))
+    
     monthly_deliveries_and_sales = pd.DataFrame(np.vstack((monthly_record,
                                                            new_months_collected)))
     monthly_deliveries_and_sales.columns = [x for x in monthly_record.columns]
-    monthly_deliveries_and_sales['Date'].iloc[-9] = pd.to_datetime(pd.datetime(2019,10,31))
-    monthly_deliveries_and_sales['Date'].iloc[-8] = pd.to_datetime(pd.datetime(2019,11,30))
-    monthly_deliveries_and_sales['Date'].iloc[-7] = pd.to_datetime(pd.datetime(2019,12,31))
-    monthly_deliveries_and_sales['Date'].iloc[-6] = pd.to_datetime(pd.datetime(2020,1,31))
-    monthly_deliveries_and_sales['Date'].iloc[-5] = pd.to_datetime(pd.datetime(2020,2,29))
-    monthly_deliveries_and_sales['Date'].iloc[-4] = pd.to_datetime(pd.datetime(2020,3,31))
-    monthly_deliveries_and_sales['Date'].iloc[-3] = pd.to_datetime(pd.datetime(2020,4,30))
-    monthly_deliveries_and_sales['Date'].iloc[-2] = pd.to_datetime(pd.datetime(2020,5,31))
-    monthly_deliveries_and_sales['Date'].iloc[-1] = pd.to_datetime(pd.datetime(2020,6,30))
+    monthly_deliveries_and_sales['Date'].iloc[-15] = pd.to_datetime(pd.datetime(2019,10,31))
+    monthly_deliveries_and_sales['Date'].iloc[-14] = pd.to_datetime(pd.datetime(2019,11,30))
+    monthly_deliveries_and_sales['Date'].iloc[-13] = pd.to_datetime(pd.datetime(2019,12,31))
+    monthly_deliveries_and_sales['Date'].iloc[-12] = pd.to_datetime(pd.datetime(2020,1,31))
+    monthly_deliveries_and_sales['Date'].iloc[-11] = pd.to_datetime(pd.datetime(2020,2,29))
+    monthly_deliveries_and_sales['Date'].iloc[-10] = pd.to_datetime(pd.datetime(2020,3,31))
+    monthly_deliveries_and_sales['Date'].iloc[-9] = pd.to_datetime(pd.datetime(2020,4,30))
+    monthly_deliveries_and_sales['Date'].iloc[-8] = pd.to_datetime(pd.datetime(2020,5,31))
+    monthly_deliveries_and_sales['Date'].iloc[-7] = pd.to_datetime(pd.datetime(2020,6,30))
+    monthly_deliveries_and_sales['Date'].iloc[-6] = pd.to_datetime(pd.datetime(2020,7,31))
+    monthly_deliveries_and_sales['Date'].iloc[-5] = pd.to_datetime(pd.datetime(2020,8,31))
+    monthly_deliveries_and_sales['Date'].iloc[-4] = pd.to_datetime(pd.datetime(2020,9,30))
+    monthly_deliveries_and_sales['Date'].iloc[-3] = pd.to_datetime(pd.datetime(2020,10,31))
+    monthly_deliveries_and_sales['Date'].iloc[-2] = pd.to_datetime(pd.datetime(2020,11,30))
+    monthly_deliveries_and_sales['Date'].iloc[-1] = pd.to_datetime(pd.datetime(2020,12,31))
     
     # fix 2009 date typo
     monthly_deliveries_and_sales['Date'].iloc[2] = pd.to_datetime(pd.datetime(2009,12,31))
@@ -758,7 +796,7 @@ def append_UpToJuly2020DeliveryAndSalesData(monthly_record,
         i += 1
     
     # export fixed version
-    # monthly_deliveries_and_sales.to_csv(daily_delivery_path + '/monthly_deliveries_and_sales_by_member_through2019.csv')
+    #monthly_deliveries_and_sales.to_csv(daily_delivery_path + '/monthly_deliveries_and_sales_by_member_through2020.csv')
     
     return monthly_deliveries_and_sales
     
@@ -802,9 +840,10 @@ historical_annual_budget_projections = build_HistoricalProjectedAnnualBudgets(hi
 #           AND OROP/OMS RESULTS REPRESENT 2020-2039 YEARS RATHER THAN 2021-2040
 #           so for now we need to use the approved FY2020 budget/uniform rates
 #           for calculation of revenue from observed water sales 
-observed_delivery_path = 'f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/observed_deliveries'
-monthly_water_deliveries_and_sales = append_UpToJuly2020DeliveryAndSalesData(monthly_record = monthly_water_deliveries_and_sales, 
-                                                                             FY2020_approved_budget = historical_annual_budget_projections.iloc[4,:], 
+observed_delivery_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/observed_deliveries'
+monthly_water_deliveries_and_sales = append_UpToJan2021DeliveryAndSalesData(monthly_record = monthly_water_deliveries_and_sales, 
+                                                                             FY2020_approved_budget = historical_annual_budget_projections.iloc[6,:], 
+                                                                             FY2021_proposed_budget = historical_annual_budget_projections.iloc[7,:], 
                                                                              daily_delivery_path = observed_delivery_path)
 
 # step 0c: collect existing and future debt/infrastructure project costs
