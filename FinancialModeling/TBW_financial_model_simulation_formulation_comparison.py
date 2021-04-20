@@ -16,7 +16,7 @@ data_path = 'C:/Users/dgorelic/Desktop/TBWruns/vgrid_financial_output'
 # plot data across simulations/evaluations and all realizations
 n_metrics = 2
 n_sims = 3; sim_colors = ['g', 'b', 'r']; sim_type = ['Un-Managed', 'Fixed', 'Controlled Growth']
-n_formulations = 3; f_type = ['Baseline', 'w/SWTP 10 MGD exp.', 'w/SWTP 20 MGD exp.']; f_num = [125,126,128]
+n_formulations = 3; f_type = ['Baseline', 'w/SWTP 20 MGD exp.', 'w/SWTP 30 MGD exp.']; f_num = [125,126,128]
 fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(n_formulations, n_metrics, sharey = False, figsize = (8,10))
 for f in f_num:
     dc_plotting_index_set = 19 * [0]
@@ -27,8 +27,8 @@ for f in f_num:
         dc_data = pd.read_csv(data_path + '/DC_f' + str(f) + '_s' + str(sim) + '.csv', index_col = 0)
         
         # convert to T/F based on violation of criteria
-        rc_violation = rc_data < 1.25
-        dc_violation = dc_data < 1.0
+        rc_violation = rc_data.iloc[:,1:] < 1.25
+        dc_violation = dc_data.iloc[:,1:] < 1.0
         
         # count realizations per year in violation, post FY 2020
         rcv_years = rc_violation.iloc[:,1:].sum()
@@ -78,10 +78,10 @@ for f in f_num:
     ax5.set_xlabel('Fiscal Year')
     ax6.set_xlabel('Fiscal Year')
     ax1.set_ylabel('Scenario 1:\nSCH Pipeline')
-    ax3.set_ylabel('Realizations Violating Covenant Threshold\n\nScenario 2:\nSCH Pipeline + 10 MGD SWTP')
-    ax5.set_ylabel('Scenario 3:\nSCH Pipeline + 20 MGD SWTP')
+    ax3.set_ylabel('Realizations Violating Covenant Threshold\n\nScenario 2:\nSCH Pipeline + 20 MGD SWTP')
+    ax5.set_ylabel('Scenario 3:\nSCH Pipeline + 30 MGD SWTP')
     ax1.set_title('Debt Covenant')
     ax2.set_title('Rate Covenant')
-    plt.savefig(data_path + '/Simulation_Covenant_Comparisons' + '_animated' + str(sim) + '.png', bbox_inches= 'tight')
+    plt.savefig(data_path + '/Simulation_Covenant_Comparisons' + '_animated_' + str(sim) + '.png', bbox_inches= 'tight')
 
 plt.close()
