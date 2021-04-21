@@ -1869,7 +1869,24 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                     AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 3
                 if formulation_id == 128:
                     AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+                    
+                # APRIL 2021: add projects for runs 141-144
+                if formulation_id == 143: # Balm + SWTP expansion
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+                if formulation_id == 144: # Balm + SWTP expansion (off-site)
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
             
+            if FY == 2022:
+                # APRIL 2021: add projects for runs 141-144
+                # TECO project in CIP report (ID 07033) expects to rely on about
+                # $12M total in capital costs, but only about $8M in bonds
+                if formulation_id == 142: # TECO Tunnel 1 connector project phase 2
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                if formulation_id == 143: # TECO Tunnel 1 connector project phase 2
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                if formulation_id == 144: # TECO Tunnel 1 connector project phase 2
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                    
             triggered_project_ids = \
                 check_ForTriggeredProjects(
                         AMPL_cleaned_data['Trigger Variable'].loc[model_index])
