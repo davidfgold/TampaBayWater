@@ -408,7 +408,7 @@ def estimate_UniformRate(annual_estimate,
                          high_rate_bound = 0.01,
                          low_rate_bound = 0.01,
                          MANAGE_RATE = False,
-                         DEBUGGING = True):
+                         DEBUGGING = False):
     import numpy as np
     n_days_in_year = 365; convert_kgal_to_MG = 1000
     
@@ -1956,7 +1956,7 @@ current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_Bon
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
-for run_id in [125, 126, 128]:
+for run_id in [141, 142, 143, 144]:
     ### ---------------------------------------------------------------------------
     # set additional required paths
     scripts_path = 'F:/MonteCarlo_Project/Cornell_UNC/TampaBayWater/data_management'
