@@ -522,7 +522,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     assert (earliest_fy_actuals_available <= prelim_year), \
         "Must start at later FY: actuals not available."
     current_fy_index = [tf for tf in (annual_budget['Fiscal Year'] == prelim_year)]
-    annual_actuals.loc[annual_actuals.iloc[:,0] == prelim_year,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
+    annual_actuals.loc[annual_actuals['Fiscal Year'] == prelim_year,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
         
     # loop across every year modeling will occur, and needed historical years,
     # to collect data into proper datasets for use in realization loop
@@ -538,45 +538,31 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
         
         if fy <= first_modeled_fy+1:
             current_fy_index = [tf for tf in (budget_projections['Fiscal Year'] == fy)]
-            annual_budgets.loc[annual_budgets.iloc[:,0] == fy,:] = [v for v in budget_projections.iloc[current_fy_index,:].values]
+            annual_budgets.loc[annual_budgets['Fiscal Year'] == fy,:] = [v for v in budget_projections.iloc[current_fy_index,:].values]
         
         # set up water deliveries
         # this will be tricky because need to re-arrange columns from historic
         # record as well as add in any records from modeling
         # HARD-CODED ASSUMPTION HERE (AND ABOVE WHERE MODELING DATA IS READ)
         # IS THAT MODELING BEGINS WITH JAN 1, 2021
-        if fy < first_modeled_fy:
+        # but first_modeled_year is 2020 because we only have FY actuals through FY19
+        if fy <= first_modeled_fy:
             # fill from historic data
             current_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == fy)]
             water_delivery_sales.loc[water_delivery_sales.iloc[:,0] == fy,2:] = water_deliveries_and_sales.iloc[current_fy_index,1:-3].values
             
-            # repeat for actuals from historic record (only go through FY2019)
-            current_fy_index = [tf for tf in (annual_budget['Fiscal Year'] == fy)]
-            annual_actuals.loc[annual_actuals.iloc[:,0] == fy,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
-        elif fy == first_modeled_fy:
-            # special case to fill-in data mid-year, half historic from current year half 2019 data with an increase multiplier
-            # NOTE: should actually do explicit calculations as these multipliers might not perfectly translate
-            #       for revenues like they do for deliveries, but it's only for 3 months right now
-            # AS PROJECT CONTINUES IN REAL TIME, EVENTUALLY GET FULL 2020 DATA
-            current_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == fy)]
-            last_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == (fy-1))]
-            historic_component = water_deliveries_and_sales.iloc[current_fy_index,1:-3].values
-            modeled_component = water_deliveries_and_sales.iloc[last_fy_index,1:-3].values * (1+annual_demand_growth_rate)
-            modeled_component = modeled_component[:(n_months_in_year-sum(current_fy_index)),:] # last X months of FY20 that we don't have observed data for
-            all2020_component = np.vstack((historic_component,modeled_component))
-            all2020_component[sum(current_fy_index):,7:13] = all2020_component[:(n_months_in_year-sum(current_fy_index)),7:13] # make fixed payments consistent
-            water_delivery_sales.loc[(water_delivery_sales.iloc[:,0] == fy),2:] = all2020_component
+            # repeat for actuals from historic record (go through FY 2019 now that observed data fills out the record)
+            # skip 2020 because we have delivery data for it and can back-calculate revenues but don't have full observed actuals
+            if fy != 2020:
+                current_fy_index = [tf for tf in (annual_budget['Fiscal Year'] == fy)]
+                annual_actuals.loc[annual_actuals.iloc[:,0] == fy,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
         elif fy == first_modeled_fy+1:
-            # another special case with 3 months of placeholder data to fill in Oct-Dec 2020
+            # special case with 3 months of observed data in Oct-Dec 2020
             # followed by 9 months of model data - for this year, use FY21 proposed budget to calculate revenues
-            last_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == (fy-1))]
-            historic_component = water_deliveries_and_sales.iloc[last_fy_index,1:8].values
-            historic_component = historic_component[:(n_months_in_year-sum(last_fy_index)),:] * (1+annual_demand_growth_rate)
+            current_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == fy)]
+            water_delivery_sales.loc[(water_delivery_sales['Fiscal Year'] == fy) & (water_delivery_sales['Month'] > last_fy_month),2:] = water_deliveries_and_sales.iloc[current_fy_index,1:-3].values
             
-            cot_historic_component = water_deliveries_and_sales.iloc[last_fy_index,-5].values
-            cot_historic_component = cot_historic_component[:(n_months_in_year-sum(last_fy_index))] * (1+annual_demand_growth_rate)
-            
-            # get slack-factored monthly water deliveries
+            # get slack-factored monthly water deliveries for the rest of calendar year 2021 until end of FY21
             model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == fy) for d in range(0,len(AMPL_cleaned_data))]
             model_months = pd.Series(Month).iloc[model_index]
             uniform_rate_member_deliveries, month_TBC_raw_deliveries = \
@@ -585,11 +571,9 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
                                                   AMPL_data = AMPL_cleaned_data, 
                                                   TBC_data = TBC_raw_sales_to_CoT)
             
-            # collect full FY delivery data and plug into dataset
-            all2021_component = np.vstack((historic_component,uniform_rate_member_deliveries))
-            all2021_cot_tbc   = [v for v in cot_historic_component] + [v for v in month_TBC_raw_deliveries.values]
-            water_delivery_sales.loc[(water_delivery_sales.iloc[:,0] == fy),2:(all2021_component.shape[1]+2)] = all2021_component
-            water_delivery_sales['TBC Delivery - City of Tampa'].loc[(water_delivery_sales.iloc[:,0] == fy)] = all2021_cot_tbc
+            # plug remaining FY21 data into dataset
+            water_delivery_sales.loc[(water_delivery_sales['Fiscal Year'] == fy) & (water_delivery_sales['Month'] <= last_fy_month),2:(uniform_rate_member_deliveries.shape[1]+2)] = uniform_rate_member_deliveries.values
+            water_delivery_sales['TBC Delivery - City of Tampa'].loc[(water_delivery_sales['Fiscal Year'] == fy) & (water_delivery_sales['Month'] <= last_fy_month)] = month_TBC_raw_deliveries.values
         else:
             # modeled data from here on out, just collect deliveries 
             # for any future years that will be modeled
@@ -613,8 +597,8 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     # while they contain observed, real actuals for ease of comparison later
     # (assumes this is being done for one simulation, one realization)
     if max(fiscal_years_to_keep) < first_modeled_fy:
-        # also, because if end_fiscal_year = 2020, then the last fiscal_year_to_keep value
-        # will be 2019, so when doing historic simulation make sure one extra budget FY
+        # also, because if end_fiscal_year = 2021, then the last fiscal_year_to_keep value
+        # will be 2020, so when doing historic simulation make sure one extra budget FY
         # is included
         last_fy_to_add = int(max(fiscal_years_to_keep)) + 1
         current_fy_index = [tf for tf in (budget_projections['Fiscal Year'] == last_fy_to_add)]
