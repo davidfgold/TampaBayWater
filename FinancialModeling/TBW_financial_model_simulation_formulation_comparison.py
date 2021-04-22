@@ -11,16 +11,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-data_path = 'C:/Users/dgorelic/Desktop/TBWruns/vgrid_financial_output'
+data_path = 'f:/MonteCarlo_Project/Cornell_UNC/financial_model_output'
 
 # plot data across simulations/evaluations and all realizations
 n_metrics = 2
-n_sims = 3; sim_colors = ['g', 'b', 'r']; sim_type = ['Un-Managed', 'Fixed', 'Controlled Growth']
-n_formulations = 3; f_type = ['Baseline', 'w/SWTP 20 MGD exp.', 'w/SWTP 30 MGD exp.']; f_num = [125,126,128]
+n_sims = 3; sim_colors = ['g', 'b', 'r']; sim_type = ['Hands-Off', 'Fixed', 'Controlled Growth']
+n_formulations = 3; f_type = ['Baseline', 'w/Desal Upgrades', 'w/Desal Upgrades + 20MGD SWTP exp.']; f_num = [141,142,143]
 fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(n_formulations, n_metrics, sharey = False, figsize = (8,10))
 for f in f_num:
-    dc_plotting_index_set = 19 * [0]
-    rc_plotting_index_set = 19 * [0]
+    dc_plotting_index_set = 18 * [0]
+    rc_plotting_index_set = 18 * [0]
     for sim in range(0,n_sims):
         # read data
         rc_data = pd.read_csv(data_path + '/RC_f' + str(f) + '_s' + str(sim) + '.csv', index_col = 0)
@@ -36,10 +36,10 @@ for f in f_num:
         
         # make plot - stacked bar plot showing violation count for each formulation 
         # 3x2 plot - 3 rows (infra formulations) by 2 covenants
-        if f == 125:
+        if f == 141:
             ax1.bar(dcv_years.keys().values, dcv_years.values, bottom = dc_plotting_index_set, color = sim_colors[sim])
             ax2.bar(rcv_years.keys().values, rcv_years.values, bottom = rc_plotting_index_set, color = sim_colors[sim])
-        elif f == 126:
+        elif f == 142:
             ax3.bar(dcv_years.keys().values, dcv_years.values, bottom = dc_plotting_index_set, color = sim_colors[sim])
             ax4.bar(rcv_years.keys().values, rcv_years.values, bottom = rc_plotting_index_set, color = sim_colors[sim])
         else:
@@ -77,11 +77,11 @@ for f in f_num:
     # add other labels
     ax5.set_xlabel('Fiscal Year')
     ax6.set_xlabel('Fiscal Year')
-    ax1.set_ylabel('Scenario 1:\nSCH Pipeline')
-    ax3.set_ylabel('Realizations Violating Covenant Threshold\n\nScenario 2:\nSCH Pipeline + 20 MGD SWTP')
-    ax5.set_ylabel('Scenario 3:\nSCH Pipeline + 30 MGD SWTP')
+    ax1.set_ylabel('Scenario 1 (141):\nSCH Balm Pipeline')
+    ax3.set_ylabel('Realizations Violating Covenant Threshold\n\nScenario 2 (142):\nPipeline + Desal Upgrades')
+    ax5.set_ylabel('Scenario 3 (143):\nPipeline + Desal + 20MGD SWTP Exp.')
     ax1.set_title('Debt Covenant')
     ax2.set_title('Rate Covenant')
-    plt.savefig(data_path + '/Simulation_Covenant_Comparisons' + '_animated_' + str(sim) + '.png', bbox_inches= 'tight')
+    plt.savefig(data_path + '/Simulation_Covenant_Comparisons_NewRuns.png', bbox_inches= 'tight', dpi = 800)
 
 plt.close()
