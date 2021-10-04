@@ -408,7 +408,7 @@ def estimate_UniformRate(annual_estimate,
                          high_rate_bound = 0.01,
                          low_rate_bound = 0.01,
                          MANAGE_RATE = False,
-                         DEBUGGING = True):
+                         DEBUGGING = False):
     import numpy as np
     n_days_in_year = 365; convert_kgal_to_MG = 1000
     
@@ -610,7 +610,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
 
     return annual_actuals, annual_budgets, water_delivery_sales
 
-def pull_ModeledData(additional_scripts_path, orop_oms_output_path, realization_id, 
+def pull_ModeledData(additional_scripts_path, orop_output_path, oms_output_path, realization_id, 
                      fiscal_years_to_keep, end_fiscal_year, first_modeled_fy, PRE_CLEANED = True):
     # get modeled water delivery data
     import os
@@ -619,9 +619,9 @@ def pull_ModeledData(additional_scripts_path, orop_oms_output_path, realization_
     if end_fiscal_year > first_modeled_fy: # meaning the last FY modeled financially is 2020
         os.chdir(additional_scripts_path); from analysis_functions import read_AMPL_csv, read_AMPL_out
         if PRE_CLEANED:
-            AMPL_cleaned_data = pd.read_csv(orop_oms_output_path + '/ampl_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.csv')
+            AMPL_cleaned_data = pd.read_csv(orop_output_path + '/ampl_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.csv')
         else:
-            AMPL_cleaned_data = read_AMPL_csv(orop_oms_output_path + '/ampl_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.csv', export = False)
+            AMPL_cleaned_data = read_AMPL_csv(orop_output_path + '/ampl_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.csv', export = False)
         ndays_of_realization = len(AMPL_cleaned_data.iloc[:,0])
         
         # until water supply model is changed to include infrastructure adjustment
@@ -630,12 +630,12 @@ def pull_ModeledData(additional_scripts_path, orop_oms_output_path, realization_
             AMPL_cleaned_data['Trigger Variable'] = -1
             
         # get additional water supply modeling data from OMS results
-        TBC_raw_sales_to_CoT = get_HarneyAugmentationFromOMS(orop_oms_output_path + '/sim_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.mat', ndays_of_realization, realization_id)
+        TBC_raw_sales_to_CoT = get_HarneyAugmentationFromOMS(oms_output_path + '/sim_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.mat', ndays_of_realization, realization_id)
     
         # necessary to use the exact matching dates also because model
         # records are daily
         # can use same file each time
-        AMPL_outfile = read_AMPL_out(orop_oms_output_path + '/ampl_0001.out')
+        AMPL_outfile = read_AMPL_out(orop_output_path + '/ampl_0001.out')
         Year  = [str(float(str(x)[:4]))[:4] for x in AMPL_outfile['Date']]
         Month = [str(x)[4:6] for x in AMPL_outfile['Date']]
         
@@ -1712,8 +1712,10 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            potential_projects,
                                            realization_id = 1,
                                            additional_scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization',
-                                           orop_oms_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
+                                           orop_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
+                                           oms_output_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_125',
                                            outpath = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output',
+                                           formulation_id = 125,
                                            PRE_CLEANED = True,
                                            ACTIVE_DEBUGGING = False):
     # get necessary packages
@@ -1792,7 +1794,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     #   NOTE: THIS IS THE MOST TIME-CONSUMING STEP
     #   IF DOING HISTORICAL TEST, NO NEED TO READ DATA
     AMPL_cleaned_data, TBC_raw_sales_to_CoT, Year, Month = \
-        pull_ModeledData(additional_scripts_path, orop_oms_output_path, realization_id, 
+        pull_ModeledData(additional_scripts_path, orop_output_path, oms_output_path, realization_id, 
                          fiscal_years_to_keep, end_fiscal_year, first_modeled_fy, PRE_CLEANED)
     
     ### -----------------------------------------------------------------------
@@ -1827,19 +1829,53 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
         # track if new infrastructure is triggered in the current FY
         if ((len(AMPL_cleaned_data) > 1) and (FY > first_modeled_fy)): # if using model data
             model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
+            model_index_subset = [(int(Month[d]) == last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
+            
             # for initial tests and model runs, "artificially" include
             # SHC Balm pipeline debt starting 3 years before FY2028
             # when it is expected to be built, for now hard-coded at
             # 2025 to trigger project ID 5, which is the 36in diameter pipe
             # supplying a max capacity of 12.5 MGDs
+            
+            # Nov 2020: depending on infrastructure scenario, trigger different projects
+            # NOTE: PROJECTS USED FOR 126 AND 128 FINANCING MAY NOT BE EXACT ONES FROM SWRM MODEL
+            #   NOTES ON MODEL RUNS SAY 126 IS SWTP EXPANSION TO 110MGD, 128 IS EXP. TO 120MGD
+            # run 125: proj ID 5 (small balm pipeline) in 2025
+            # run 126: ID 5 in 2025, ID 3 in 2025 (SWTP expansion by 10 MGD)
+            # run 128: ID 5 in 2025, ID 4 in 2025 (SWTP expansion by 12.5 MGD)
             if FY == 2025:
                 AMPL_cleaned_data['Trigger Variable'].loc[model_index] = 5
+                
+                # assuming model_index is a vector of all days in current FY,
+                # if a run triggers more than one project, change the trigger variable of the final
+                # index month to the second project ID
+                if formulation_id == 126:
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 3
+                if formulation_id == 128:
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+                    
+                # APRIL 2021: add projects for runs 141-144
+                if formulation_id == 143: # Balm + SWTP expansion
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+                if formulation_id == 144: # Balm + SWTP expansion (off-site)
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
             
+            if FY == 2022:
+                # APRIL 2021: add projects for runs 141-144
+                # TECO project in CIP report (ID 07033) expects to rely on about
+                # $12M total in capital costs, but only about $8M in bonds
+                if formulation_id == 142: # TECO Tunnel 1 connector project phase 2
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                if formulation_id == 143: # TECO Tunnel 1 connector project phase 2
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                if formulation_id == 144: # TECO Tunnel 1 connector project phase 2
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                    
             triggered_project_ids = \
                 check_ForTriggeredProjects(
                         AMPL_cleaned_data['Trigger Variable'].loc[model_index])
             for p_id in triggered_project_ids:
-                new_projects_to_finance.append(p_id) # multiple projects can be triggered in same FY???
+                new_projects_to_finance.append(p_id) # multiple projects can be triggered in same FY
             
         # step 3: perform annual end-of-FY calculations
         #               (1) next year uniform rate estimate (fixed and variable)
@@ -1882,12 +1918,14 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                         rdm_factor_list = rdm_factors,
                                         ACTIVE_DEBUGGING = ACTIVE_DEBUGGING)
     
-    # step 4: end loop and export results, including objectives    
-    annual_budgets.to_csv(outpath + '/budget_projections_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    annual_actuals.to_csv(outpath + '/budget_actuals_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    financial_metrics.to_csv(outpath + '/financial_metrics_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    existing_issued_debt.to_csv(outpath + '/final_debt_balance_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
-    water_delivery_sales.to_csv(outpath + '/water_deliveries_revenues_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    # step 4: end loop and export results, including objectives
+    # Nov 2020: adjust paths to also show current model formulation (infrastructure pathway)
+    
+    annual_budgets.to_csv(outpath + '/budget_projections_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    annual_actuals.to_csv(outpath + '/budget_actuals_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    financial_metrics.to_csv(outpath + '/financial_metrics_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    existing_issued_debt.to_csv(outpath + '/final_debt_balance_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    water_delivery_sales.to_csv(outpath + '/water_deliveries_revenues_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     
     return annual_budgets, annual_actuals, financial_metrics, water_delivery_sales, existing_issued_debt
     
@@ -1898,7 +1936,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
 ### ----------------------------------------------------------------------- ###
 import numpy as np; import pandas as pd
 # read in decision variables from spreadsheet
-dv_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/TampaBayWater/FinancialModeling'
+dv_path = 'F:/MonteCarlo_Project/Cornell_UNC/TampaBayWater/FinancialModeling'
 DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
 
 # read in deeply uncertain factors
@@ -1906,7 +1944,7 @@ DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
 
 ### ---------------------------------------------------------------------------
 # read in historic records
-historical_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data'
+historical_data_path = 'f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data'
 monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + '/water_sales_and_deliveries_all_2020.csv')
 historical_annual_budget_projections = pd.read_csv(historical_data_path + '/historical_budgets.csv')
 annual_budget_data = pd.read_csv(historical_data_path + '/historical_actuals.csv')
@@ -1914,112 +1952,119 @@ existing_debt = pd.read_csv(historical_data_path + '/existing_debt.csv')
 infrastructure_options = pd.read_csv(historical_data_path + '/potential_projects.csv')
 current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
 
-### ---------------------------------------------------------------------------
-# set additional required paths
-scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization'
-ampl_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned'
-output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
 
-### ---------------------------------------------------------------------------
-# run loop across DV sets
-sim_objectives = [0,0,0,0] # sim id + three objectives
-start_fy = 2020; end_fy = 2040; n_reals_tested = 5
-#for sim in range(0,len(DVs)): # sim = 0 for testing
-for sim in range(0,3): # FOR RUNNING HISTORICALLY ONLY
-    ### ----------------------------------------------------------------------- ###
-    ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
-    ### ----------------------------------------------------------------------- ###  
-    dvs = [x for x in DVs.iloc[sim,:]]
-    dufs = [x for x in DUFs.iloc[sim,:]]
-    
-    debt_covenant_years = [int(x) for x in range(start_fy,end_fy)]
-    rate_covenant_years = [int(x) for x in range(start_fy,end_fy)]
-    full_rate_years = [int(x) for x in range(start_fy-2,end_fy)]
-    variable_rate_years = [int(x) for x in range(start_fy-2,end_fy)]
-    total_deliveries_months = [int(x) for x in range(1,(end_fy - start_fy + 1)*12+1)]
-    for r_id in range(1,n_reals_tested+1):
-        print(r_id)
-        # seems to be an issue with run 95 .mat file, skip this realization
-        if r_id == 95:
-            continue
-        
-#    for r_id in range(1,2): # r_id = 1 for testing
-        # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2015;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;
-        
-        budget_projection, actuals, outcomes, water_vars, final_debt = \
-            run_FinancialModelForSingleRealization(
-                    start_fiscal_year = start_fy, end_fiscal_year = end_fy,
-                    simulation_id = sim,
-                    decision_variables = dvs, 
-                    rdm_factors = dufs,
-                    annual_budget = annual_budget_data,
-                    budget_projections = historical_annual_budget_projections,
-                    water_deliveries_and_sales = monthly_water_deliveries_and_sales,
-                    existing_issued_debt = existing_debt,
-                    existing_debt_targets = current_debt_targets,
-                    potential_projects = infrastructure_options,
-                    realization_id = r_id, 
-                    additional_scripts_path = scripts_path,
-                    orop_oms_output_path = ampl_output_path,
-                    outpath = output_path,
-                    PRE_CLEANED = True, ACTIVE_DEBUGGING = False)
-        
-        ### -----------------------------------------------------------------------
-        # collect data of some results across all realizations
-        debt_covenant_years = np.vstack((debt_covenant_years, [x for x in outcomes['Debt Covenant Ratio']]))
-        rate_covenant_years = np.vstack((rate_covenant_years, [x for x in outcomes['Rate Covenant Ratio']]))
-        full_rate_years = np.vstack((full_rate_years, [x for x in actuals['Uniform Rate (Full)']]))
-        variable_rate_years = np.vstack((variable_rate_years, [x for x in actuals['Uniform Rate (Variable Portion)']]))
-        total_deliveries_months = np.vstack((total_deliveries_months, [x for x in water_vars['Water Delivery - Uniform Sales Total']]))
-           
+### =========================================================================== ###
+### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
+### =========================================================================== ###
+for run_id in [141, 142, 143, 144]:
     ### ---------------------------------------------------------------------------
-    # reorganize data
-    DC = pd.DataFrame(debt_covenant_years[1:,:]); DC.columns = [int(x) for x in debt_covenant_years[0,:]]
-    RC = pd.DataFrame(rate_covenant_years[1:,:]); RC.columns = [int(x) for x in rate_covenant_years[0,:]]
-    UR = pd.DataFrame(full_rate_years[1:,:]); UR.columns = [int(x) for x in full_rate_years[0,:]]
-    VR = pd.DataFrame(variable_rate_years[1:,:]); VR.columns = [int(x) for x in variable_rate_years[0,:]]
-    WD = pd.DataFrame(total_deliveries_months[1:,:]); WD.columns = [int(x) for x in total_deliveries_months[0,:]]
+    # set additional required paths
+    scripts_path = 'F:/MonteCarlo_Project/Cornell_UNC/TampaBayWater/data_management'
+    ampl_output_path = 'F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMPL_files/run0' + str(run_id)
+    oms_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_' + str(run_id)
+    output_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_output'
     
     ### ---------------------------------------------------------------------------
-    # calculate financial objectives
-    # 1: debt covenant (fraction of realizations with covenant violation in year with most violations)
-    DC_Violations = (DC < 1).sum()
-    Objective_DC_Violations = max(DC_Violations)/len(DC)
-    
-    # 2: rate covenant (fraction of realizations with covenant violation in year with most violations)
-    RC_Violations = (RC < 1.25).sum()
-    Objective_RC_Violations = max(RC_Violations)/len(RC)
-    
-    # 3: uniform date (average of greatest annual rate across realizations)
-    Objective_UR_Highs = UR.max(axis = 1).mean()
-    
-    # write objectives to outfile
-    sim_objectives = np.vstack((sim_objectives, 
-                                [sim,
-                                 Objective_DC_Violations, 
-                                 Objective_RC_Violations, 
-                                 Objective_UR_Highs]))
-    
+    # run loop across DV sets
+    sim_objectives = [0,0,0,0] # sim id + three objectives
+    start_fy = 2020; end_fy = 2040; n_reals_tested = 999
+    for sim in range(0,len(DVs)): # sim = 0 for testing
+    #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
+        ### ----------------------------------------------------------------------- ###
+        ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
+        ### ----------------------------------------------------------------------- ###  
+        dvs = [x for x in DVs.iloc[sim,:]]
+        dufs = [x for x in DUFs.iloc[sim,:]]
+        
+        debt_covenant_years = [int(x) for x in range(start_fy,end_fy)]
+        rate_covenant_years = [int(x) for x in range(start_fy,end_fy)]
+        full_rate_years = [int(x) for x in range(start_fy-2,end_fy)]
+        variable_rate_years = [int(x) for x in range(start_fy-2,end_fy)]
+        total_deliveries_months = [int(x) for x in range(1,(end_fy - start_fy + 1)*12+1)]
+        for r_id in range(1,n_reals_tested+1):
+            print(r_id)
+            # seems to be an issue with run 95 .mat file, skip this realization
+            if r_id == 95:
+                continue
+            
+    #    for r_id in range(1,2): # r_id = 1 for testing
+            # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2015;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;
+            
+            budget_projection, actuals, outcomes, water_vars, final_debt = \
+                run_FinancialModelForSingleRealization(
+                        start_fiscal_year = start_fy, end_fiscal_year = end_fy,
+                        simulation_id = sim,
+                        decision_variables = dvs, 
+                        rdm_factors = dufs,
+                        annual_budget = annual_budget_data,
+                        budget_projections = historical_annual_budget_projections,
+                        water_deliveries_and_sales = monthly_water_deliveries_and_sales,
+                        existing_issued_debt = existing_debt,
+                        existing_debt_targets = current_debt_targets,
+                        potential_projects = infrastructure_options,
+                        realization_id = r_id, 
+                        additional_scripts_path = scripts_path,
+                        orop_output_path = ampl_output_path,
+                        oms_output_path = oms_path,
+                        outpath = output_path, formulation_id = run_id,
+                        PRE_CLEANED = True, ACTIVE_DEBUGGING = False)
+            
+            ### -----------------------------------------------------------------------
+            # collect data of some results across all realizations
+            debt_covenant_years = np.vstack((debt_covenant_years, [x for x in outcomes['Debt Covenant Ratio']]))
+            rate_covenant_years = np.vstack((rate_covenant_years, [x for x in outcomes['Rate Covenant Ratio']]))
+            full_rate_years = np.vstack((full_rate_years, [x for x in actuals['Uniform Rate (Full)']]))
+            variable_rate_years = np.vstack((variable_rate_years, [x for x in actuals['Uniform Rate (Variable Portion)']]))
+            total_deliveries_months = np.vstack((total_deliveries_months, [x for x in water_vars['Water Delivery - Uniform Sales Total']]))
+               
+        ### ---------------------------------------------------------------------------
+        # reorganize data
+        DC = pd.DataFrame(debt_covenant_years[1:,:]); DC.columns = [int(x) for x in debt_covenant_years[0,:]]
+        RC = pd.DataFrame(rate_covenant_years[1:,:]); RC.columns = [int(x) for x in rate_covenant_years[0,:]]
+        UR = pd.DataFrame(full_rate_years[1:,:]); UR.columns = [int(x) for x in full_rate_years[0,:]]
+        VR = pd.DataFrame(variable_rate_years[1:,:]); VR.columns = [int(x) for x in variable_rate_years[0,:]]
+        WD = pd.DataFrame(total_deliveries_months[1:,:]); WD.columns = [int(x) for x in total_deliveries_months[0,:]]
+        
+        ### ---------------------------------------------------------------------------
+        # calculate financial objectives
+        # 1: debt covenant (fraction of realizations with covenant violation in year with most violations)
+        DC_Violations = (DC < 1).sum()
+        Objective_DC_Violations = max(DC_Violations)/len(DC)
+        
+        # 2: rate covenant (fraction of realizations with covenant violation in year with most violations)
+        RC_Violations = (RC < 1.25).sum()
+        Objective_RC_Violations = max(RC_Violations)/len(RC)
+        
+        # 3: uniform date (average of greatest annual rate across realizations)
+        Objective_UR_Highs = UR.max(axis = 1).mean()
+        
+        # write objectives to outfile
+        sim_objectives = np.vstack((sim_objectives, 
+                                    [sim,
+                                     Objective_DC_Violations, 
+                                     Objective_RC_Violations, 
+                                     Objective_UR_Highs]))
+        
+        ### ---------------------------------------------------------------------------
+        # plot Debt Covenant, Rate Covenant, Uniform Rate, Variable Rate, Water Deliveries
+        DC.transpose().plot(legend = False).get_figure().savefig(output_path + '/DC_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
+        RC.transpose().plot(legend = False).get_figure().savefig(output_path + '/RC_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
+        UR.transpose().plot(legend = False).get_figure().savefig(output_path + '/UR_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
+        VR.transpose().plot(legend = False).get_figure().savefig(output_path + '/VR_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
+        WD.transpose().plot(legend = False).get_figure().savefig(output_path + '/WD_f' + str(run_id) + '_s' + str(sim) + '.png', format = 'png')
+        
+        # export the objective sets for quantile plotting
+        DC.to_csv(output_path + '/DC_f' + str(run_id) + '_s' + str(sim) + '.csv')
+        RC.to_csv(output_path + '/RC_f' + str(run_id) + '_s' + str(sim) + '.csv')
+        UR.to_csv(output_path + '/UR_f' + str(run_id) + '_s' + str(sim) + '.csv')
+       
     ### ---------------------------------------------------------------------------
-    # plot Debt Covenant, Rate Covenant, Uniform Rate, Variable Rate, Water Deliveries
-    DC.transpose().plot(legend = False).get_figure().savefig(output_path + '/DC_s' + str(sim) + '.png', format = 'png')
-    RC.transpose().plot(legend = False).get_figure().savefig(output_path + '/RC_s' + str(sim) + '.png', format = 'png')
-    UR.transpose().plot(legend = False).get_figure().savefig(output_path + '/UR_s' + str(sim) + '.png', format = 'png')
-    VR.transpose().plot(legend = False).get_figure().savefig(output_path + '/VR_s' + str(sim) + '.png', format = 'png')
-    WD.transpose().plot(legend = False).get_figure().savefig(output_path + '/WD_s' + str(sim) + '.png', format = 'png')
-    
-    # export the objective sets for quantile plotting
-    DC.to_csv(output_path + '/DC_s' + str(sim) + '.csv')
-    RC.to_csv(output_path + '/RC_s' + str(sim) + '.csv')
-    UR.to_csv(output_path + '/UR_s' + str(sim) + '.csv')
-   
-### ---------------------------------------------------------------------------
-# write output file for all objectives
-Objectives = pd.DataFrame(sim_objectives[1:,:])
-Objectives.columns = ['Simulation ID',
-                      'Debt Covenant Violation Frequency', 
-                      'Rate Covenant Violation Frequency', 
-                      'Peak Uniform Rate']
-Objectives.to_csv(output_path + '/Objectives.csv')
+    # write output file for all objectives
+    Objectives = pd.DataFrame(sim_objectives[1:,:])
+    Objectives.columns = ['Simulation ID',
+                          'Debt Covenant Violation Frequency', 
+                          'Rate Covenant Violation Frequency', 
+                          'Peak Uniform Rate']
+    Objectives.to_csv(output_path + '/Objectives_f' + str(run_id) + '.csv')
     
     

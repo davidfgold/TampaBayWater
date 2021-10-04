@@ -5,9 +5,9 @@ import re
 # FUNCTIONS TO DO BASIC DATA READING AND MANIPULATION OPERATIONS FOR TBW DATA
 # D GORELICK (APR 2019)
 
-def read_AMPL_csv(filename, export = True):
+def read_AMPL_csv(in_path, out_path, filename, export = True):
     # read in file
-    csv_out = pd.read_csv(filename, sep = ',') # about a year is 50,000 rows
+    csv_out = pd.read_csv(in_path + filename, sep = ',') # about a year is 50,000 rows
     
     # collect the file data and organize such that each column is a unique variable timeseries
     uniquevars = csv_out[['VariableName','VariableIndex']].drop_duplicates()
@@ -24,7 +24,7 @@ def read_AMPL_csv(filename, export = True):
     ampl_out.columns = uniquecols
     
     if export:
-        pd.DataFrame.to_csv(ampl_out,'cleaned_' + filename)
+        pd.DataFrame.to_csv(ampl_out, out_path + filename)
         
     return ampl_out
 
