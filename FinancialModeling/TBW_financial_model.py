@@ -1935,8 +1935,15 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
 ### RUN ACROSS DIFFERENT MONTE CARLO SETS OF DVS
 ### ----------------------------------------------------------------------- ###
 import numpy as np; import pandas as pd
+# set data paths, differentiating local vs common path components
+# see past commits or vgrid_version branch for paths to run on TBW system
+local_base_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW'
+local_data_sub_path = '/Data'
+local_code_sub_path = '/Code'
+local_MonteCarlo_data_base_path = 'C:/Users/dgorelic/Desktop/TBWruns'
+
 # read in decision variables from spreadsheet
-dv_path = 'F:/MonteCarlo_Project/Cornell_UNC/TampaBayWater/FinancialModeling'
+dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
 DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
 
 # read in deeply uncertain factors
@@ -1944,7 +1951,7 @@ DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
 
 ### ---------------------------------------------------------------------------
 # read in historic records
-historical_data_path = 'f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data'
+historical_data_path = local_base_path + local_data_sub_path + '/model_input_data'
 monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + '/water_sales_and_deliveries_all_2020.csv')
 historical_annual_budget_projections = pd.read_csv(historical_data_path + '/historical_budgets.csv')
 annual_budget_data = pd.read_csv(historical_data_path + '/historical_actuals.csv')
@@ -1956,18 +1963,18 @@ current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_Bon
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
-for run_id in [141, 142, 143, 144]:
+for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUNS FOR TESTING
     ### ---------------------------------------------------------------------------
     # set additional required paths
-    scripts_path = 'F:/MonteCarlo_Project/Cornell_UNC/TampaBayWater/data_management'
-    ampl_output_path = 'F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMPL_files/run0' + str(run_id)
-    oms_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_' + str(run_id)
-    output_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_output'
+    scripts_path = local_base_path + '/TampaBayWater/data_management'
+    ampl_output_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
+    oms_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
+    output_path = local_base_path + local_data_sub_path + '/local_results'
     
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    start_fy = 2020; end_fy = 2040; n_reals_tested = 999
+    start_fy = 2020; end_fy = 2040; n_reals_tested = 1 # NOTE: DAVID'S LOCAL CP ONLY HAS 125 MC REALIZATION FILES 0-200 FOR TESTING
     for sim in range(0,len(DVs)): # sim = 0 for testing
     #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
         ### ----------------------------------------------------------------------- ###

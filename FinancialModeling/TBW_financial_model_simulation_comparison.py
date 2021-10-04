@@ -11,10 +11,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-data_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_output'
+data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/local_results'
 
 # plot data across simulations/evaluations and all realizations
-for run_id in [125,141,142,143,144]:
+for run_id in [125]:
     n_sims = 3; sim_colors = ['g', 'g', 'g']; sim_type = ['Hands-Off', 'Fixed', 'Controlled Growth']
 #    fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (14,5))
     for sim in range(0,n_sims):
