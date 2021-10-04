@@ -182,9 +182,9 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     # manually pulled from reports and Water Sales Revenue
     import os; os.chdir(historical_financial_data_path)
     variable_rate = []; full_rate = []; tbc_rate = []; debt_service = []
-    fund_balance = []; rate_stab_fund_net_change = []; rr_fund_net_change = []
-    gross_revenue = []; non_sales_revenue = []
-    for year in range(2010,2020):
+    fund_balance = [];
+    gross_revenue = []; 
+    for year in range(most_recent_year-n_fiscal_years,most_recent_year):
         if os.path.exists('Water Sales Revenue ' + str(year) + '-WS.xlsx'):
             variable_rate_data = pd.read_excel('Water Sales Revenue ' + str(year) + '-WS.xlsx', skiprows = 0, sheet_name = 'Tpa')
         elif os.path.exists('Water Sales Revenue ' + str(year) + ' WS.xlsx'):
@@ -202,43 +202,32 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
         # replace empty '-' cells with 0. Doesn't seem to remove negative signs from filled cells (good)    
         hist_oper_data = hist_oper_data.replace('-',0)  
             
-        variable_rate.append(variable_rate_data.iloc[6,3])
+        if year == 2020:
+            variable_rate.append(0.4028)
+        else:
+            variable_rate.append(variable_rate_data.iloc[6,3])
         
-        # value not always given explicitly, seems to be $0.157/kgal every year
+        # value not always given explicitly, seems to be $0.157/kgal every year UNTIL FY20
         if np.isnan(variable_rate_data.iloc[4,3]):
             tbc_rate.append(0.157)
+        elif year > 2019:
+            tbc_rate.append(0.195)
         else:
             tbc_rate.append(variable_rate_data.iloc[4,3])
         
         # missing 2010 from data, will manually fill
         if year < 2011:
             full_rate.append(2.3980) # from 2019 CAFR, p.124
-            debt_service.append(74380770) # from 2016 Approved Operating Budget, p.104
             fund_balance.append(np.nan)
-            rate_stab_fund_net_change.append(np.nan)
-            rr_fund_net_change.append(np.nan) # $-250,000 from 2016 Approved Operating Budget, p.105 (leaving out, don't trust?)
-            gross_revenue.append(np.nan)
-            non_sales_revenue.append(np.nan)
         elif year < 2016:
             full_rate.append(hist_oper_data[year].iloc[3])
-            debt_service.append(hist_oper_data[year].iloc[30]) # 2011 value is lower from this source than seen elsewhere?
             fund_balance.append(hist_oper_data[year].iloc[37])
-            rate_stab_fund_net_change.append(-hist_oper_data[year].iloc[6])
-            rr_fund_net_change.append(hist_oper_data[year].iloc[33])
-            gross_revenue.append(hist_oper_data[year].iloc[12])
-            non_sales_revenue.append(hist_oper_data[year].iloc[9] + hist_oper_data[year].iloc[10] + hist_oper_data[year].iloc[11])
+        elif year == 2020:
+            full_rate.append(2.559)
+            fund_balance.append(29314554) # FROM FY21 APPROVED OPERATING BUDGET, P.26 TABLE
         else:
             full_rate.append(hist_oper_data[year].iloc[3])
-            debt_service.append(hist_oper_data[year].iloc[31])
             fund_balance.append(hist_oper_data[year].iloc[38])
-            rate_stab_fund_net_change.append(-hist_oper_data[year].iloc[6])
-            rr_fund_net_change.append(hist_oper_data[year].iloc[34])
-            gross_revenue.append(hist_oper_data[year].iloc[12])
-            non_sales_revenue.append(hist_oper_data[year].iloc[9] + hist_oper_data[year].iloc[10] + hist_oper_data[year].iloc[11])
-    
-    # r&r fund contributions manually entered for 2018 and 2019 (not in data yet)
-    rr_fund_net_change[8] = 3325468 - 1438279 # 2020 Annual Budget Report, p. 31
-    rr_fund_net_change[9] = 5509008 - 1013595 # from FY19 sources/uses spreadsheet
         
     acquisition_credits = [10231557, 10231557, 10231557, 10231557, 10231557, 
                            10231557, 10231557, 10231557, 10231557, 10231557,
@@ -251,9 +240,10 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
                                       usecols = (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))
     OperatingExpenses = OperatingExpenses.replace('-',0)
     
-    # re-ordered from 2010 to 2019
-    variable_operating_expenses = OperatingExpenses['Variable Cost Expenses'][::-1]
+    # re-ordered from 2010 to 2019, with FY2020 added in 10/2021
+    variable_operating_expenses = OperatingExpenses['Variable Cost Expenses'][::-1].tolist() + [9935948+11364291+708172]
     fixed_operating_expenses = OperatingExpenses['Total Operating Expenses'][::-1] - OperatingExpenses['Variable Cost Expenses'][::-1]
+    fixed_operating_expenses = fixed_operating_expenses.tolist() + [165098630-70354915-10231558-(9935948+11364291+708172)]
     
     # read in Restricted Assets (table 2) over time
     # NOTE: each row is different FY, row 0 is FY19, goes to FY10 in row 9
@@ -263,14 +253,17 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     RestrictedAssets = RestrictedAssets.replace('-',0)
 
     # re-ordered from 2010 to 2019
-    rr_fund_total = RestrictedAssets['Renewal and Replacement Funds'].values[::-1] + [np.nan]
+    rr_fund_total = RestrictedAssets['Renewal and Replacement Funds'].values[::-1].tolist()
+    rr_fund_total.append(32687852)  # FROM FY21 APPROVED OPERATING BUDGET, P.26 TABLE
     
     # collect reserve fund and rate stabilization fund balances
     # with end-of-FY amounts from FY2010 to FY2019
     RateStab = pd.read_excel(historical_financial_data_path + '/Rate Stabilization 2019 - FINAL.xls')
 #    FundBalance = pd.read_excel(historical_financial_data_path + '/Utility Rsrv -2019 - FINAL.xlsx')
     
-    rate_stab_fund_total = [x for x in RateStab.iloc[[182, 193, 209, 231, 250, 268, 285, 305, 334, 369],19]] + [np.nan]
+    rate_stab_fund_total = [x for x in RateStab.iloc[[182, 193, 209, 231, 250, 268, 285, 305, 334, 369],19]]
+    rate_stab_fund_total.append(35700886) # FROM FY21 APPROVED OPERATING BUDGET, P.26 TABLE
+    
     rate_stab_fund_deposit = [x for x in RateStab.iloc[[179, 191, 208, 228, 246, 261, 283, 303, 333, 367],20]] # not including unencumbered carryover
         
 #    fund_balance = [x for x in FundBalance.iloc[[142, 160, 178, 198, 221, 248, 291, 324, 358, 395],3]] # overwrite other record
@@ -341,7 +334,7 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     cip_fund_deposit = [np.nan, np.nan, 976653, 1727032, 2583103, 
                         2986952, 4592553, 5158861, 4215354, 5356993,
                         7427045]
-    cip_fund_total = RestrictedAssets['Capital Improvement Funds'].values[::-1] + [np.nan]
+    cip_fund_total = RestrictedAssets['Capital Improvement Funds'].values[::-1].tolist() + [25046262] # FROM FY21 APPROVED OPERATING BUDGET, P.26 TABLE
     
     # there is a debt service actuals discrepancy in 2015-16, so will overwrite
     # with numbers from budget reports as well
