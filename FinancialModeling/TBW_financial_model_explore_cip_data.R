@@ -9,7 +9,7 @@ hist_financial_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina
 CIP_Forecast = read.csv(paste(hist_financial_path, '/FinancialModelForecast10yrmultiplesourcesTBW.csv', sep = ''))
 
 # summarize the data for trend plotting
-library(tidyverse)
+library(tidyverse); library(reshape2)
 CIP_Forecast = CIP_Forecast[,c(2:ncol(CIP_Forecast))]
 CIPF_melt = melt(CIP_Forecast, id = c('Project.No.', 'Project.Name', 'Current.Funding.Source'))
 CIPF_melt$Dollars = gsub(CIPF_melt$value, pattern = '\\$', replacement = '')
@@ -17,6 +17,7 @@ CIPF_melt$Dollars = gsub(CIPF_melt$Dollars, pattern = ',', replacement = '')
 CIPF_melt$Dollars = as.numeric(as.character(CIPF_melt$Dollars))
 
 # plot some stuff to find basics
+require(scales)
 
 # without total needed, ignoring spending pre-FY21
 # then smooth out labels for plotting
@@ -26,8 +27,8 @@ CIPF_melt_sub$variable = plyr::revalue(CIPF_melt_sub$variable, c('Remaining.FY.2
                                         'FY.2026'='2026', 'FY.2027'='2027', 'FY.2028'='2028',
                                         'FY.2029'='2029', 'FY.2030'='2030', 'FY.2031'='2031', 'Future'='2032'))
 P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(variable)), y = Dollars, fill = Current.Funding.Source), 
-                                        color = NA, stat = 'identity') +
-  facet_wrap(Project.Name ~ ., ncol = 8, scales = "free_y")
+                                        color = NA, stat = 'identity') + 
+  facet_wrap(Project.Name ~ ., ncol = 8, scales = "free_y") + scale_y_continuous(labels = comma)
 ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP.png',
        dpi = 600, units = 'in', height = 14, width = 25)
 
@@ -40,8 +41,8 @@ CIPF_melt$TotalDollars = gsub(CIPF_melt$Total.Funds.Needed, pattern = '\\$', rep
 CIPF_melt$TotalDollars = gsub(CIPF_melt$TotalDollars, pattern = ',', replacement = '')
 CIPF_melt$TotalDollars = as.numeric(as.character(CIPF_melt$TotalDollars))
 
-CIPF_melt$`Total Capital Needed` = "Large (>$100m)"
-CIPF_melt$`Total Capital Needed`[which(CIPF_melt$TotalDollars <= 100000000)] = "Medium (>$10m, <$100m)"
+CIPF_melt$`Total Capital Needed` = "Large (>$75m)"
+CIPF_melt$`Total Capital Needed`[which(CIPF_melt$TotalDollars <= 75000000)] = "Medium (>$10m, <$75m)"
 CIPF_melt$`Total Capital Needed`[which(CIPF_melt$TotalDollars <= 10000000)] = "Small (<$10m)"
 
 CIPF_melt_sub = CIPF_melt[which(CIPF_melt$variable %in% unique(CIPF_melt$variable)[c(3,4:14)]),]
@@ -52,18 +53,63 @@ CIPF_melt_sub$variable = plyr::revalue(CIPF_melt_sub$variable, c('Remaining.FY.2
 CIPF_melt_sub = CIPF_melt_sub[which(CIPF_melt_sub$Project.Name != "Totals"),]
 P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(variable)), y = Dollars, fill = Current.Funding.Source), 
                                             color = NA, stat = 'identity') +
-  facet_wrap(`Total Capital Needed` ~ ., ncol = 3, scales = "free_y") + xlab("Fiscal Year\n(2032 includes all future funding TBA)")
+  facet_wrap(`Total Capital Needed` ~ ., ncol = 3, scales = "free_y") + 
+  xlab("Fiscal Year\n(2032 includes all future funding TBA)") + scale_y_continuous(labels = comma)
 ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP_bysize.png',
        dpi = 600, units = 'in', height = 6, width = 12)
 
 P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(variable)), y = Dollars, fill = Current.Funding.Source), 
                                             color = NA, stat = 'identity') +
-  facet_grid(Current.Funding.Source ~ `Total Capital Needed`, scales = "free_y") + xlab("Fiscal Year\n(2032 includes all future funding TBA)")
+  facet_grid(Current.Funding.Source ~ `Total Capital Needed`, scales = "free_y") + 
+  xlab("Fiscal Year\n(2032 includes all future funding TBA)") + scale_y_continuous(labels = comma)
 ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP_bysize_type.png',
        dpi = 600, units = 'in', height = 18, width = 15)
 
 # check out normalized repayment schedules... beginning from planned repayment start year,
 # how are each funding source doled out?
+rm(P); CIPF_normalizedbyyear = c()
+print(paste("Total CIP Projects (FY21 to FY31+): ", length(unique(CIPF_melt_sub$Project.Name)), sep = ""))
+for (project in unique(CIPF_melt_sub$Project.Name)) {
+  # isolate each project, select just years where it is funded, re-index them 0-X rather than 2021-2031
+  project_data = CIPF_melt_sub[which(CIPF_melt_sub$Project.Name == project),]
+  first_year_funded = min(as.numeric(as.character(project_data$variable[which(project_data$Dollars != 0)])))
+  last_year_funded = max(as.numeric(as.character(project_data$variable[which(project_data$Dollars != 0)])))
+  
+  reordered_data = project_data[which(as.numeric(as.character(project_data$variable)) >= first_year_funded & 
+                                        as.numeric(as.character(project_data$variable)) <= last_year_funded), 
+                                c("Project.Name", "Current.Funding.Source", 
+                                  "TotalDollars", "Dollars", "variable", "Total Capital Needed")]
+  reordered_data$Year = as.numeric(as.character(reordered_data$variable))
+  reordered_data$`Normalized Year Index` = reordered_data$Year - min(reordered_data$Year)
+  
+  # print some statistics
+  print(paste("Project Name: ", project_data$Project.Name, sep = ""))
+  print(paste("Project Total Cost: ", project_data$Total.Funds.Needed, sep = ""))
+  print(paste("Years of funding needed: ", last_year_funded - first_year_funded + 1, sep = ""))
+  print(paste("Number of funding sources: ", length(unique(reordered_data$Current.Funding.Source)), sep = ""))
+  
+  # combine into new dataset for plotting
+  CIPF_normalizedbyyear = rbind(CIPF_normalizedbyyear, reordered_data)
+}
 
+# plot results
+P = ggplot(data = CIPF_normalizedbyyear) + geom_bar(aes(x = `Normalized Year Index`, y = Dollars, fill = Current.Funding.Source), 
+                                                    color = NA, stat = 'identity') +
+  xlab("Years after First Year a Project is Funded") + scale_y_continuous(labels = comma)
+ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP_normalizedstartyear_all.png',
+       dpi = 600, units = 'in', height = 5, width = 8)
 
+P = ggplot(data = CIPF_normalizedbyyear) + geom_bar(aes(x = `Normalized Year Index`, y = Dollars, fill = Current.Funding.Source), 
+                                            color = NA, stat = 'identity') +
+  facet_wrap(`Total Capital Needed`~., scales = "free_y", ncol = 3) + 
+  xlab("Years after First Year a Project is Funded") + scale_y_continuous(labels = comma)
+ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP_normalizedstartyear.png',
+       dpi = 600, units = 'in', height = 6, width = 12)
+
+P = ggplot(data = CIPF_normalizedbyyear) + geom_bar(aes(x = `Normalized Year Index`, fill = Current.Funding.Source, y = Dollars), 
+                                                    color = NA, stat = 'identity', position = 'fill') +
+  facet_wrap(`Total Capital Needed`~., ncol = 3) + 
+  xlab("Years after First Year a Project is Funded")
+ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP_normalizedstartyear_relatives.png',
+       dpi = 600, units = 'in', height = 6, width = 12)
 
