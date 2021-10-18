@@ -849,9 +849,43 @@ def get_PotentialInfrastructureProjects(data_path = 'C:/Users/dgorelic/OneDrive 
     
     return debt_data
 
+def get_CIPSchedule(hist_financial_path):
+    # read in data from Maribel on CIP projects from FY21-31, clip and reorganize
+    import pandas as pd
+    cip_data = pd.read_excel(hist_financial_path + '/FinancialModelForecast10yrmultiplesourcesTBW.xlsx', sheet_name = 'Sheet1')
+    cip_data_cleaned = cip_data.iloc[6:,:].drop(columns = cip_data.columns[[0,1,3,4,16]], axis = 1)
+    cip_data_cleaned.columns = cip_data.iloc[5,[2,5,6,7,8,9,10,11,12,13,14,15,17,18,19,20,21,22,23]]
+    
+    # sum FY21 funding to get full year in a single column
+    cip_data_cleaned['FY 2021'] = cip_data_cleaned['Remaining FY 2021'] + cip_data_cleaned['Current FY Actual to Date']
+    
+    # reorganize as list-like object to easily index info within model
+    # NOTE: IGNORE PAST FUNDING FOR PROJECTS, ONLY WORRY ABOUT CURRENT AND FUTURE FYs
+    planned_cip_investment_by_FY = cip_data_cleaned[['Current Funding Source'] + ['FY ' + str(fy) for fy in list(range(2021,2032))] + ['Future']].iloc[:-1,:]
+    planned_investment_by_FY_aggregated_funding_source = planned_cip_investment_by_FY.groupby('Current Funding Source').sum()
 
+    # export for use in financial model
+    return planned_investment_by_FY_aggregated_funding_source
+    
 
-
+def get_ReserveDepositSchedule(hist_financial_path):
+    # read in data from Maribel on planned fund deposits from FY21-31
+    import pandas as pd
+    reserve_deposit_data = pd.read_excel(hist_financial_path + '/FinancialModelAvailableBalanceandDeposits10yrmultiplesourcesTBW.xlsx', sheet_name = 'Sheet1')
+    reserve_data_cleaned = reserve_deposit_data.iloc[9:,:].drop(columns = reserve_deposit_data.columns[[0,1,3,4,5]], axis = 1)
+    reserve_data_cleaned.columns = ['Type'] + list(reserve_deposit_data.iloc[8,[6,7,8,9,10,11,12,13,14,15,16,17,18]].values)
+    
+    # collect starting fund balances
+    reserve_fund_starting_balances = reserve_data_cleaned[reserve_data_cleaned['Type'] == 'Fund Projected Fiscal Year Beginning Balance'][['Fund Name','FY 2021']]
+    
+    # collect future annual projected fund deposits
+    reserve_fund_projected_deposits = reserve_data_cleaned[reserve_data_cleaned['Type'] != 'Fund Projected Fiscal Year Beginning Balance']
+    reserve_fund_projected_deposits = reserve_fund_projected_deposits.drop(columns = 'FY 2021')
+    reserve_fund_projected_deposits['FY 2021'] = reserve_fund_projected_deposits['Remaining FY 2021']
+    
+    # export for use in financial model
+    return reserve_fund_starting_balances, reserve_fund_projected_deposits
+    
 ### ---------------------------------------------------------------------------
 ### COLLECT AND CLEAN DATA BELOW
 ### ---------------------------------------------------------------------------
@@ -888,12 +922,21 @@ existing_issued_debt = get_ExistingDebt(model_path)
 # get potential projects and their specs
 potential_projects = get_PotentialInfrastructureProjects(model_path)
 
-### step 0d: export each dataset to be read by financial model
+
+# step 0d: collect and organize CIP data for model input
+# including planned investment by project size and
+# projected deposits into reserve funds
+projected_cip_expenditures = get_CIPSchedule(hist_financial_path)
+projected_reserve_fund_starting_balances, projected_FY_reserve_fund_deposits = get_ReserveDepositSchedule(hist_financial_path)
+
+
+### step 0e: export each dataset to be read by financial model
 # (exporting steps removed from above functions to be done here at end)
 existing_issued_debt.to_csv(model_path + '/existing_debt.csv', index = None)
 potential_projects.to_csv(model_path + '/potential_projects.csv', index = None)
 monthly_water_deliveries_and_sales.to_csv(model_path + '/water_sales_and_deliveries_all_2020.csv', index = None)
 annual_budget_data.to_csv(model_path + '/historical_actuals.csv', index = None)
 historical_annual_budget_projections.to_csv(model_path + '/historical_budgets.csv', index = None)
-
-
+projected_cip_expenditures.to_csv(model_path + '/projected_CIP_expenditures.csv')
+projected_reserve_fund_starting_balances.to_csv(model_path + '/projected_FY21_reserve_fund_starting_balances.csv', index = None)
+projected_FY_reserve_fund_deposits.to_csv(model_path + '/projected_reserve_fund_deposits.csv', index = None)
