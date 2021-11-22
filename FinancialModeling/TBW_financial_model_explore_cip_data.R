@@ -92,6 +92,86 @@ for (project in unique(CIPF_melt_sub$Project.Name)) {
   CIPF_normalizedbyyear = rbind(CIPF_normalizedbyyear, reordered_data)
 }
 
+# grab summary statistics for project repayment schedules
+CIP_raw_schedule = CIPF_melt_sub %>% 
+  group_by(Current.Funding.Source, `variable`, `Total Capital Needed`) %>% 
+  summarize(total = sum(Dollars))
+CIP_raw_schedule = CIP_raw_schedule %>% 
+  group_by(`variable`, Current.Funding.Source) %>% summarize(Total = sum(total))
+CIP_raw_schedule = reshape2::dcast(CIP_raw_schedule, 
+                                  `Current.Funding.Source` ~ `variable`)
+CIP_raw_schedule[1,2] = 7691664
+
+write.table(CIP_raw_schedule, sep = ",", row.names = FALSE,
+            'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data/original_CIP_spending_all_projects.csv')
+
+CIP_remaining_schedule = CIPF_melt_sub[which(CIPF_melt_sub$`Total Capital Needed` != "Large (>$75m)"),] %>% 
+  group_by(Current.Funding.Source, `variable`, `Total Capital Needed`) %>% 
+  summarize(total = sum(Dollars))
+CIP_remaining_schedule = CIP_remaining_schedule %>% 
+  group_by(`variable`, Current.Funding.Source) %>% summarize(Total = sum(total))
+CIP_remaining_schedule = reshape2::dcast(CIP_remaining_schedule, 
+                                   `Current.Funding.Source` ~ `variable`)
+CIP_remaining_schedule[1,2] = 7691664
+
+fraction_major_project_spending = 
+  round(1 - CIP_remaining_schedule[,2:ncol(CIP_remaining_schedule)]/CIP_raw_schedule[,2:ncol(CIP_raw_schedule)],2)
+fraction_major_project_spending[is.na(fraction_major_project_spending)] = 0
+rownames(fraction_major_project_spending) = CIP_remaining_schedule$Current.Funding.Source
+write.table(fraction_major_project_spending, sep = ",", col.names = NA,
+            'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data/original_CIP_spending_major_projects_fraction.csv')
+
+
+sum_repayment_per_year_schedule = CIPF_normalizedbyyear %>% 
+  group_by(Current.Funding.Source, `Normalized Year Index`, `Total Capital Needed`) %>% 
+  summarize(total = sum(Dollars))
+all_project_schedule = sum_repayment_per_year_schedule %>% 
+  group_by(`Normalized Year Index`, Current.Funding.Source) %>% summarize(Total = sum(total))
+all_project_schedule = reshape2::dcast(all_project_schedule, 
+                                      `Current.Funding.Source` ~ `Normalized Year Index`)
+write.table(all_project_schedule, sep = ",", row.names = FALSE,
+            'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data/normalized_CIP_spending_all_projects.csv')
+
+major_project_schedule = 
+  sum_repayment_per_year_schedule[which(sum_repayment_per_year_schedule$`Total Capital Needed` == "Large (>$75m)"),] %>%
+  group_by(`Normalized Year Index`, Current.Funding.Source) %>% summarize(Total = sum(total)) 
+major_project_schedule = reshape2::dcast(major_project_schedule, 
+                                         `Current.Funding.Source` ~ `Normalized Year Index`)
+major_project_fractional_splits_over_time = colSums(major_project_schedule[,2:ncol(major_project_schedule)]) / 
+  sum(major_project_schedule[,2:ncol(major_project_schedule)])
+
+major_project_fractional_splits_over_source = t(t(major_project_schedule[,2:ncol(major_project_schedule)]) / 
+                                                  colSums(major_project_schedule[,2:ncol(major_project_schedule)]))
+remaining_project_schedule = 
+  sum_repayment_per_year_schedule[which(sum_repayment_per_year_schedule$`Total Capital Needed` != "Large (>$75m)"),] %>%
+  group_by(`Normalized Year Index`, Current.Funding.Source) %>% summarize(Total = sum(total))
+remaining_project_schedule = reshape2::dcast(remaining_project_schedule, 
+                                         `Current.Funding.Source` ~ `Normalized Year Index`)
+remaining_project_fractional_splits_over_time = colSums(remaining_project_schedule[,2:ncol(remaining_project_schedule)], na.rm = TRUE) / 
+  sum(remaining_project_schedule[,2:ncol(remaining_project_schedule)], na.rm = TRUE)
+
+remaining_project_fractional_splits_over_source = t(t(remaining_project_schedule[,2:ncol(remaining_project_schedule)]) / 
+                                                  colSums(remaining_project_schedule[,2:ncol(remaining_project_schedule)], na.rm = TRUE))
+
+
+# calculate some summary stats for input to financial model as default splits
+fraction_cip_spending_for_other_projects = sum(remaining_project_schedule[,2:ncol(remaining_project_schedule)], na.rm = TRUE)/
+  (sum(remaining_project_schedule[,2:ncol(remaining_project_schedule)], na.rm = TRUE) + 
+     sum(major_project_schedule[,2:ncol(major_project_schedule)]))
+
+remaining_project_schedule[is.na(remaining_project_schedule)] = 0
+all_project_schedule[is.na(all_project_schedule)] = 0
+fraction_cip_spending_for_other_projects_by_source = round(
+  remaining_project_schedule[,2:ncol(remaining_project_schedule)] / 
+  all_project_schedule[,2:ncol(all_project_schedule)], 2)
+
+fraction_cip_spending_for_major_projects_by_source = 1 - fraction_cip_spending_for_other_projects_by_source
+rownames(fraction_cip_spending_for_major_projects_by_source) = all_project_schedule$Current.Funding.Source
+
+fraction_cip_spending_for_major_projects_by_source[is.na(fraction_cip_spending_for_major_projects_by_source)] = 0
+write.table(fraction_cip_spending_for_major_projects_by_source, sep = ",", col.names = NA,
+           'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data/normalized_CIP_spending_major_projects_fraction.csv')
+
 # plot results
 P = ggplot(data = CIPF_normalizedbyyear) + geom_bar(aes(x = `Normalized Year Index`, y = Dollars, fill = Current.Funding.Source), 
                                                     color = NA, stat = 'identity') +
