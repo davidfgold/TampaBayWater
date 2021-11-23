@@ -400,6 +400,31 @@ def add_NewOperationalCosts(possible_projs,
     
     return new_fixed_costs, new_variable_costs
 
+def allocate_InitialAnnualCIPSpending(start_year, end_year, 
+                                      CIP_plan, 
+                                      fraction_cip_spending_for_major_projects_by_year_by_source,
+                                      generic_CIP_plan,
+                                      generic_fraction_cip_spending_for_major_projects_by_year_by_source):
+    # set up estimate of annual capital expenditures schedule 
+    # for full modeling period. if running historical period,
+    # use normalized cip plan. if running 2021 start date, begin with 
+    # true plan and follow with generic/normalized spending after FY2031
+    # for building: start_year = start_fiscal_year; end_year = end_fiscal_year
+    n_sources_for_cip_spending = len(CIP_plan)
+    full_period_cip_expenditures = np.empty((end_year-start_year+1,n_sources_for_cip_spending))
+    full_period_cip_expenditures[:] = np.nan
+    
+    if start_year < 2020 and end_year < 2022: 
+        # if running historic sim, use generic/normalized cip schedule
+        
+    else:
+        # if running future simulation, ASSUME FY2021 start
+        # and follow 2021-2031 schedule, succeeded by normalized
+        # schedule post-FY2031
+        
+        
+    return full_period_cip_expenditures
+
 def estimate_UniformRate(annual_estimate, 
                          demand_estimate,
                          current_uniform_rate,
@@ -508,6 +533,7 @@ def calculate_TrueDeliveriesWithSlack(m_index, m_month, AMPL_data, TBC_data):
 
 def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales,
                             annual_budget, budget_projections, water_deliveries_and_sales, 
+                            CIP_plan, reserve_balances, reserve_deposits,
                             AMPL_cleaned_data, TBC_raw_sales_to_CoT, Month, Year,
                             fiscal_years_to_keep, first_modeled_fy, n_months_in_year, 
                             annual_demand_growth_rate, last_fy_month,
@@ -528,15 +554,15 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     # to collect data into proper datasets for use in realization loop
     for fy in fiscal_years_to_keep:
         # set up budgets dataset, there are historic budgets through FY 2021
-        # for historical simulation, must start at FY2017 or later, because
-        # I only have budgets back to FY2016 and need one previous-FY budget
+        # for historical simulation, must start at FY2015 or later, because
+        # I only have budgets back to FY2014 and need one previous-FY budget
         # in the dataset for calculations
         assert (np.max([earliest_fy_budget_available,
                         earliest_fy_actuals_available,
                         earliest_fy_sales_available]) <= fy), \
                 "Must start at later FY: full historic records not available."
         
-        if fy <= first_modeled_fy+1:
+        if fy <= first_modeled_fy:
             current_fy_index = [tf for tf in (budget_projections['Fiscal Year'] == fy)]
             annual_budgets.loc[annual_budgets['Fiscal Year'] == fy,:] = [v for v in budget_projections.iloc[current_fy_index,:].values]
         
@@ -545,20 +571,17 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
         # record as well as add in any records from modeling
         # HARD-CODED ASSUMPTION HERE (AND ABOVE WHERE MODELING DATA IS READ)
         # IS THAT MODELING BEGINS WITH JAN 1, 2021
-        # but first_modeled_year is 2020 because we only have FY actuals through FY19
         if fy <= first_modeled_fy:
             # fill from historic data
             current_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == fy)]
             water_delivery_sales.loc[water_delivery_sales.iloc[:,0] == fy,2:] = water_deliveries_and_sales.iloc[current_fy_index,1:-3].values
             
-            # repeat for actuals from historic record (go through FY 2019 now that observed data fills out the record)
-            # skip 2020 because we have delivery data for it and can back-calculate revenues but don't have full observed actuals
-            if fy != 2020:
-                current_fy_index = [tf for tf in (annual_budget['Fiscal Year'] == fy)]
-                annual_actuals.loc[annual_actuals.iloc[:,0] == fy,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
-        elif fy == first_modeled_fy+1:
-            # special case with 3 months of observed data in Oct-Dec 2020
-            # followed by 9 months of model data - for this year, use FY21 proposed budget to calculate revenues
+            # repeat for actuals from historic record (go through FY 2020 now that observed data fills out the record)
+            current_fy_index = [tf for tf in (annual_budget['Fiscal Year'] == fy)]
+            annual_actuals.loc[annual_actuals.iloc[:,0] == fy,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
+        elif fy == first_modeled_fy:
+            # special case with 3 months of observed data in Oct-Dec 2020 for start of FY2021
+            # followed by 9 months of model data - for this year, use FY21 accepted budget to calculate revenues
             current_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == fy)]
             water_delivery_sales.loc[(water_delivery_sales['Fiscal Year'] == fy) & (water_delivery_sales['Month'] > last_fy_month),2:] = water_deliveries_and_sales.iloc[current_fy_index,1:-3].values
             
@@ -1710,6 +1733,12 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            existing_issued_debt,
                                            existing_debt_targets,
                                            potential_projects,
+                                           CIP_plan,
+                                           fraction_cip_spending_for_major_projects_by_year_by_source,
+                                           generic_CIP_plan,
+                                           generic_fraction_cip_spending_for_major_projects_by_year_by_source,
+                                           reserve_balances,
+                                           reserve_deposits,
                                            realization_id = 1,
                                            additional_scripts_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization',
                                            orop_output_path = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned', 
@@ -1723,13 +1752,16 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     
     ### -----------------------------------------------------------------------
     # constants (some assigned elsewhere...)
-    last_fy_month = 9; first_modeled_fy = 2020
+    last_fy_month = 9; first_modeled_fy = 2021
     n_months_in_year = 12
     accumulated_new_operational_fixed_costs_from_infra = 0
     accumulated_new_operational_variable_costs_from_infra = 0
     
     # deeply uncertain factors ACTIVE IN THIS LAYER OF MODEL (rest elsewhere)
     annual_demand_growth_rate = rdm_factors[5]
+    
+    # decision variables ACTIVE HERE
+    # none
 
     # give number of variables tracked in outputs
     n_financial_metric_outcomes = 15
@@ -1803,11 +1835,68 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     annual_actuals, annual_budgets, water_delivery_sales = \
         collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales,
                                 annual_budget, budget_projections, water_deliveries_and_sales, 
+                                CIP_plan, reserve_balances, reserve_deposits,
                                 AMPL_cleaned_data, TBC_raw_sales_to_CoT, Month, Year,
                                 fiscal_years_to_keep, first_modeled_fy, n_months_in_year, 
                                 annual_demand_growth_rate, last_fy_month, 
                                 outpath)
-
+        
+    ### -----------------------------------------------------------------------
+    # step 1c: organize CIP spending by major water supply projects and 
+    #           all other capital expenses. Assume major projects are either
+    #           future debt financed via bonds or co-funded with SWFWMD 
+    #           (unless overridden for customized funding split designated 
+    #           by decision variables) and all other projects are split 
+    #           according to trends observed in the FY2022-2031 CIP Report,
+    #           generally allocated annually such that:
+    #
+    #               MAJOR PROJECT 10-YEAR SCHEDULE (about $850M over 10 years)
+    #               (as fraction of total investment paid per year)
+    #               (and split between bond/co-funding)
+    #               Y0: 5%      (99/1)
+    #               Y1: 5.7%    (93/7)
+    #               Y2: 6.2%    (96/4)
+    #               Y3: 6.2%    (96/4)
+    #               Y4: 20.6%   (64/36)
+    #               Y5: 31.6%   (58/42)
+    #               Y6: 11.4%   (71/29)
+    #               Y7: 10.9%   (72/28)
+    #               Y8: 2.3%    (50/50)
+    #               Y9: NA
+    #               Y+: NA
+    #
+    #               OTHER PROJECT 10-YEAR SCHEDULE (<$75M CAPITAL COST PER PROJ.)
+    #               (about $380M over 10-year period)
+    #               (as fraction of total investment paid per year)
+    #               (and split between CIF, Energy Fund, Member Contribution,
+    #                R&R Fund, Past Bonds 1, Past Bonds 2, Future Bonds,
+    #                State Grant, SWFWMD, Uniform Rate)
+    #               Y0: 9.6%    (0.27 0.03 0.08 0.33    0 0.04 0.11 0.00 0.04  0.10)
+    #               Y1: 15.1%   (0.29 0.02 0.05 0.29    0 0.04 0.20 0.01 0.03  0.06)
+    #               Y2: 18.2%   (0.28 0.01 0.04 0.17    0 0.03 0.40 0.00 0.05  0.02)
+    #               Y3: 14%     (0.20   NA 0.05 0.16   NA 0.00 0.54   NA 0.05  0.01)
+    #               Y4: 15%     (0.07   NA 0.20 0.04   NA 0.00 0.48   NA 0.20  0.00)
+    #               Y5: 11.1%   (0.03   NA 0.43 0.04   NA   NA 0.08   NA 0.43  0.00)
+    #               Y6: 11%     (0.03   NA 0.43 0.10   NA   NA 0.00   NA 0.43  0.00)
+    #               Y7: 5%      (0.06   NA 0.36 0.23   NA   NA 0.00   NA 0.36  0.00)
+    #               Y8: 1%      (0.33   NA   NA 0.67   NA   NA 0.00   NA   NA  0.00)
+    #               Y9: NA
+    #               Y+: NA
+    #
+    #   NOTE: the payment schedules commented here are "normalized" from the CIP Report,
+    #       meaning that, within the classes of projects (major/other), 
+    #       individual projects were standardized to a generic start date of repayment
+    #       to isolate general repayment practices for different classes of project.
+    #       After the next decade of CIP, the model WILL ASSUME A MORE UNIFORM ANNUAL
+    #       DIVISION OF CAPTIAL EXPENDITURES until the end of planning period (2040).
+    #       But for 2021-2031: MODEL WILL FOLLOW SCHEDULED (NOT NORMALIZED) CIP REPORT.
+    planned_annual_cip_expenditures_by_source_full_model_period = \
+        allocate_InitialAnnualCIPSpending(start_fiscal_year, end_fiscal_year,
+                                          CIP_plan, 
+                                          fraction_cip_spending_for_major_projects_by_year_by_source,
+                                          generic_CIP_plan,
+                                          generic_fraction_cip_spending_for_major_projects_by_year_by_source)
+    
     ### -----------------------------------------------------------------------
     # step 2: take an annual step loop over water supply outcomes for future
     #           collect summed water deliveries to each member government
@@ -1952,21 +2041,34 @@ DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
 ### ---------------------------------------------------------------------------
 # read in historic records
 historical_data_path = local_base_path + local_data_sub_path + '/model_input_data'
+
 monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + '/water_sales_and_deliveries_all_2020.csv')
 historical_annual_budget_projections = pd.read_csv(historical_data_path + '/historical_budgets.csv')
 annual_budget_data = pd.read_csv(historical_data_path + '/historical_actuals.csv')
 existing_debt = pd.read_csv(historical_data_path + '/existing_debt.csv')
 infrastructure_options = pd.read_csv(historical_data_path + '/potential_projects.csv')
 current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
+projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
+projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
+normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projects.csv')
+normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fraction.csv')
+projected_first_year_reserve_fund_balances = pd.read_csv(historical_data_path + '/projected_FY21_reserve_fund_starting_balances.csv')
+projected_10year_reserve_fund_deposits = pd.read_csv(historical_data_path + '/projected_reserve_fund_deposits.csv')
 
+# for simplicity? organize all input data into data dictionary to make
+# passing to functions easier THIS TBD
+#ALL_INPUT_DATA = {'Data Name': '',
+#                  'Data Structure': monthly_water_deliveries_and_sales}
 
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
-for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUNS FOR TESTING
+for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
+    # run for testing: run_id = 125; sim = 0; r_id = 1
+    
     ### ---------------------------------------------------------------------------
     # set additional required paths
-    scripts_path = local_base_path + '/TampaBayWater/data_management'
+    scripts_path = local_base_path + local_code_sub_path + '/TampaBayWater/data_management'
     ampl_output_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
     oms_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
     output_path = local_base_path + local_data_sub_path + '/local_results'
@@ -1974,9 +2076,9 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUNS FOR TESTING
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    start_fy = 2020; end_fy = 2040; n_reals_tested = 1 # NOTE: DAVID'S LOCAL CP ONLY HAS 125 MC REALIZATION FILES 0-200 FOR TESTING
-    for sim in range(0,len(DVs)): # sim = 0 for testing
-    #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
+    start_fy = 2015; end_fy = 2021; n_reals_tested = 1 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    #for sim in range(0,len(DVs)): # sim = 0 for testing
+    for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
         ### ----------------------------------------------------------------------- ###
         ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
         ### ----------------------------------------------------------------------- ###  
@@ -1995,8 +2097,9 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUNS FOR TESTING
                 continue
             
     #    for r_id in range(1,2): # r_id = 1 for testing
-            # run this line for testing : ACTIVE_DEBUGGING = True; PRE_CLEANED = True; start_fiscal_year = 2015;end_fiscal_year = 2020;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;potential_projects = infrastructure_options;realization_id = r_id;additional_scripts_path = scripts_path;orop_oms_output_path = ampl_output_path;
-            
+            # run this line for testing: 
+            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction   
+                        
             budget_projection, actuals, outcomes, water_vars, final_debt = \
                 run_FinancialModelForSingleRealization(
                         start_fiscal_year = start_fy, end_fiscal_year = end_fy,
@@ -2009,6 +2112,12 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUNS FOR TESTING
                         existing_issued_debt = existing_debt,
                         existing_debt_targets = current_debt_targets,
                         potential_projects = infrastructure_options,
+                        CIP_plan = projected_10year_CIP_spending,
+                        fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction,
+                        generic_CIP_plan = normalized_CIP_spending,
+                        generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction,
+                        reserve_balances = projected_first_year_reserve_fund_balances,
+                        reserve_deposits = projected_10year_reserve_fund_deposits,
                         realization_id = r_id, 
                         additional_scripts_path = scripts_path,
                         orop_output_path = ampl_output_path,
