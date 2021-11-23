@@ -419,14 +419,17 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
     full_period_major_cip_expenditures.columns = ['Year'] + [x for x in CIP_plan['Current.Funding.Source'].values]
     
     # separate cip schedules for (1) major water supply projects and (2) all other projs
-    full_period_other_cip_expenditures = full_period_major_cip_expenditures
+    full_period_other_cip_expenditures = np.empty((end_year-start_year+1,n_sources_for_cip_spending+1))
+    full_period_other_cip_expenditures[:] = np.nan; full_period_other_cip_expenditures[:,0] = range(start_year,(end_year+1))
+    full_period_other_cip_expenditures = pd.DataFrame(full_period_other_cip_expenditures)
+    full_period_other_cip_expenditures.columns = ['Year'] + [x for x in CIP_plan['Current.Funding.Source'].values]
             
     n_total_years_to_use = len(full_period_major_cip_expenditures)        
     if end_year <= first_modeled_fy: 
         # if running historic sim, use generic/normalized cip schedule
         # NOTE: assume that historic simulation is no more than 9 years in 
         #   length (2014 earliest to 2021 latest), otherwise throw error
-        assert (end_year-start_year > n_available_generic_years), \
+        assert (end_year-start_year <= n_available_generic_years), \
             "Error in allocate_InitialAnnualCIPSpending: CIP scheduling not designed for historic simulation longer than 9 years"
         
         # beginning at start of generic CIP schedule, fill in historic plan and 
