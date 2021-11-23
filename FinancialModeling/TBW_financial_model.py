@@ -400,7 +400,7 @@ def add_NewOperationalCosts(possible_projs,
     
     return new_fixed_costs, new_variable_costs
 
-def allocate_InitialAnnualCIPSpending(start_year, end_year, 
+def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
                                       CIP_plan, 
                                       fraction_cip_spending_for_major_projects_by_year_by_source,
                                       generic_CIP_plan,
@@ -411,19 +411,84 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year,
     # true plan and follow with generic/normalized spending after FY2031
     # for building: start_year = start_fiscal_year; end_year = end_fiscal_year
     n_sources_for_cip_spending = len(CIP_plan)
-    full_period_cip_expenditures = np.empty((end_year-start_year+1,n_sources_for_cip_spending))
-    full_period_cip_expenditures[:] = np.nan
+    n_available_generic_years = len(generic_CIP_plan.T)-1
+            
+    full_period_major_cip_expenditures = np.empty((end_year-start_year+1,n_sources_for_cip_spending+1))
+    full_period_major_cip_expenditures[:] = np.nan; full_period_major_cip_expenditures[:,0] = range(start_year,(end_year+1))
+    full_period_major_cip_expenditures = pd.DataFrame(full_period_major_cip_expenditures)
+    full_period_major_cip_expenditures.columns = ['Year'] + [x for x in CIP_plan['Current.Funding.Source'].values]
     
-    if start_year < 2020 and end_year < 2022: 
+    # separate cip schedules for (1) major water supply projects and (2) all other projs
+    full_period_other_cip_expenditures = full_period_major_cip_expenditures
+            
+    n_total_years_to_use = len(full_period_major_cip_expenditures)        
+    if end_year <= first_modeled_fy: 
         # if running historic sim, use generic/normalized cip schedule
+        # NOTE: assume that historic simulation is no more than 9 years in 
+        #   length (2014 earliest to 2021 latest), otherwise throw error
+        assert (end_year-start_year > n_available_generic_years), \
+            "Error in allocate_InitialAnnualCIPSpending: CIP scheduling not designed for historic simulation longer than 9 years"
         
+        # beginning at start of generic CIP schedule, fill in historic plan and 
+        # multiply by the inverse of the fraction used for major projects only 
+        # repeat for major projects schedule, but dont invert fraction multiplier
+        full_period_other_cip_expenditures.iloc[:,1:] = \
+            generic_CIP_plan.iloc[:,1:(n_total_years_to_use+1)].T.values * \
+            (1 - generic_fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
+        full_period_major_cip_expenditures.iloc[:,1:] = \
+            generic_CIP_plan.iloc[:,1:(n_total_years_to_use+1)].T.values * \
+            (generic_fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
     else:
         # if running future simulation, ASSUME FY2021 start
         # and follow 2021-2031 schedule, succeeded by normalized
         # schedule post-FY2031
+        n_years_initial_cip_plan = (len(CIP_plan.T)-2)
+        if n_total_years_to_use > n_years_initial_cip_plan:
+            # if the future simulation extends beyond 2031, append generic record afterward
+            # if it extends further than 8 years after 2032, repeat the generic schedule again.
+            # NOTE: for reading CIP_plan, ignore FY2032 last column because it is really a
+            #   placeholder for carry-over funding after the 10-year planning window.
+            full_period_other_cip_expenditures.iloc[:n_years_initial_cip_plan,1:(len(CIP_plan)+1)] = \
+                CIP_plan.iloc[:,1:-1].T.values * \
+                (1 - fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:-1].T.values)
+            full_period_major_cip_expenditures.iloc[:n_years_initial_cip_plan,1:(len(CIP_plan)+1)] = \
+                CIP_plan.iloc[:,1:-1].T.values * \
+                (fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:-1].T.values)
+            
+            # if additional scheduling is needed, determine how many of those generic years must be applied
+            n_generic_years_to_use = min((n_total_years_to_use - n_years_initial_cip_plan), n_available_generic_years)
+            full_period_other_cip_expenditures.iloc[n_years_initial_cip_plan:(n_years_initial_cip_plan + n_generic_years_to_use),1:] = \
+                generic_CIP_plan.iloc[:,1:(n_total_years_to_use+1)].T.values * \
+                (1 - generic_fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
+            full_period_major_cip_expenditures.iloc[n_years_initial_cip_plan:(n_years_initial_cip_plan + n_generic_years_to_use),1:] = \
+                generic_CIP_plan.iloc[:,1:(n_total_years_to_use+1)].T.values * \
+                (generic_fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
+            
+            # if more than one iteration of generic CIP schedule is needed, determine how much and apply
+            # NOTE: this assumes the planning period is not longer than 11 + 9 + 9 = 29 years (2021-2049)
+            if (n_total_years_to_use - n_years_initial_cip_plan) > n_available_generic_years:
+                n_remaining_years_to_fill = (n_total_years_to_use - n_years_initial_cip_plan) - n_available_generic_years
+                full_period_other_cip_expenditures.iloc[-n_remaining_years_to_fill:,1:] = \
+                    generic_CIP_plan.iloc[:,1:(n_remaining_years_to_fill+1)].T.values * \
+                    (1 - generic_fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_remaining_years_to_fill+1)].T.values)
+                full_period_major_cip_expenditures.iloc[-n_remaining_years_to_fill:,1:] = \
+                    generic_CIP_plan.iloc[:,1:(n_remaining_years_to_fill+1)].T.values * \
+                    (generic_fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_remaining_years_to_fill+1)].T.values)
+            
+            # NOTE: remove past-due revenue bond expenditures from future spending schedule
+            full_period_other_cip_expenditures['Revenue Bonds (320)'].loc[n_years_initial_cip_plan:] = 0
+            full_period_other_cip_expenditures['Revenue Bonds (350)'].loc[n_years_initial_cip_plan:] = 0
+        else:
+            # if doing a short future simulation (stops before 2032), no need to
+            # append generic normalized cip schedule.
+            full_period_other_cip_expenditures.iloc[:n_total_years_to_use,1:(len(CIP_plan)+1)] = \
+                CIP_plan.iloc[:,1:(n_total_years_to_use+1)].T.values * \
+                (1 - fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
+            full_period_major_cip_expenditures.iloc[:n_total_years_to_use,1:(len(CIP_plan)+1)] = \
+                CIP_plan.iloc[:,1:(n_total_years_to_use+1)].T.values * \
+                (fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
         
-        
-    return full_period_cip_expenditures
+    return full_period_major_cip_expenditures, full_period_other_cip_expenditures
 
 def estimate_UniformRate(annual_estimate, 
                          demand_estimate,
@@ -1341,7 +1406,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
 
     return annual_actuals, annual_budgets, financial_metrics
     
-def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data, 
+def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_data, 
                             annual_budgets, annual_actuals, financial_metrics, 
                             existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
                             accumulated_new_operational_fixed_costs_from_infra,
@@ -1350,7 +1415,6 @@ def calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data,
                             rdm_factor_list,
                             ACTIVE_DEBUGGING):
     # set constants and variables as necessary
-    first_modeled_fy = 2020
     convert_kgal_to_MG = 1000
     n_days_in_year = 365
     
@@ -1890,8 +1954,8 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     #       After the next decade of CIP, the model WILL ASSUME A MORE UNIFORM ANNUAL
     #       DIVISION OF CAPTIAL EXPENDITURES until the end of planning period (2040).
     #       But for 2021-2031: MODEL WILL FOLLOW SCHEDULED (NOT NORMALIZED) CIP REPORT.
-    planned_annual_cip_expenditures_by_source_full_model_period = \
-        allocate_InitialAnnualCIPSpending(start_fiscal_year, end_fiscal_year,
+    planned_major_cip_expenditures_by_source_full_model_period, planned_other_cip_expenditures_by_source_full_model_period = \
+        allocate_InitialAnnualCIPSpending(start_fiscal_year, end_fiscal_year, first_modeled_fy,
                                           CIP_plan, 
                                           fraction_cip_spending_for_major_projects_by_year_by_source,
                                           generic_CIP_plan,
@@ -1998,7 +2062,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
         annual_budgets, existing_issued_debt, potential_projects, \
                 accumulated_new_operational_fixed_costs_from_infra, \
                 accumulated_new_operational_variable_costs_from_infra = \
-            calculate_NextFYBudget(FY, current_FY_data, past_FY_year_data, 
+            calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_data, 
                                         annual_budgets, annual_actuals, financial_metrics, 
                                         existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
                                         accumulated_new_operational_fixed_costs_from_infra,
