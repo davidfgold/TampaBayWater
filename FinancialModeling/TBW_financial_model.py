@@ -400,11 +400,13 @@ def add_NewOperationalCosts(possible_projs,
     
     return new_fixed_costs, new_variable_costs
 
+
 def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
                                       CIP_plan, 
                                       fraction_cip_spending_for_major_projects_by_year_by_source,
                                       generic_CIP_plan,
-                                      generic_fraction_cip_spending_for_major_projects_by_year_by_source):
+                                      generic_fraction_cip_spending_for_major_projects_by_year_by_source,
+                                      outpath, PRINT_INITIAL_ALLOCATIONS = True):
     # set up estimate of annual capital expenditures schedule 
     # for full modeling period. if running historical period,
     # use normalized cip plan. if running 2021 start date, begin with 
@@ -416,13 +418,13 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
     full_period_major_cip_expenditures = np.empty((end_year-start_year+1,n_sources_for_cip_spending+1))
     full_period_major_cip_expenditures[:] = np.nan; full_period_major_cip_expenditures[:,0] = range(start_year,(end_year+1))
     full_period_major_cip_expenditures = pd.DataFrame(full_period_major_cip_expenditures)
-    full_period_major_cip_expenditures.columns = ['Year'] + [x for x in CIP_plan['Current.Funding.Source'].values]
+    full_period_major_cip_expenditures.columns = ['Fiscal Year'] + [x for x in CIP_plan['Current.Funding.Source'].values]
     
     # separate cip schedules for (1) major water supply projects and (2) all other projs
     full_period_other_cip_expenditures = np.empty((end_year-start_year+1,n_sources_for_cip_spending+1))
     full_period_other_cip_expenditures[:] = np.nan; full_period_other_cip_expenditures[:,0] = range(start_year,(end_year+1))
     full_period_other_cip_expenditures = pd.DataFrame(full_period_other_cip_expenditures)
-    full_period_other_cip_expenditures.columns = ['Year'] + [x for x in CIP_plan['Current.Funding.Source'].values]
+    full_period_other_cip_expenditures.columns = ['Fiscal Year'] + [x for x in CIP_plan['Current.Funding.Source'].values]
             
     n_total_years_to_use = len(full_period_major_cip_expenditures)        
     if end_year <= first_modeled_fy: 
@@ -491,7 +493,79 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
                 CIP_plan.iloc[:,1:(n_total_years_to_use+1)].T.values * \
                 (fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
         
+    if PRINT_INITIAL_ALLOCATIONS:
+        full_period_major_cip_expenditures.to_csv(outpath + '/baseline_CIP_major_expenditures.csv')
+        full_period_other_cip_expenditures.to_csv(outpath + '/baseline_CIP_other_expenditures.csv')
+        
     return full_period_major_cip_expenditures, full_period_other_cip_expenditures
+
+
+def update_MajorSupplyInfrastructureInvestment(FOLLOW_CIP_SCHEDULE = True,
+                                               FY, 
+                                               first_modeled_fy = 2021, 
+                                               last_fy_month = 9, 
+                                               Month, 
+                                               Year, 
+                                               formulation_id,
+                                               AMPL_cleaned_data,
+                                               planned_major_cip_expenditures_by_source_full_model_period):
+    
+    # when new FY starts, reset checkers and other variables
+    new_projects_to_finance = []
+    
+    # track if new infrastructure is triggered in the current FY
+    if ((len(AMPL_cleaned_data) > 1) and (FY > first_modeled_fy)): # if using model data
+        model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
+        model_index_subset = [(int(Month[d]) == last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
+        
+        # for initial tests and model runs, "artificially" include
+        # SHC Balm pipeline debt starting 3 years before FY2028
+        # when it is expected to be built, for now hard-coded at
+        # 2025 to trigger project ID 5, which is the 36in diameter pipe
+        # supplying a max capacity of 12.5 MGDs
+        
+        # Nov 2020: depending on infrastructure scenario, trigger different projects
+        # NOTE: PROJECTS USED FOR 126 AND 128 FINANCING MAY NOT BE EXACT ONES FROM SWRM MODEL
+        #   NOTES ON MODEL RUNS SAY 126 IS SWTP EXPANSION TO 110MGD, 128 IS EXP. TO 120MGD
+        # run 125: proj ID 5 (small balm pipeline) in 2025
+        # run 126: ID 5 in 2025, ID 3 in 2025 (SWTP expansion by 10 MGD)
+        # run 128: ID 5 in 2025, ID 4 in 2025 (SWTP expansion by 12.5 MGD)
+        if FY == 2025:
+            AMPL_cleaned_data['Trigger Variable'].loc[model_index] = 5
+            
+            # assuming model_index is a vector of all days in current FY,
+            # if a run triggers more than one project, change the trigger variable of the final
+            # index month to the second project ID
+            if formulation_id == 126:
+                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 3
+            if formulation_id == 128:
+                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+                
+            # APRIL 2021: add projects for runs 141-144
+            if formulation_id == 143: # Balm + SWTP expansion
+                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+            if formulation_id == 144: # Balm + SWTP expansion (off-site)
+                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+        
+        if FY == 2022:
+            # APRIL 2021: add projects for runs 141-144
+            # TECO project in CIP report (ID 07033) expects to rely on about
+            # $12M total in capital costs, but only about $8M in bonds
+            if formulation_id == 142: # TECO Tunnel 1 connector project phase 2
+                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+            if formulation_id == 143: # TECO Tunnel 1 connector project phase 2
+                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+            if formulation_id == 144: # TECO Tunnel 1 connector project phase 2
+                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                
+        triggered_project_ids = \
+            check_ForTriggeredProjects(
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index])
+        for p_id in triggered_project_ids:
+            new_projects_to_finance.append(p_id) # multiple projects can be triggered in same FY
+                
+    return actual_major_cip_expenditures, new_projects_to_finance, AMPL_cleaned_data
+
 
 def estimate_UniformRate(annual_estimate, 
                          demand_estimate,
@@ -639,7 +713,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
         # record as well as add in any records from modeling
         # HARD-CODED ASSUMPTION HERE (AND ABOVE WHERE MODELING DATA IS READ)
         # IS THAT MODELING BEGINS WITH JAN 1, 2021
-        if fy <= first_modeled_fy:
+        if fy < first_modeled_fy:
             # fill from historic data
             current_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == fy)]
             water_delivery_sales.loc[water_delivery_sales.iloc[:,0] == fy,2:] = water_deliveries_and_sales.iloc[current_fy_index,1:-3].values
@@ -700,6 +774,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
         water_delivery_sales.to_csv(outpath + '/historic_sales.csv')
 
     return annual_actuals, annual_budgets, water_delivery_sales
+
 
 def pull_ModeledData(additional_scripts_path, orop_output_path, oms_output_path, realization_id, 
                      fiscal_years_to_keep, end_fiscal_year, first_modeled_fy, PRE_CLEANED = True):
@@ -1842,7 +1917,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     #   based on the starting fiscal year, will also need the preceeding FY
     #   for some calculations.
     assert (start_fiscal_year < end_fiscal_year), 'End year must be greater than start year.'
-    assert (start_fiscal_year <= first_modeled_fy), 'Start FY must be <= first modeled FY (2020)'
+    assert (start_fiscal_year <= first_modeled_fy), 'Start FY must be <= first modeled FY (2021)'
     fiscal_years_to_keep = [int(y) for y in range(start_fiscal_year-1,end_fiscal_year)]
     
     financial_metrics = np.empty((len(fiscal_years_to_keep)-1,n_financial_metric_outcomes))
@@ -1962,7 +2037,8 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                           CIP_plan, 
                                           fraction_cip_spending_for_major_projects_by_year_by_source,
                                           generic_CIP_plan,
-                                          generic_fraction_cip_spending_for_major_projects_by_year_by_source)
+                                          generic_fraction_cip_spending_for_major_projects_by_year_by_source,
+                                          outpath, PRINT_INITIAL_ALLOCATIONS = True)
     
     ### -----------------------------------------------------------------------
     # step 2: take an annual step loop over water supply outcomes for future
@@ -1971,68 +2047,32 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     #           and check if any infrastructure was triggered/built
     #           also record monthly values for exporting output
     for FY in range(start_fiscal_year, end_fiscal_year):
-        # when new FY starts, reset checkers and other variables
-        new_projects_to_finance = []
-        
-        # calculate revenues from water sales, collect within dataset
+        ### -------------------------------------------------------------------
+        # step 2a: calculate revenues from water sales, collect within dataset
         water_delivery_sales, past_FY_year_data = \
             calculate_WaterSalesForFY(FY, water_delivery_sales, 
                                       annual_budgets, annual_actuals,
                                       dv_list = decision_variables, 
                                       rdm_factor_list = rdm_factors,
                                       annual_demand_growth_rate = annual_demand_growth_rate)
+            
+        ### -------------------------------------------------------------------
+        # step 2b: identify planned capital expenditures for major water supply
+        #       projects over model period. THERE ARE TWO OPTIONS FOR DOING SO:
+        #           1. based on SWRE runs, trigger individual projects
+        #               and their specialized financing plans at manually-
+        #               selected future fiscal years (original model design)
+        #           2. follow CIP plan for major projects financing, which is
+        #               based on generic placeholders and TBW assumptions about
+        #               future debt financing and other spending sources
+        actual_major_cip_expenditures_by_source_by_year, new_projects_to_finance, AMPL_cleaned_data = \
+            update_MajorSupplyInfrastructureInvestment(FOLLOW_CIP_SCHEDULE,
+                                                       FY, first_modeled_fy, last_fy_month, Month, Year, formulation_id,
+                                                       AMPL_cleaned_data,
+                                                       planned_major_cip_expenditures_by_source_full_model_period)
         
-        # track if new infrastructure is triggered in the current FY
-        if ((len(AMPL_cleaned_data) > 1) and (FY > first_modeled_fy)): # if using model data
-            model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
-            model_index_subset = [(int(Month[d]) == last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
-            
-            # for initial tests and model runs, "artificially" include
-            # SHC Balm pipeline debt starting 3 years before FY2028
-            # when it is expected to be built, for now hard-coded at
-            # 2025 to trigger project ID 5, which is the 36in diameter pipe
-            # supplying a max capacity of 12.5 MGDs
-            
-            # Nov 2020: depending on infrastructure scenario, trigger different projects
-            # NOTE: PROJECTS USED FOR 126 AND 128 FINANCING MAY NOT BE EXACT ONES FROM SWRM MODEL
-            #   NOTES ON MODEL RUNS SAY 126 IS SWTP EXPANSION TO 110MGD, 128 IS EXP. TO 120MGD
-            # run 125: proj ID 5 (small balm pipeline) in 2025
-            # run 126: ID 5 in 2025, ID 3 in 2025 (SWTP expansion by 10 MGD)
-            # run 128: ID 5 in 2025, ID 4 in 2025 (SWTP expansion by 12.5 MGD)
-            if FY == 2025:
-                AMPL_cleaned_data['Trigger Variable'].loc[model_index] = 5
-                
-                # assuming model_index is a vector of all days in current FY,
-                # if a run triggers more than one project, change the trigger variable of the final
-                # index month to the second project ID
-                if formulation_id == 126:
-                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 3
-                if formulation_id == 128:
-                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
-                    
-                # APRIL 2021: add projects for runs 141-144
-                if formulation_id == 143: # Balm + SWTP expansion
-                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
-                if formulation_id == 144: # Balm + SWTP expansion (off-site)
-                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
-            
-            if FY == 2022:
-                # APRIL 2021: add projects for runs 141-144
-                # TECO project in CIP report (ID 07033) expects to rely on about
-                # $12M total in capital costs, but only about $8M in bonds
-                if formulation_id == 142: # TECO Tunnel 1 connector project phase 2
-                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
-                if formulation_id == 143: # TECO Tunnel 1 connector project phase 2
-                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
-                if formulation_id == 144: # TECO Tunnel 1 connector project phase 2
-                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
-                    
-            triggered_project_ids = \
-                check_ForTriggeredProjects(
-                        AMPL_cleaned_data['Trigger Variable'].loc[model_index])
-            for p_id in triggered_project_ids:
-                new_projects_to_finance.append(p_id) # multiple projects can be triggered in same FY
-            
+        
+        ### -------------------------------------------------------------------
         # step 3: perform annual end-of-FY calculations
         #               (1) next year uniform rate estimate (fixed and variable)
         #               (2) next year TBC rate estimate
@@ -2143,7 +2183,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    start_fy = 2015; end_fy = 2021; n_reals_tested = 1 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    start_fy = 2021; end_fy = 2040; n_reals_tested = 1 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
     #for sim in range(0,len(DVs)): # sim = 0 for testing
     for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
         ### ----------------------------------------------------------------------- ###
