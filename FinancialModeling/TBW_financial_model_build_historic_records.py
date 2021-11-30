@@ -172,7 +172,10 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
                                 'CIP Fund (Transfer In)',
                                 'Misc. Income',
                                 'Insurance-Litigation-Arbitrage Income',
-                                'Uniform Sales Revenues']
+                                'Uniform Sales Revenues',
+                                'Energy Savings Fund (Total)',
+                                'Energy Savings Fund (Deposit)',
+                                'Energy Savings Fund (Transfer In)']
     
     import pandas as pd; import numpy as np
     annual_streams = pd.DataFrame(np.empty(shape = (n_fiscal_years, len(AnnualStreamsForModeling)+1)))
@@ -347,6 +350,22 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     total_sales_revenue = [np.nan, np.nan, 157523970+592097, 156134324+358558, 155291597+42000, 
                            154691290+33269, 153126957+46080+72526, 156135112+39555+570433, 160487626+36736+315441, 165973331+66855+146980,
                            169802314+65547+436067]
+    
+    # Nov 2021: collect energy savings fund info from approved budget and CAFRs
+    # as with above records, includes actuals from FY20 back through FY11
+    # (where possible, usually only back to FY13)
+    # energy fund did not apparently exist until FY2014
+    # so transfers in and out are unclear before FY2014 because at this time
+    # the budget reporting practices for TBW also changed
+    energy_fund_total = [0,0,0,0,174621,
+                         179695,253127,379241,263821,553050,
+                         950977] # from approved budgets p.25 or 26 table, values for end of current FY here represented by beginning year values of next FY in the reports (hope that makes sense)
+    energy_fund_deposit = [0,0,0,0,0,
+                           355237,278222,229278,269487,270869,
+                           338228]
+    energy_fund_transfer_in = [0,0,0,0,0,
+                               175639,204790,101190,97653,0,
+                               0] # doesn't account for CIP expenditures
         
     # collect data to output for table
     annual_streams.iloc[:,0] = [2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020]
@@ -373,6 +392,9 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     annual_streams.iloc[:,21] = misc_income
     annual_streams.iloc[:,22] = insurance_litigation_arbitrage_income
     annual_streams.iloc[:,23] = total_sales_revenue
+    annual_streams.iloc[:,24] = energy_fund_total
+    annual_streams.iloc[:,25] = energy_fund_deposit
+    annual_streams.iloc[:,26] = energy_fund_transfer_in
     
     return annual_streams
 
@@ -404,7 +426,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                                'Other Funds Transfers In', 
                                'Interest Income', # really all non-sales income - litigation/insurance recoveries + misc income always budgeted at zero
                                'CIP Fund Transfer In', 
-                               'CIP Fund Deposit'] # includes interest
+                               'CIP Fund Deposit', # includes interest
+                               'Energy Savings Fund Transfer In',
+                               'Energy Savings Fund Deposit'] 
     
     # manually record values from FY22 Approved Operating Budget Report, p.31
     # to be incorporated into modeling later when historical records of demand
@@ -430,7 +454,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0, 
                      1937652, 
                      0,
-                     0+0]
+                     0+0,
+                     0,
+                     0]
     
     # manually record values from FY21 Approved Operating Budget Report, p.32
     FY21_approved = [2021,
@@ -454,7 +480,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0, 
                      3211966, 
                      0,
-                     1500000+275965]
+                     1500000+275965,
+                     0,
+                     0]
     
     # manually record values from FY20 Approved Operating Budget Report, p.31
     FY20_approved = [2020,
@@ -478,7 +506,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0, 
                      1893889, 
                      0,
-                     2200000+143772]
+                     2200000+143772,
+                     0,
+                     0]
     
     # read in FY 2019 CAFR summary table and clean
 #    CAFR_FY19 = pd.read_excel(financial_path + '/FY19 Budget Sources & Uses-FINAL.xlsx')
@@ -526,7 +556,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0, 
                      1262480, 
                      0,
-                     92481]
+                     92481,
+                     0,
+                     0]
     
     
     # read in FY 2018 CAFR summary table and clean
@@ -578,7 +610,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0, 
                      1222770, 
                      0,
-                     1000000+61977]
+                     1000000+61977,
+                     0,
+                     0]
     
     # manually enter FY 2017 approved budget from its report
     FY17_approved = [2017,
@@ -602,7 +636,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0, 
                      907870, 
                      0,
-                     34165]
+                     34165,
+                     0,
+                     0]
 
     # manually enter FY 2016 approved budget from its report
     FY16_approved = [2016,
@@ -626,7 +662,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0, 
                      859552, 
                      0,
-                     26995]
+                     26995,
+                     0,
+                     0]
     
     # manually enter FY 2015 approved budget from its report
     FY15_approved = [2015,
@@ -650,7 +688,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0, 
                      877424, 
                      0,
-                     37923] # CIP costs, p.59
+                     37923, # CIP costs, p.59
+                     0,
+                     0] 
     
     # manually enter FY 2014 approved budget from its report
     FY14_approved = [2014,
@@ -674,7 +714,9 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0, 
                      842986, 
                      0,
-                     38768]
+                     38768,
+                     0,
+                     0]
     
     # collect approved budget data for export
     approved_budgets = pd.DataFrame(np.vstack((FY14_approved, 
