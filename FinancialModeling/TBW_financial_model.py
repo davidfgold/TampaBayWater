@@ -508,61 +508,65 @@ def update_MajorSupplyInfrastructureInvestment(FOLLOW_CIP_SCHEDULE = True,
                                                Year, 
                                                formulation_id,
                                                AMPL_cleaned_data,
-                                               planned_major_cip_expenditures_by_source_full_model_period):
-    
-    # when new FY starts, reset checkers and other variables
+                                               actual_major_cip_expenditures_by_source_full_model_period):
+    # initialize empty list to fill if capital projects are triggered
     new_projects_to_finance = []
     
-    # track if new infrastructure is triggered in the current FY
-    if ((len(AMPL_cleaned_data) > 1) and (FY > first_modeled_fy)): # if using model data
-        model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
-        model_index_subset = [(int(Month[d]) == last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
-        
-        # for initial tests and model runs, "artificially" include
-        # SHC Balm pipeline debt starting 3 years before FY2028
-        # when it is expected to be built, for now hard-coded at
-        # 2025 to trigger project ID 5, which is the 36in diameter pipe
-        # supplying a max capacity of 12.5 MGDs
-        
-        # Nov 2020: depending on infrastructure scenario, trigger different projects
-        # NOTE: PROJECTS USED FOR 126 AND 128 FINANCING MAY NOT BE EXACT ONES FROM SWRM MODEL
-        #   NOTES ON MODEL RUNS SAY 126 IS SWTP EXPANSION TO 110MGD, 128 IS EXP. TO 120MGD
-        # run 125: proj ID 5 (small balm pipeline) in 2025
-        # run 126: ID 5 in 2025, ID 3 in 2025 (SWTP expansion by 10 MGD)
-        # run 128: ID 5 in 2025, ID 4 in 2025 (SWTP expansion by 12.5 MGD)
-        if FY == 2025:
-            AMPL_cleaned_data['Trigger Variable'].loc[model_index] = 5
+    if FOLLOW_CIP_SCHEDULE:
+        # Nov 2021: default to use of major CIP schedule
+        # currently no action needed 
+        print("Following CIP schedule over modeling period.")
+    else:
+        # track if new infrastructure is triggered in the current FY
+        if ((len(AMPL_cleaned_data) > 1) and (FY > first_modeled_fy)): # if using model data
+            model_index = [(int(Month[d]) <= last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
+            model_index_subset = [(int(Month[d]) == last_fy_month and int(Year[d]) == FY) or (int(Month[d]) > last_fy_month and int(Year[d]) == (FY-1)) for d in range(0,len(AMPL_cleaned_data))]
             
-            # assuming model_index is a vector of all days in current FY,
-            # if a run triggers more than one project, change the trigger variable of the final
-            # index month to the second project ID
-            if formulation_id == 126:
-                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 3
-            if formulation_id == 128:
-                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+            # for initial tests and model runs, "artificially" include
+            # SHC Balm pipeline debt starting 3 years before FY2028
+            # when it is expected to be built, for now hard-coded at
+            # 2025 to trigger project ID 5, which is the 36in diameter pipe
+            # supplying a max capacity of 12.5 MGDs
+            
+            # Nov 2020: depending on infrastructure scenario, trigger different projects
+            # NOTE: PROJECTS USED FOR 126 AND 128 FINANCING MAY NOT BE EXACT ONES FROM SWRM MODEL
+            #   NOTES ON MODEL RUNS SAY 126 IS SWTP EXPANSION TO 110MGD, 128 IS EXP. TO 120MGD
+            # run 125: proj ID 5 (small balm pipeline) in 2025
+            # run 126: ID 5 in 2025, ID 3 in 2025 (SWTP expansion by 10 MGD)
+            # run 128: ID 5 in 2025, ID 4 in 2025 (SWTP expansion by 12.5 MGD)
+            if FY == 2025:
+                AMPL_cleaned_data['Trigger Variable'].loc[model_index] = 5
                 
-            # APRIL 2021: add projects for runs 141-144
-            if formulation_id == 143: # Balm + SWTP expansion
-                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
-            if formulation_id == 144: # Balm + SWTP expansion (off-site)
-                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
-        
-        if FY == 2022:
-            # APRIL 2021: add projects for runs 141-144
-            # TECO project in CIP report (ID 07033) expects to rely on about
-            # $12M total in capital costs, but only about $8M in bonds
-            if formulation_id == 142: # TECO Tunnel 1 connector project phase 2
-                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
-            if formulation_id == 143: # TECO Tunnel 1 connector project phase 2
-                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
-            if formulation_id == 144: # TECO Tunnel 1 connector project phase 2
-                AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
-                
-        triggered_project_ids = \
-            check_ForTriggeredProjects(
-                    AMPL_cleaned_data['Trigger Variable'].loc[model_index])
-        for p_id in triggered_project_ids:
-            new_projects_to_finance.append(p_id) # multiple projects can be triggered in same FY
+                # assuming model_index is a vector of all days in current FY,
+                # if a run triggers more than one project, change the trigger variable of the final
+                # index month to the second project ID
+                if formulation_id == 126:
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 3
+                if formulation_id == 128:
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+                    
+                # APRIL 2021: add projects for runs 141-144
+                if formulation_id == 143: # Balm + SWTP expansion
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+                if formulation_id == 144: # Balm + SWTP expansion (off-site)
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 4
+            
+            if FY == 2022:
+                # APRIL 2021: add projects for runs 141-144
+                # TECO project in CIP report (ID 07033) expects to rely on about
+                # $12M total in capital costs, but only about $8M in bonds
+                if formulation_id == 142: # TECO Tunnel 1 connector project phase 2
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                if formulation_id == 143: # TECO Tunnel 1 connector project phase 2
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                if formulation_id == 144: # TECO Tunnel 1 connector project phase 2
+                    AMPL_cleaned_data['Trigger Variable'].loc[model_index_subset] = 8
+                    
+            triggered_project_ids = \
+                check_ForTriggeredProjects(
+                        AMPL_cleaned_data['Trigger Variable'].loc[model_index])
+            for p_id in triggered_project_ids:
+                new_projects_to_finance.append(p_id) # multiple projects can be triggered in same FY
                 
     return actual_major_cip_expenditures, new_projects_to_finance, AMPL_cleaned_data
 
@@ -1888,7 +1892,8 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            outpath = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output',
                                            formulation_id = 125,
                                            PRE_CLEANED = True,
-                                           ACTIVE_DEBUGGING = False):
+                                           ACTIVE_DEBUGGING = False,
+                                           FOLLOW_CIP_MAJOR_SCHEDULE = True):
     # get necessary packages
     import pandas as pd; import numpy as np
     
@@ -2039,6 +2044,10 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                           generic_CIP_plan,
                                           generic_fraction_cip_spending_for_major_projects_by_year_by_source,
                                           outpath, PRINT_INITIAL_ALLOCATIONS = True)
+        
+    # initialize "actual" CIP spending datasets to compare to planned spending at end of simulation
+    actual_other_cip_expenditures_by_source_by_year = planned_other_cip_expenditures_by_source_full_model_period.copy()
+    actual_major_cip_expenditures_by_source_by_year = planned_major_cip_expenditures_by_source_full_model_period.copy()
     
     ### -----------------------------------------------------------------------
     # step 2: take an annual step loop over water supply outcomes for future
@@ -2066,11 +2075,10 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
         #               based on generic placeholders and TBW assumptions about
         #               future debt financing and other spending sources
         actual_major_cip_expenditures_by_source_by_year, new_projects_to_finance, AMPL_cleaned_data = \
-            update_MajorSupplyInfrastructureInvestment(FOLLOW_CIP_SCHEDULE,
+            update_MajorSupplyInfrastructureInvestment(FOLLOW_CIP_SCHEDULE = FOLLOW_CIP_MAJOR_SCHEDULE,
                                                        FY, first_modeled_fy, last_fy_month, Month, Year, formulation_id,
                                                        AMPL_cleaned_data,
-                                                       planned_major_cip_expenditures_by_source_full_model_period)
-        
+                                                       actual_major_cip_expenditures_by_source_by_year)
         
         ### -------------------------------------------------------------------
         # step 3: perform annual end-of-FY calculations
@@ -2095,7 +2103,13 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                 annual_budgets, annual_actuals, financial_metrics,
                                 dv_list = decision_variables, 
                                 rdm_factor_list = rdm_factors,
-                                ACTIVE_DEBUGGING = ACTIVE_DEBUGGING)
+                                ACTIVE_DEBUGGING = ACTIVE_DEBUGGING,
+                                actual_major_cip_expenditures_by_source_by_year,
+                                actual_other_cip_expenditures_by_source_by_year,
+                                reserve_balances,
+                                reserve_deposits,
+                                FOLLOW_CIP_SCHEDULE = FOLLOW_CIP_MAJOR_SCHEDULE,
+                                FLEXIBLE_CIP_SPENDING = FLEXIBLE_OTHER_CIP_SCHEDULE)
 
 
         ### begin "budget development" for next FY --------------------
@@ -2112,7 +2126,13 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                         accumulated_new_operational_variable_costs_from_infra,
                                         dv_list = decision_variables, 
                                         rdm_factor_list = rdm_factors,
-                                        ACTIVE_DEBUGGING = ACTIVE_DEBUGGING)
+                                        ACTIVE_DEBUGGING = ACTIVE_DEBUGGING,
+                                        actual_major_cip_expenditures_by_source_by_year,
+                                        actual_other_cip_expenditures_by_source_by_year,
+                                        reserve_balances,
+                                        reserve_deposits,
+                                        FOLLOW_CIP_SCHEDULE = FOLLOW_CIP_MAJOR_SCHEDULE,
+                                        FLEXIBLE_CIP_SPENDING = FLEXIBLE_OTHER_CIP_SCHEDULE)
     
     # step 4: end loop and export results, including objectives
     # Nov 2020: adjust paths to also show current model formulation (infrastructure pathway)
@@ -2205,7 +2225,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
             
     #    for r_id in range(1,2): # r_id = 1 for testing
             # run this line for testing: 
-            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction   
+            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True   
                         
             budget_projection, actuals, outcomes, water_vars, final_debt = \
                 run_FinancialModelForSingleRealization(
@@ -2230,7 +2250,8 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
                         orop_output_path = ampl_output_path,
                         oms_output_path = oms_path,
                         outpath = output_path, formulation_id = run_id,
-                        PRE_CLEANED = True, ACTIVE_DEBUGGING = False)
+                        PRE_CLEANED = True, ACTIVE_DEBUGGING = False,
+                        FOLLOW_CIP_MAJOR_SCHEDULE = True)
             
             ### -----------------------------------------------------------------------
             # collect data of some results across all realizations
