@@ -26,11 +26,25 @@ CIPF_melt_sub$variable = plyr::revalue(CIPF_melt_sub$variable, c('Remaining.FY.2
                                         'FY.2023'='2023', 'FY.2024'='2024', 'FY.2025'='2025',
                                         'FY.2026'='2026', 'FY.2027'='2027', 'FY.2028'='2028',
                                         'FY.2029'='2029', 'FY.2030'='2030', 'FY.2031'='2031', 'Future'='2032'))
-P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(variable)), y = Dollars, fill = Current.Funding.Source), 
+P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.integer(as.character(variable)), y = Dollars, fill = Current.Funding.Source), 
                                         color = NA, stat = 'identity') + 
-  facet_wrap(Project.Name ~ ., ncol = 8, scales = "free_y") + scale_y_continuous(labels = comma)
+  facet_wrap(Project.Name ~ ., nrow = 12, scales = "free") + scale_y_continuous(labels = comma) +
+  scale_x_continuous(labels = as.character(c(seq(2021,2031), "2032+")), breaks = seq(2021,2032), name = "Fiscal Year") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.8, hjust = 0.7, size = 10), legend.position = "none",
+        axis.text.y = element_text(size = 10, face = "bold"))
 ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP.png',
-       dpi = 600, units = 'in', height = 14, width = 25)
+       dpi = 800, units = 'in', height = 20, width = 30)
+
+CIPF_melt_sub = CIPF_melt_sub[which(CIPF_melt_sub$Project.Name != "Totals"),]
+P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.integer(as.character(variable)), y = Dollars, 
+                                                fill = Current.Funding.Source), 
+                                            color = NA, stat = 'identity') + 
+  scale_y_continuous(labels = comma, name = "Million USD") + scale_x_continuous(labels = as.character(c(seq(2021,2031), "2032+")), 
+                                                          breaks = seq(2021,2032), name = "Fiscal Year") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.8, hjust = 0.7, size = 14), legend.position = "none",
+        axis.text.y = element_text(size = 14, face = "bold"))
+ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP_basic.png',
+       dpi = 1200, units = 'in', height = 3.5, width = 5)
 
 # break down funding for small vs medium vs large projects
 CIPF_melt = melt(CIP_Forecast, id = c('Project.No.', 'Project.Name', 'Current.Funding.Source', 'Total.Funds.Needed'))
@@ -41,9 +55,9 @@ CIPF_melt$TotalDollars = gsub(CIPF_melt$Total.Funds.Needed, pattern = '\\$', rep
 CIPF_melt$TotalDollars = gsub(CIPF_melt$TotalDollars, pattern = ',', replacement = '')
 CIPF_melt$TotalDollars = as.numeric(as.character(CIPF_melt$TotalDollars))
 
-CIPF_melt$`Total Capital Needed` = "Large (>$75m)"
-CIPF_melt$`Total Capital Needed`[which(CIPF_melt$TotalDollars <= 75000000)] = "Medium (>$10m, <$75m)"
-CIPF_melt$`Total Capital Needed`[which(CIPF_melt$TotalDollars <= 10000000)] = "Small (<$10m)"
+CIPF_melt$`Total Capital Needed` = "Large Projects (>$75m)"
+CIPF_melt$`Total Capital Needed`[which(CIPF_melt$TotalDollars <= 75000000)] = "Medium Projects (>$10m, <$75m)"
+CIPF_melt$`Total Capital Needed`[which(CIPF_melt$TotalDollars <= 10000000)] = "Small Projects (<$10m)"
 
 CIPF_melt_sub = CIPF_melt[which(CIPF_melt$variable %in% unique(CIPF_melt$variable)[c(3,4:14)]),]
 CIPF_melt_sub$variable = plyr::revalue(CIPF_melt_sub$variable, c('Remaining.FY.2021'='2021', 'FY.2022'='2022',
@@ -51,12 +65,40 @@ CIPF_melt_sub$variable = plyr::revalue(CIPF_melt_sub$variable, c('Remaining.FY.2
                                                                  'FY.2026'='2026', 'FY.2027'='2027', 'FY.2028'='2028',
                                                                  'FY.2029'='2029', 'FY.2030'='2030', 'FY.2031'='2031', 'Future'='2032'))
 CIPF_melt_sub = CIPF_melt_sub[which(CIPF_melt_sub$Project.Name != "Totals"),]
-P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(variable)), y = Dollars, fill = Current.Funding.Source), 
+P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(variable)), y = Dollars/1000000, 
+                                                fill = Current.Funding.Source), 
                                             color = NA, stat = 'identity') +
   facet_wrap(`Total Capital Needed` ~ ., ncol = 3, scales = "free_y") + 
-  xlab("Fiscal Year\n(2032 includes all future funding TBA)") + scale_y_continuous(labels = comma)
+  scale_x_continuous(labels = as.character(c(seq(2021,2031), "2032+")), 
+                       breaks = seq(2021,2032), name = "Fiscal Year") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.8, hjust = 0.7, size = 10), legend.position = "none",
+        axis.text.y = element_text(size = 10),
+        strip.text.x = element_text(size = 15, face = "bold")) +
+  xlab("Fiscal Year\n(2032 includes all future funding TBA)") + scale_y_continuous(labels = comma, name = "Million USD")
 ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP_bysize.png',
-       dpi = 600, units = 'in', height = 6, width = 12)
+       dpi = 1000, units = 'in', height = 4, width = 12)
+
+CIPF_melt_sub$Current.Funding.Source[which(CIPF_melt_sub$Current.Funding.Source %in% c("Renewal and Replacement Fund",
+                                                                                       "Capital Improvement Fund",
+                                                                                       "Energy Fund"))] = "Reserve Funds"
+CIPF_melt_sub$Current.Funding.Source[which(CIPF_melt_sub$Current.Funding.Source %in% c("Revenue Bonds (Future)",
+                                                                                       "Revenue Bonds (320)",
+                                                                                       "Revenue Bonds (350)"))] = "Debt Issuance"
+CIPF_melt_sub$Current.Funding.Source[which(CIPF_melt_sub$Current.Funding.Source %in% c("SWFWMD Co-Funding",
+                                                                                       "Member Goverment Contribution-JPA",
+                                                                                       "State Grant"))] = "State and Local Grants"
+P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(variable)), y = Dollars/1000000, 
+                                                fill = Current.Funding.Source), 
+                                            color = NA, stat = 'identity') +
+  facet_wrap(`Total Capital Needed` ~ ., ncol = 3, scales = "free_y") + 
+  scale_x_continuous(labels = as.character(c(seq(2021,2031), "2032+")), 
+                     breaks = seq(2021,2032), name = "Fiscal Year") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.8, hjust = 0.7, size = 10), legend.position = "right",
+        axis.text.y = element_text(size = 10),
+        strip.text.x = element_text(size = 15, face = "bold")) +
+  xlab("Fiscal Year\n(2032 includes all future funding TBA)") + scale_y_continuous(labels = comma, name = "Million USD")
+ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP_bysize_simple_categories_legend.png',
+       dpi = 1000, units = 'in', height = 4, width = 12)
 
 P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(variable)), y = Dollars, fill = Current.Funding.Source), 
                                             color = NA, stat = 'identity') +
