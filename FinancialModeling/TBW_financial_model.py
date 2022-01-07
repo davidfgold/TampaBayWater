@@ -1153,28 +1153,26 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     #       dont account for here
     current_FY_rr_interest_income = \
         current_FY_interest_income * \
-        annual_actuals['R&R Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] 
-    
-    
-    # estimate income from investment interest
-    # it seems that all accounts of the enterprise fund (all funds)
-    # make in aggregate about 0.5% interest annually
-    # don't have all funds accounted for here, but can approximate
-    sinking_fund_size_approximator = next_FY_budgeted_debt_service * 1.6
-    cip_and_operating_fund_size_approximator = next_FY_budgeted_variable_operating_costs
-    approximate_enterprise_fund_balance = \
-        current_FY_final_rate_stabilization_fund_balance + \
-        current_FY_final_reserve_fund_balance + \
-        current_FY_final_rr_fund_balance + \
-        next_FY_budgeted_variable_operating_costs + \
-        sinking_fund_size_approximator + \
-        cip_and_operating_fund_size_approximator
-        
-        
-    current_FY_cip_interest_income
-    current_FY_energy_interest_income
-    current_FY_rs_interest_income
-    current_FY_reserve_interest_income
+        (annual_actuals['R&R Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] / \
+                        previous_FY_enterprise_fund_total)
+    current_FY_cip_interest_income = \
+        current_FY_interest_income * \
+        (annual_actuals['CIP Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] / \
+                        previous_FY_enterprise_fund_total)
+    current_FY_energy_interest_income = \
+        current_FY_interest_income * \
+        (annual_actuals['Energy Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] / \
+                        previous_FY_enterprise_fund_total)
+    current_FY_rs_interest_income = \
+        current_FY_interest_income * \
+        (annual_actuals['Rate Stabilization Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] / \
+                        previous_FY_enterprise_fund_total)
+    current_FY_reserve_interest_income = \
+        current_FY_interest_income * \
+        (annual_actuals['Reserve Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] / \
+                        previous_FY_enterprise_fund_total)
+    current_FY_remaining_unallocated_interest = \
+        current_FY_interest_income * previous_FY_unaccounted_fraction_of_total_enterprise_fund
         
     # insurance income is usually less than 0.7% of previous FY gross revenues
     # misc income has a higher floor but also very small fraction
@@ -1216,6 +1214,9 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         energy_transfer_factor
     current_FY_budgeted_energy_deposit = \
         annual_budgets['Energy Savings Fund Deposit'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
+        
+    # Jan 2021: account for CIP spending withdrawals from reserve funds
+    
         
     # it may be that the budgeted RS fund transfer in needs to be changed
     current_FY_rate_stabilization_final_transfer_in = \
