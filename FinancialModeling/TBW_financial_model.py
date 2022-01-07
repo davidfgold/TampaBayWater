@@ -968,6 +968,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # decision variables
     covenant_threshold_net_revenue_plus_fund_balance = dv_list[0]
     debt_covenant_required_ratio = dv_list[1]
+    previous_FY_unaccounted_fraction_of_total_enterprise_fund = dv_list[5]
     
     # deeply uncertain factors
     budgeted_unencumbered_fraction = rdm_factor_list[3] # historically, 2%
@@ -1038,16 +1039,22 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
     previous_FY_debt_service = \
         annual_actuals['Debt Service'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
-    
+        
+    # to estimate the full enterprise fund, need to account for three remaining
+    # funds that we don't explicitly model here: operations, operating reserve,
+    # and interest/principal sinking fund account
+    # in FY22, those balances were initially about $15M, $4.3M, and $53M resp.
+    #   as a fraction of the enterprise fund, these amounts sum to 
+    #   (15 + 4.3 + 53)/268 = 0.27 --> 27% of enterprise fund
+    # this is set as a static decision variable, can be adjusted later
     previous_FY_enterprise_fund_total = \
-        previous_FY_rr_fund_balance + \
-        previous_FY_cip_fund_balance + \
-        previous_FY_energy_fund_balance + \
-        previous_FY_rate_stabilization_fund_balance + \
-        previous_FY_utility_reserve_fund_balance + \
-        previous_FY_debt_service + \
-        previous_FY_unaccounted_operating_costs_and_reserves
-    
+        (previous_FY_rr_fund_balance + \
+         previous_FY_cip_fund_balance + \
+         previous_FY_energy_fund_balance + \
+         previous_FY_rate_stabilization_fund_balance + \
+         previous_FY_utility_reserve_fund_balance + \
+         previous_FY_debt_service) / \
+         (1 - previous_FY_unaccounted_fraction_of_total_enterprise_fund)
     
     # July 2020: gross revenues are calculated two different ways:
     # (1) "raw" where all income including transfers in are summed
