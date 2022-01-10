@@ -953,7 +953,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                         FOLLOW_CIP_SCHEDULE = True,
                         FLEXIBLE_CIP_SPENDING = True):
     # for debugging
-    # dv_list = DVs; rdm_factor_list = DUFs
+    # dv_list = dvs; rdm_factor_list = dufs; FOLLOW_CIP_SCHEDULE = True; FLEXIBLE_CIP_SPENDING = True
     
     
     # list constants and unroll RDM factors and DVs
@@ -1161,7 +1161,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                         previous_FY_enterprise_fund_total)
     current_FY_energy_interest_income = \
         current_FY_interest_income * \
-        (annual_actuals['Energy Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] / \
+        (annual_actuals['Energy Savings Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] / \
                         previous_FY_enterprise_fund_total)
     current_FY_rs_interest_income = \
         current_FY_interest_income * \
@@ -1169,7 +1169,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                         previous_FY_enterprise_fund_total)
     current_FY_reserve_interest_income = \
         current_FY_interest_income * \
-        (annual_actuals['Reserve Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] / \
+        (annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0] / \
                         previous_FY_enterprise_fund_total)
     current_FY_remaining_unallocated_interest = \
         current_FY_interest_income * previous_FY_unaccounted_fraction_of_total_enterprise_fund
@@ -1197,31 +1197,65 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # still have some uncertainty between budgeted and actual 
     # attached
     # NOTE: SO MAYBE DON'T HAVE DEEPLY UNCERTAIN MULTIPLIERS HERE??
+    # it may be that the budgeted RS fund transfer in needs to be changed
     current_FY_budgeted_rate_stabilization_transfer_in = \
         annual_budgets['Rate Stabilization Fund Transfers In'].loc[annual_budgets['Fiscal Year'] == FY].values[0] * \
         rate_stab_transfer_factor
-    current_FY_rr_funds_transfer_in = \
-        annual_budgets['R&R Fund Transfers In'].loc[annual_budgets['Fiscal Year'] == FY].values[0] * \
-        rr_transfer_factor
-    current_FY_rate_stabilization_fund_deposit = 0 # never a budgeted deposit to stabilization fund
-    current_FY_cip_transfer_in = 0 # never a budgeted transfer in to cip fund
-    current_FY_budgeted_rr_deposit = \
-        annual_budgets['R&R Fund Deposit'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
-
-    # there is never a budgeted energy fund transfer/deposit, so it may be adjusted below
-    current_FY_energy_transfer_in = \
-        annual_budgets['Energy Savings Fund Transfer In'].loc[annual_budgets['Fiscal Year'] == FY].values[0] * \
-        energy_transfer_factor
-    current_FY_budgeted_energy_deposit = \
-        annual_budgets['Energy Savings Fund Deposit'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
-        
-    # Jan 2021: account for CIP spending withdrawals from reserve funds
-    
-        
-    # it may be that the budgeted RS fund transfer in needs to be changed
+    current_FY_budgeted_rate_stabilization_fund_deposit = 0 # never a budgeted deposit to stabilization fund
     current_FY_rate_stabilization_final_transfer_in = \
-        current_FY_budgeted_rate_stabilization_transfer_in
+        current_FY_budgeted_rate_stabilization_transfer_in 
+        
+    if FOLLOW_CIP_SCHEDULE == False:
+        # follow this protocol if the model should be run without explicit
+        # CIP program consideration
+        current_FY_budgeted_rr_transfer_in = \
+            annual_budgets['R&R Fund Transfers In'].loc[annual_budgets['Fiscal Year'] == FY].values[0] * \
+            rr_transfer_factor
+        current_FY_budgeted_rr_deposit = \
+            annual_budgets['R&R Fund Deposit'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
+        
+        # never a budgeted transfer in to cip fund in the operating budget
+        current_FY_budgeted_cip_transfer_in = \
+            annual_budgets['CIP Fund Transfer In'].loc[annual_budgets['Fiscal Year'] == FY].values[0] 
+        current_FY_budgeted_cip_deposit = \
+            annual_budgets['CIP Fund Deposit'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
+
+        # there is never a budgeted energy fund transfer/deposit, so it may be adjusted below
+        current_FY_budgeted_energy_transfer_in = \
+            annual_budgets['Energy Savings Fund Transfer In'].loc[annual_budgets['Fiscal Year'] == FY].values[0] * \
+            energy_transfer_factor
+        current_FY_budgeted_energy_deposit = \
+            annual_budgets['Energy Savings Fund Deposit'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
+            
+    else:
+        # Jan 2021: account for CIP spending withdrawals from reserve funds
+        # as well as the deposits into each fund and accumulated interest
+        # to estimate the initial planned balances of reserves, where below
+        # they are checked to make sure they are not overdrawn, etc.
+        # NOTE: FY21 is multiplied by 2 because at the time the data was 
+        #   assembled, half of FY21 had already elapsed and that money 
+        #   had already been moved into/out of accounts.
+        first_cip_schedule_year = 2021
+        current_FY_budgeted_energy_deposit = \
+            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Energy Fund'].values[0] * \
+            (2 if FY == first_cip_schedule_year else 1)
+        current_FY_budgeted_rr_deposit = \
+            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Renewal and Replacement Fund'].values[0] * \
+            (2 if FY == first_cip_schedule_year else 1)
+        current_FY_budgeted_cip_deposit = \
+            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Capital Improvement Fund'].values[0] * \
+            (2 if FY == first_cip_schedule_year else 1)
     
+        # for transfers in, these are likely not from the operating budget 
+        # data I've pulled in, but should still be accounted for to balance
+        # the individual fund sizes
+        current_FY_budgeted_energy_transfer_in = \
+            actual_other_cip_expenditures_by_source_by_year['Energy Fund'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0]
+        current_FY_budgeted_rr_transfer_in = \
+            actual_other_cip_expenditures_by_source_by_year['Renewal and Replacement Fund'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0]
+        current_FY_budgeted_cip_transfer_in = \
+            actual_other_cip_expenditures_by_source_by_year['Capital Improvement Fund'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0]            
+            
     ###  additional reserve requirements must be met --------------
     # (a) R&R fund must be at least 5% of previous FY gross rev
     # (b) Reserve Fund (Fund Balance) must be >10% gross rev
@@ -1235,17 +1269,17 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # projects. There is also a budgeted deposit - if the net change in fund
     # size violates the fund size rule, reduce the transfer in
     current_FY_rr_net_deposit = \
-        current_FY_budgeted_rr_deposit - current_FY_rr_funds_transfer_in
+        current_FY_budgeted_rr_deposit - current_FY_budgeted_rr_transfer_in
     if ((previous_FY_raw_gross_revenue * 0.05) > previous_FY_rr_fund_balance + current_FY_rr_net_deposit) and (current_FY_rr_net_deposit > 0):
         # reduce budgeted transfer in if it would deplete the fund
         # so that the transfer in and deposit are equal (no net fund change)
         # but prevent it from going negative
-        current_FY_rr_funds_transfer_in = np.max([current_FY_rr_funds_transfer_in - current_FY_rr_net_deposit,
+        current_FY_budgeted_rr_transfer_in = np.max([current_FY_budgeted_rr_transfer_in - current_FY_rr_net_deposit,
                                                   0.0])
                 
         # if there is remaining need, increase the deposit
         current_FY_rr_net_deposit = \
-            current_FY_budgeted_rr_deposit - current_FY_rr_funds_transfer_in
+            current_FY_budgeted_rr_deposit - current_FY_budgeted_rr_transfer_in
         if (previous_FY_raw_gross_revenue * 0.05) > previous_FY_rr_fund_balance + current_FY_rr_net_deposit:
             current_FY_budgeted_rr_deposit += current_FY_rr_net_deposit
     
@@ -1301,7 +1335,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     if FOLLOW_CIP_SCHEDULE:
         # Dec 2021: if we are following the CIP schedule of reserve fund
         #   use for 
-        
+        print(False)
         
         
         
@@ -1403,7 +1437,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_rate_stabilization_final_transfer_in + \
         current_FY_non_sales_revenue - \
         current_FY_acquisition_credits - \
-        current_FY_rate_stabilization_fund_deposit + \
+        current_FY_budgeted_rate_stabilization_fund_deposit + \
         current_FY_cip_transfer_in + \
         current_FY_rr_funds_transfer_in + \
         current_FY_energy_transfer_in
@@ -2198,6 +2232,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     #           and check if any infrastructure was triggered/built
     #           also record monthly values for exporting output
     for FY in range(start_fiscal_year, end_fiscal_year):
+        # for debugging: FY = start_fiscal_year
         ### -------------------------------------------------------------------
         # step 2a: calculate revenues from water sales, collect within dataset
         water_delivery_sales, past_FY_year_data = \
@@ -2366,7 +2401,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
             
     #    for r_id in range(1,2): # r_id = 1 for testing
             # run this line for testing: 
-            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True   
+            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True   
                         
             budget_projection, actuals, outcomes, water_vars, final_debt = \
                 run_FinancialModelForSingleRealization(
