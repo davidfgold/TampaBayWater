@@ -485,13 +485,16 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0]
     
     # manually record values from FY20 Approved Operating Budget Report, p.31
+    # Jan 2021: because the FY20 budget doc I have is the proposed budget,
+    #   not the approved budget, replace some values that differ with those
+    #   from the same table in the FY21 approved budget doc
     FY20_approved = [2020,
-                     175479563, 
-                     184036207, 
+                     168872283, 
+                     177428927, 
                      169332978+42000+392000, 
-                     175479563-70133315-10231558-(12606616+13548122+502800), 
+                     168872283-70133315-10231558-(12606616+13548122+502800), 
                      12606616+13548122+502800, 
-                     184036207 - (175479563-70133315-10231558), 
+                     177428927 - (168872283-70133315-10231558), 
                      70133315, 
                      10231558, 
                      4168060, 
@@ -777,10 +780,15 @@ def append_UpToJan2021DeliveryAndSalesData(monthly_record,
     # (2) calculate variable sales revenue for each month of 2019 and 2020
     # NOTE: A LOT OF INDICES HERE ARE HARD CODED AND WILL BE WRONG IF MORE OR LESS COLUMNS ARE ADDED TO INPUT DATASETS
     # MAR 2021: UPDATED FOR ADDITIONAL MONTHS OF 2020
-    additional_monthly_variable_water_sales_FY20 = additional_monthly_water_deliveries.iloc[:12,1:-1] * FY2020_approved_budget[-8] * convert_kgal_to_MG
-    additional_monthly_tbc_sales_FY20 = additional_monthly_water_deliveries.iloc[:12,-1] * FY2020_approved_budget[-7] * convert_kgal_to_MG
-    additional_monthly_variable_water_sales_FY21 = additional_monthly_water_deliveries.iloc[12:,1:-1] * FY2021_proposed_budget[-8] * convert_kgal_to_MG
-    additional_monthly_tbc_sales_FY21 = additional_monthly_water_deliveries.iloc[12:,-1] * FY2021_proposed_budget[-7] * convert_kgal_to_MG
+    fy20_uniform_rate_variable_portion = FY2020_approved_budget[-10]
+    fy21_uniform_rate_variable_portion = FY2021_proposed_budget[-10]
+    fy20_tbc_rate = FY2020_approved_budget[-9]
+    fy21_tbc_rate = FY2021_proposed_budget[-9]
+    
+    additional_monthly_variable_water_sales_FY20 = additional_monthly_water_deliveries.iloc[:12,1:-1] * fy20_uniform_rate_variable_portion * convert_kgal_to_MG
+    additional_monthly_tbc_sales_FY20 = additional_monthly_water_deliveries.iloc[:12,-1] * fy20_tbc_rate * convert_kgal_to_MG
+    additional_monthly_variable_water_sales_FY21 = additional_monthly_water_deliveries.iloc[12:,1:-1] * fy21_uniform_rate_variable_portion * convert_kgal_to_MG
+    additional_monthly_tbc_sales_FY21 = additional_monthly_water_deliveries.iloc[12:,-1] * fy21_tbc_rate * convert_kgal_to_MG
     
     additional_monthly_variable_water_sales = additional_monthly_variable_water_sales_FY20.append(additional_monthly_variable_water_sales_FY21)
     additional_monthly_tbc_sales = additional_monthly_tbc_sales_FY20.append(additional_monthly_tbc_sales_FY21)
