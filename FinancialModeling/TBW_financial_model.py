@@ -833,7 +833,7 @@ def calculate_WaterSalesForFY(FY, water_delivery_sales,
     KEEP_UNIFORM_RATE_STABLE = bool(np.round(dv_list[2])) # if range is [0,1], will round to either bound for T/F value
     managed_uniform_rate_increase_rate = dv_list[3]
     managed_uniform_rate_decrease_rate = dv_list[4]
-    TAMPA_SALES_THRESHOLD_FRACTION = rdm_factor_list[15]
+#    TAMPA_SALES_THRESHOLD_FRACTION = rdm_factor_list[15]
     
     # set other variables
     deliveries_column_index_range = range(2,9)
@@ -977,10 +977,12 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     non_sales_rev_factor = rdm_factor_list[9]
     rate_stab_transfer_factor = rdm_factor_list[10]
     rr_transfer_factor = rdm_factor_list[11]
-    other_transfer_factor = rdm_factor_list[12]
+#    other_transfer_factor = rdm_factor_list[12]
     required_cip_factor = rdm_factor_list[13]
     energy_transfer_factor = rdm_factor_list[16]
-
+    utility_reserve_fund_deficit_reduction_fraction = rdm_factor_list[17] # assumed to be 0.2
+    rate_stabilization_fund_deficit_reduction_fraction = 1 - utility_reserve_fund_deficit_reduction_fraction
+    
     # give number of variables tracked in outputs
     fixed_column_index_range = [9,10,11,12,13,14]
     variable_column_index_range = [15,16,17,18,19,20]
@@ -1028,8 +1030,6 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     
     previous_FY_energy_fund_balance = \
         annual_actuals['Energy Savings Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
-    previous_FY_energy_deposit = \
-        annual_actuals['Energy Savings Fund (Deposit)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
     previous_FY_energy_transfer_in = \
         annual_actuals['Energy Savings Fund (Transfer In)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
     
@@ -1269,13 +1269,13 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # projects. There is also a budgeted deposit - if the net change in fund
     # size violates the fund size rule, reduce the transfer in
     current_FY_rr_net_deposit = \
-        current_FY_budgeted_rr_deposit - current_FY_budgeted_rr_transfer_in
+        current_FY_budgeted_rr_deposit - current_FY_budgeted_rr_transfer_in + current_FY_rr_interest_income
     if ((previous_FY_raw_gross_revenue * 0.05) > previous_FY_rr_fund_balance + current_FY_rr_net_deposit) and (current_FY_rr_net_deposit > 0):
         # reduce budgeted transfer in if it would deplete the fund
         # so that the transfer in and deposit are equal (no net fund change)
         # but prevent it from going negative
-        current_FY_budgeted_rr_transfer_in = np.max([current_FY_budgeted_rr_transfer_in - current_FY_rr_net_deposit,
-                                                  0.0])
+        current_FY_budgeted_rr_transfer_in = \
+            np.max([current_FY_budgeted_rr_transfer_in - current_FY_rr_net_deposit, 0.0])
                 
         # if there is remaining need, increase the deposit
         current_FY_rr_net_deposit = \
@@ -1283,12 +1283,13 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         if (previous_FY_raw_gross_revenue * 0.05) > previous_FY_rr_fund_balance + current_FY_rr_net_deposit:
             current_FY_budgeted_rr_deposit += current_FY_rr_net_deposit
     
+    current_FY_rr_transfer_in = current_FY_budgeted_rr_transfer_in
     if ((previous_FY_raw_gross_revenue * 0.05) > previous_FY_rr_fund_balance):
         # if the current fund level is already in violation, cancel transfer in
         # and ensure that planned deposit is at least large enough to compensate
         # only count a "failure" if reducing the budgeted transfer in
         # from the fund cannot satisfy this condition
-        current_FY_rr_funds_transfer_in = 0
+        current_FY_rr_transfer_in = 0
         rr_fund_balance_failure_counter += COVENANT_FAILURE
         
         # figure out what the necessary deposit is, and ensure the budgeted 
@@ -1299,59 +1300,61 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # if there is already a net transfer out of the fund (net deposit is negative)
         # and this violates the rule, reduce the transfer in 
         # (add the negative difference)
-        current_FY_rr_funds_transfer_in += current_FY_rr_net_deposit
+        current_FY_rr_transfer_in += current_FY_rr_net_deposit
 
-#    print(str(FY) + ': GR: Unencumbered is ' + str(current_FY_unencumbered_funds))
-#    print(str(FY) + ': GR: RS Transfer In is ' + str(current_FY_rate_stabilization_final_transfer_in))
-#    print(str(FY) + ': GR: R&R Transfer In is ' + str(current_FY_rr_funds_transfer_in))
-#    print(str(FY) + ': GR: Other Transfer In is ' + str(current_FY_other_funds_transferred_in))
-#    print(str(FY) + ': GR: Non-Sales Rev is ' + str(current_FY_non_sales_revenue))
-#    print(str(FY) + ': GR: RS Deposit is ' + str(current_FY_rate_stabilization_fund_deposit))
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': GR: Unencumbered is ' + str(current_FY_unencumbered_funds))
+        print(str(FY) + ': GR: RS Transfer In is ' + str(current_FY_rate_stabilization_final_transfer_in))
+        print(str(FY) + ': GR: R&R Transfer In is ' + str(current_FY_rr_transfer_in))
+        print(str(FY) + ': GR: Non-Sales Rev is ' + str(current_FY_non_sales_revenue))
+        print(str(FY) + ': GR: RS Deposit is ' + str(current_FY_budgeted_rate_stabilization_fund_deposit))
         
     # check conditions under (b) 
     # there is never a budgeted deposit to the reserve fund, so don't need to
     # repeat all the trouble above like with the R&R Fund
-    previous_FY_reserve_fund_balance = \
-        annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
-    if previous_FY_reserve_fund_balance < (previous_FY_raw_gross_revenue * 0.1):
+    if previous_FY_utility_reserve_fund_balance < (previous_FY_raw_gross_revenue * 0.1):
         reserve_fund_balance_failure_counter += COVENANT_FAILURE
         current_FY_needed_reserve_deposit = \
-            previous_FY_raw_gross_revenue * 0.1 - previous_FY_reserve_fund_balance
+            previous_FY_raw_gross_revenue * 0.1 - previous_FY_utility_reserve_fund_balance
             
-    # there doesn't seem to be a codified mechanism to decide
-    # about required deposits for CIP Fund except to meet next
-    # FY's budgeted project costs, so will generate random 
-    # value here within bounds seen in past budgets
-    # From FY 2013-2019, CIP required deposits were between
-    #   1-3% of actual previous fy raw gross revenues
-    #   use the 2-3% range because that seems to match better 
-    #   with last 6 FYs (lowest value was FY 2013 outlier)
-    # also include a deeply uncertain factor to be used if wanted
-    current_FY_cip_deposit = \
-        np.random.uniform(low = 0.02, high = 0.03) * \
-        required_cip_factor * previous_FY_raw_gross_revenue
-    
-
+    # Dec 2021: if we are following the CIP schedule of reserve fund usage
+    # then grab the budgeted values above. Do this for CIP, Energy funds.
     if FOLLOW_CIP_SCHEDULE:
-        # Dec 2021: if we are following the CIP schedule of reserve fund
-        #   use for 
-        print(False)
+        current_FY_cip_deposit = \
+            current_FY_budgeted_cip_deposit
+        current_FY_cip_transfer_in = \
+            current_FY_budgeted_cip_transfer_in
         
-        
-        
-    # similarly, apply a random factor to set CIP fund transfer in
-    # based on past FY actuals, transfer in is between 0.2-2%
-    # of past fy raw gross revenues
-    current_FY_cip_transfer_in = \
-        np.random.uniform(low = 0.002, high = 0.02) * \
-        required_cip_factor * previous_FY_raw_gross_revenue
-        
-    # repeat for energy fund - it has existed since 2014, and
-    # based on past FY actuals, transfer in is between 0-0.15%
-    # of past fy raw gross revenues
-    current_FY_energy_transfer_in = \
-        np.random.uniform(low = 0, high = 0.0015) * \
-        required_cip_factor * previous_FY_raw_gross_revenue
+        current_FY_energy_transfer_in = \
+            current_FY_budgeted_energy_transfer_in
+            
+    else:
+        # there doesn't seem to be a codified mechanism to decide
+        # about required deposits for CIP Fund except to meet next
+        # FY's budgeted project costs, so will generate random 
+        # value here within bounds seen in past budgets
+        # From FY 2013-2019, CIP required deposits were between
+        #   1-3% of actual previous fy raw gross revenues
+        #   use the 2-3% range because that seems to match better 
+        #   with last 6 FYs (lowest value was FY 2013 outlier)
+        # also include a deeply uncertain factor to be used if wanted
+        current_FY_cip_deposit = \
+            np.random.uniform(low = 0.02, high = 0.03) * \
+            required_cip_factor * previous_FY_raw_gross_revenue
+    
+        # similarly, apply a random factor to set CIP fund transfer in
+        # based on past FY actuals, transfer in is between 0.2-2%
+        # of past fy raw gross revenues
+        current_FY_cip_transfer_in = \
+            np.random.uniform(low = 0.002, high = 0.02) * \
+            required_cip_factor * previous_FY_raw_gross_revenue
+            
+        # repeat for energy fund - it has existed since 2014, and
+        # based on past FY actuals, transfer in is between 0-0.15%
+        # of past fy raw gross revenues
+        current_FY_energy_transfer_in = \
+            np.random.uniform(low = 0, high = 0.0015) * \
+            energy_transfer_factor * previous_FY_raw_gross_revenue
         
     # check condition (c)
     # here, I assume that any failure to meet the above covenants
@@ -1365,7 +1368,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_rate_stabilization_final_transfer_in + \
         current_FY_non_sales_revenue - \
         current_FY_acquisition_credits - \
-        current_FY_rate_stabilization_fund_deposit
+        current_FY_budgeted_rate_stabilization_fund_deposit
     current_FY_netted_net_revenue = \
         current_FY_netted_gross_revenue - \
         current_FY_fixed_operational_expenses - \
@@ -1382,6 +1385,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             current_FY_budgeted_rr_deposit - \
             current_FY_netted_net_revenue
             
+            
     # this is not the "true" debt coverage test (done below) but 
     # "calibrates" whether required transfers in from different 
     # funds is necessary/different than budgeted. we can track
@@ -1389,13 +1393,13 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # what the final "leftover" must be covered from other sources
     if calculate_RateCoverageRatio(current_FY_netted_net_revenue,
                                    current_FY_debt_service,
-                                   previous_FY_reserve_fund_balance) < \
+                                   previous_FY_utility_reserve_fund_balance) < \
             covenant_threshold_net_revenue_plus_fund_balance:
         rate_covenant_failure_counter += COVENANT_FAILURE
         adjustment = \
             (covenant_threshold_net_revenue_plus_fund_balance * \
              (current_FY_debt_service + current_FY_cip_deposit + current_FY_budgeted_rr_deposit)) - \
-            current_FY_netted_net_revenue - previous_FY_reserve_fund_balance
+            current_FY_netted_net_revenue - previous_FY_utility_reserve_fund_balance
         current_FY_needed_reserve_deposit = \
             np.max([current_FY_needed_reserve_deposit, adjustment])
         current_FY_rate_stabilization_final_transfer_in = \
@@ -1439,7 +1443,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_acquisition_credits - \
         current_FY_budgeted_rate_stabilization_fund_deposit + \
         current_FY_cip_transfer_in + \
-        current_FY_rr_funds_transfer_in + \
+        current_FY_rr_transfer_in + \
         current_FY_energy_transfer_in
     current_FY_netted_net_revenue = \
         current_FY_netted_gross_revenue - \
@@ -1463,9 +1467,16 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # actuals, about 16-17% of surplus budget before any 
     # non-required deposits) - budgeted as 2.5% of prior year
     # water revenues
+    # Jan 2022: add unallocated interest to utility reserve fund
     current_FY_final_unencumbered_funds = 0
     current_FY_final_reserve_fund_balance = \
-        annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
+        previous_FY_utility_reserve_fund_balance + current_FY_reserve_interest_income + \
+        current_FY_remaining_unallocated_interest
+    current_FY_rate_stabilization_fund_balance = \
+        previous_FY_rate_stabilization_fund_balance
+    current_FY_rate_stabilization_fund_deposit = \
+        current_FY_budgeted_rate_stabilization_fund_deposit    
+        
     if ACTIVE_DEBUGGING:
         print(str(FY) + ': Initial Budget Surplus is ' + str(current_FY_budget_surplus))
     
@@ -1474,29 +1485,78 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # reserve fund balance, however this can zero out the reserve fund
     # and cause it to go negative, so if there is a budget surplus
     # afterward, it can be pushed into the reserve fund to replenish
-    previous_FY_cip_fund_balance = \
-        annual_actuals['CIP Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (FY-1)].values[0]
+    # Jan 2022: if CIP planning is flexible, the required additional transfers
+    #   can instead be diverted from CIP funding sources before the reserve 
+    #   fund is tapped
+    current_FY_rr_deposit = current_FY_budgeted_rr_deposit
+    current_FY_energy_deposit = current_FY_budgeted_energy_deposit
+    if FLEXIBLE_CIP_SPENDING:
+        # without any other assumptions, assume the other funds that need to
+        # be covered should be proportionally covered by reducing deposits into
+        # CIP, R&R, and Energy Funds. Cap the reductions at the amount of planned
+        # deposits into funds from operating budget
+        current_FY_cip_deposit -= np.max([required_other_funds_transferred_in * \
+            (current_FY_budgeted_cip_deposit / \
+             (current_FY_budgeted_cip_deposit + current_FY_budgeted_rr_deposit + current_FY_budgeted_energy_deposit)),
+             current_FY_cip_deposit])
+        current_FY_rr_deposit -= np.max([required_other_funds_transferred_in * \
+            (current_FY_budgeted_rr_deposit / \
+             (current_FY_budgeted_cip_deposit + current_FY_budgeted_rr_deposit + current_FY_budgeted_energy_deposit)),
+             current_FY_budgeted_rr_deposit])
+        current_FY_energy_deposit -= np.max([required_other_funds_transferred_in * \
+            (current_FY_budgeted_energy_deposit / \
+             (current_FY_budgeted_cip_deposit + current_FY_budgeted_rr_deposit + current_FY_budgeted_energy_deposit)),
+             current_FY_energy_deposit])
+            
+        required_other_funds_transferred_in -= np.max([(current_FY_budgeted_cip_deposit + current_FY_budgeted_rr_deposit + current_FY_budgeted_energy_deposit),
+                                                       required_other_funds_transferred_in])
+
     current_FY_final_reserve_fund_balance -= required_other_funds_transferred_in
     
-    if current_FY_budget_surplus <= 0:
-        reserve_fund_adjustment = np.max([current_FY_budget_surplus * 0.2, -current_FY_final_reserve_fund_balance]) # negative number
-        current_FY_final_reserve_fund_balance += reserve_fund_adjustment
+    # if there is a deficit in the budget, use the rate stabilization and 
+    # utility reserve funds as primary sources by which to address the deficit
+    if current_FY_budget_surplus < 0:
+        # determine how much to pull from utility reserve to handle deficit
+        # if fund is already emptied, account for this (the min-max statement)
+        reserve_fund_adjustment = np.min([current_FY_budget_surplus * utility_reserve_fund_deficit_reduction_fraction, 
+                                          np.max([0.0, current_FY_final_reserve_fund_balance])])    
+        current_FY_final_reserve_fund_balance -= reserve_fund_adjustment
+        current_FY_budget_surplus += reserve_fund_adjustment
         
-        rs_fund_adjustment = np.max([current_FY_budget_surplus * 0.8, -previous_FY_rate_stabilization_fund_balance]) # negative number
-        current_FY_rate_stabilization_final_transfer_in -= rs_fund_adjustment
-        current_FY_rate_stabilization_fund_deposit = 0
+        # because the rate stabilization fund has budgeted transfers and deposits,
+        # first reduce the planned withdrawals from the fund for the operating
+        # budget (can't reduce deposit because planned deposits are always zero)
+        rs_fund_adjustment = np.min([current_FY_budget_surplus * rate_stabilization_fund_deficit_reduction_fraction, 
+                                     np.max([0.0, current_FY_rate_stabilization_fund_balance])])        
+        current_FY_rate_stabilization_final_transfer_in -= np.min([current_FY_rate_stabilization_final_transfer_in, 
+                                                                   rs_fund_adjustment])
+        current_FY_budget_surplus += np.min([current_FY_rate_stabilization_final_transfer_in, 
+                                             rs_fund_adjustment])
         
-        # if there is still deficit left, pull from R&R fund
-        current_FY_budget_surplus += (reserve_fund_adjustment + rs_fund_adjustment)
-        if current_FY_budget_surplus > 0:
-            current_FY_rr_funds_transfer_in -= np.max([current_FY_budget_surplus, -previous_FY_rr_fund_balance]) # negative number
-            current_FY_budgeted_rr_deposit = 0
+        # once the transfer in has been reduced as much as possible, take remaining
+        # needed funding from the fund balance        
+        rs_fund_adjustment -= np.min([current_FY_rate_stabilization_final_transfer_in, 
+                                      rs_fund_adjustment])
+        current_FY_rate_stabilization_fund_balance -= np.min([current_FY_rate_stabilization_fund_balance, rs_fund_adjustment])
+        current_FY_budget_surplus += np.min([current_FY_rate_stabilization_fund_balance, rs_fund_adjustment])
+        
+        # if there is still deficit left, pull from R&R fund,
+        # reducing transfer in and then fund balance
+        if current_FY_budget_surplus < 0:
+            current_FY_rr_transfer_in -= np.max([current_FY_budget_surplus, current_FY_rr_transfer_in])
+            current_FY_budget_surplus += np.max([current_FY_budget_surplus, current_FY_rr_transfer_in])   
+        if current_FY_budget_surplus < 0:
+            previous_FY_rr_fund_balance -= np.max([current_FY_budget_surplus, previous_FY_rr_fund_balance])
+            current_FY_budget_surplus += np.max([current_FY_budget_surplus, previous_FY_rr_fund_balance])
             
-        # ...then from CIP fund
-        current_FY_budget_surplus += np.max([current_FY_budget_surplus, -previous_FY_cip_fund_balance])
-        if current_FY_budget_surplus > 0:
-            current_FY_cip_transfer_in -= np.max([current_FY_budget_surplus, -previous_FY_cip_fund_balance]) # negative number
-            current_FY_cip_deposit = 0
+        # ...then from CIP fund         
+        if current_FY_budget_surplus < 0:
+            current_FY_cip_transfer_in -= np.max([current_FY_budget_surplus, current_FY_cip_transfer_in])
+            current_FY_budget_surplus += np.max([current_FY_budget_surplus, current_FY_cip_transfer_in])   
+        if current_FY_budget_surplus < 0:
+            previous_FY_cip_fund_balance -= np.max([current_FY_budget_surplus, previous_FY_cip_fund_balance])
+            current_FY_budget_surplus += np.max([current_FY_budget_surplus, previous_FY_cip_fund_balance])
+            
     else:
         # if surplus is large enough, increase fund balance
         # if not, increase it as much as possible
@@ -1571,19 +1631,29 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_rate_stabilization_final_transfer_in + \
         current_FY_unencumbered_funds + \
         current_FY_cip_transfer_in + \
-        current_FY_rr_funds_transfer_in
-#    current_FY_final_raw_net_revenue = \
-#        current_FY_final_raw_gross_revenue - \
-#        current_FY_fixed_operational_expenses - \
-#        current_FY_variable_operational_expenses - \
-#        current_FY_acquisition_credits
+        current_FY_rr_transfer_in
     
     # check R&R fund flows
     current_FY_final_rr_fund_balance = \
         previous_FY_rr_fund_balance - \
-        current_FY_rr_funds_transfer_in + \
-        current_FY_budgeted_rr_deposit
+        current_FY_rr_transfer_in + \
+        current_FY_rr_deposit + \
+        current_FY_rr_interest_income
     
+    # check CIP fund flows
+    current_FY_final_cip_fund_balance = \
+        previous_FY_cip_fund_balance - \
+        current_FY_cip_transfer_in + \
+        current_FY_cip_deposit + \
+        current_FY_cip_interest_income
+        
+    # check Energy fund flows
+    current_FY_final_energy_fund_balance = \
+        previous_FY_energy_fund_balance - \
+        current_FY_energy_transfer_in + \
+        current_FY_energy_deposit + \
+        current_FY_energy_interest_income
+        
     # set rate stabilization balance
     # unencumbered funds deposited here at end of FY
     current_FY_final_rate_stabilization_fund_balance = \
@@ -1591,7 +1661,8 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_rate_stabilization_fund_deposit + \
         previous_FY_rate_stabilization_fund_balance + \
         current_FY_final_unencumbered_funds - \
-        current_FY_unencumbered_funds
+        current_FY_unencumbered_funds + \
+        current_FY_rs_interest_income
         
     # finally, record outcomes
     financial_metrics.loc[financial_metrics['Fiscal Year'] == FY] = \
@@ -1603,7 +1674,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                         calculate_RateCoverageRatio(
                                 current_FY_final_netted_net_revenue, 
                                 current_FY_debt_service,
-                                previous_FY_reserve_fund_balance),
+                                previous_FY_utility_reserve_fund_balance),
                         debt_covenant_failure_counter, 
                         rate_covenant_failure_counter,
                         reserve_fund_balance_failure_counter,
@@ -1624,10 +1695,6 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     current_FY_uniform_rate = annual_budgets['Uniform Rate'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
     current_FY_variable_rate = annual_budgets['Variable Uniform Rate'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
     current_FY_tbc_rate = annual_budgets['TBC Rate'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
-    current_FY_final_cip_fund_balance = \
-        previous_FY_cip_fund_balance + \
-        current_FY_cip_deposit - current_FY_cip_transfer_in
-
     annual_actuals.loc[annual_actuals['Fiscal Year'] == FY] = \
         pd.DataFrame([FY,
                       current_FY_uniform_rate,
@@ -1641,8 +1708,8 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                       current_FY_variable_operational_expenses,
                       current_FY_final_reserve_fund_balance,
                       current_FY_final_rr_fund_balance,
-                      current_FY_budgeted_rr_deposit,
-                      current_FY_rr_funds_transfer_in,
+                      current_FY_rr_deposit,
+                      current_FY_rr_transfer_in,
                       current_FY_rate_stabilization_fund_deposit,
                       current_FY_final_rate_stabilization_fund_balance,
                       current_FY_rate_stabilization_final_transfer_in,
@@ -1652,7 +1719,10 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                       current_FY_cip_transfer_in,
                       current_FY_misc_income,
                       current_FY_insurance_litigation_income,
-                      current_FY_total_sales_revenues]).transpose().values
+                      current_FY_total_sales_revenues,
+                      current_FY_final_energy_fund_balance,
+                      current_FY_energy_deposit,
+                      current_FY_energy_transfer_in]).transpose().values
 
     return annual_actuals, annual_budgets, financial_metrics
     
@@ -1689,7 +1759,7 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     annual_demand_growth_rate = rdm_factor_list[5]
     next_FY_budgeted_tampa_tbc_delivery = rdm_factor_list[6] # volume in MG/fiscal year
     annual_budget_variable_operating_cost_inflation_rate = rdm_factor_list[14]
-    TAMPA_SALES_THRESHOLD_FRACTION = rdm_factor_list[15]
+#    TAMPA_SALES_THRESHOLD_FRACTION = rdm_factor_list[15]
     
     current_FY_final_reserve_fund_balance = \
         annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == FY].values[0]
