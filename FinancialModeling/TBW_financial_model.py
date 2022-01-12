@@ -705,6 +705,22 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     annual_actuals['Energy Savings Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (first_modeled_fy-1)] = \
         reserve_balances['FY ' + str(first_modeled_fy)].loc[reserve_balances['Fund Name'] == 'Energy Fund']
         
+    # Jan 2022: extend CIP plan schedule of reserve fund deposits out to 2040
+    #   and make small corrections to the dataset for clarity and re-order it
+    #   Only do this for future simulation for now
+    if min(fiscal_years_to_keep) >= first_modeled_fy-1:
+        n_cip_plan_years = 11
+        n_copy_years = len(annual_actuals['Fiscal Year'])-2 - n_cip_plan_years
+        deposit_years_to_copy = ['FY ' + str(FY) for FY in range(first_modeled_fy, first_modeled_fy + n_copy_years)]
+        deposit_years = ['FY ' + str(FY) for FY in range(first_modeled_fy, first_modeled_fy + n_cip_plan_years)]
+        future_deposit_years_to_fill = ['FY ' + str(FY) for FY in range(first_modeled_fy + n_cip_plan_years, max(fiscal_years_to_keep)+1)]
+        reserve_deposits['FY 2021'] = reserve_deposits['FY 2021'] + reserve_deposits['Remaining FY 2021']
+        
+        full_model_period_reserve_deposits = pd.DataFrame(columns = ['Fund Name'] + ['FY ' + str(FY) for FY in fiscal_years_to_keep[1:]])
+        full_model_period_reserve_deposits['Fund Name'] = reserve_deposits['Fund Name'].values
+        full_model_period_reserve_deposits[deposit_years] = reserve_deposits[deposit_years].values
+        full_model_period_reserve_deposits[future_deposit_years_to_fill] = reserve_deposits[deposit_years_to_copy].values
+
     # loop across every year modeling will occur, and needed historical years,
     # to collect data into proper datasets for use in realization loop
     for fy in fiscal_years_to_keep:
@@ -786,7 +802,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
         annual_budgets.to_csv(outpath + '/historic_budgets.csv')
         water_delivery_sales.to_csv(outpath + '/historic_sales.csv')
 
-    return annual_actuals, annual_budgets, water_delivery_sales
+    return annual_actuals, annual_budgets, water_delivery_sales, full_model_period_reserve_deposits
 
 
 def pull_ModeledData(additional_scripts_path, orop_output_path, oms_output_path, realization_id, 
@@ -2225,7 +2241,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     ### -----------------------------------------------------------------------
     # step 1b: collect existing data in future output files 
     #           along with modeled data of future years
-    annual_actuals, annual_budgets, water_delivery_sales = \
+    annual_actuals, annual_budgets, water_delivery_sales, reserve_deposits = \
         collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales,
                                 annual_budget, budget_projections, water_deliveries_and_sales, 
                                 CIP_plan, reserve_balances, reserve_deposits,
