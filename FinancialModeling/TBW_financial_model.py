@@ -1248,19 +1248,12 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # as well as the deposits into each fund and accumulated interest
         # to estimate the initial planned balances of reserves, where below
         # they are checked to make sure they are not overdrawn, etc.
-        # NOTE: FY21 is multiplied by 2 because at the time the data was 
-        #   assembled, half of FY21 had already elapsed and that money 
-        #   had already been moved into/out of accounts.
-        first_cip_schedule_year = 2021
         current_FY_budgeted_energy_deposit = \
-            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Energy Fund'].values[0] * \
-            (2 if FY == first_cip_schedule_year else 1)
+            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Energy Fund'].values[0]
         current_FY_budgeted_rr_deposit = \
-            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Renewal and Replacement Fund'].values[0] * \
-            (2 if FY == first_cip_schedule_year else 1)
+            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Renewal and Replacement Fund'].values[0]
         current_FY_budgeted_cip_deposit = \
-            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Capital Improvement Fund'].values[0] * \
-            (2 if FY == first_cip_schedule_year else 1)
+            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Capital Improvement Fund'].values[0]
     
         # for transfers in, these are likely not from the operating budget 
         # data I've pulled in, but should still be accounted for to balance
