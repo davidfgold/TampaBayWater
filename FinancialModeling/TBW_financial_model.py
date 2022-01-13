@@ -294,25 +294,30 @@ def get_HarneyAugmentationFromOMS(mat_file_name_path = 'C:/Users/dgorelic/Deskto
 def add_NewDebt(current_year,
                 existing_debt, 
                 potential_projects,
-                triggered_project_ids):
+                triggered_project_ids,
+                FOLLOW_CIP_SCHEDULE = True):
     # check if new debt should be issued for triggered projects 
     # maturity date, year principal payments start, interest rate, 
+    # Jan 2022: if CIP schedule is being followed, ignore this step and 
+    # adjust debt service based on the major projects schedule
     import numpy as np; import pandas as pd
     FIRST_YEAR_OF_LOW_DEBT_SERVICE = 2032 # if debt issued before 2032, delay repayment
     BOND_LENGTH = 30 # years for debt repayment after issuance
     DEBT_INTEREST_RATE = 4
     debt_colnames = existing_debt.columns
-    for infra_id in np.unique(triggered_project_ids):
-        if infra_id != -1:
-            new_debt_issue = [np.max([current_year, FIRST_YEAR_OF_LOW_DEBT_SERVICE]), # year principal payments start
-                              current_year + BOND_LENGTH, # maturity year, assume 30-year amortization schedule
-                              DEBT_INTEREST_RATE, # min or actual interest rate, assume flat 4% rate for future stuff
-                              np.nan, # max (if there is one) interest rate, assume not
-                              potential_projects['Total Capital Cost'].iloc[infra_id], # current/initial principal on bond
-                              potential_projects['Total Capital Cost'].iloc[infra_id], # original principal amount bonded
-                              potential_projects['Project ID'].iloc[infra_id]] # new project ID
-            existing_debt = pd.DataFrame(np.vstack((existing_debt, new_debt_issue)))
     
+    if FOLLOW_CIP_SCHEDULE == False:
+        for infra_id in np.unique(triggered_project_ids):
+            if infra_id != -1:
+                new_debt_issue = [np.max([current_year, FIRST_YEAR_OF_LOW_DEBT_SERVICE]), # year principal payments start
+                                  current_year + BOND_LENGTH, # maturity year, assume 30-year amortization schedule
+                                  DEBT_INTEREST_RATE, # min or actual interest rate, assume flat 4% rate for future stuff
+                                  np.nan, # max (if there is one) interest rate, assume not
+                                  potential_projects['Total Capital Cost'].iloc[infra_id], # current/initial principal on bond
+                                  potential_projects['Total Capital Cost'].iloc[infra_id], # original principal amount bonded
+                                  potential_projects['Project ID'].iloc[infra_id]] # new project ID
+                existing_debt = pd.DataFrame(np.vstack((existing_debt, new_debt_issue)))
+        
     existing_debt.columns = debt_colnames
     return existing_debt
 
@@ -344,42 +349,61 @@ def calculate_RateCoverageRatio(net_revenues,
 
 def set_BudgetedDebtService(existing_debt, last_year_net_revenue, 
                             existing_debt_targets, 
-                            year = 2020, start_year = 2020):
+                            major_cip_projects_schedule,
+                            other_cip_projects_schedule,
+                            year = 2021, start_year = 2021,
+                            FOLLOW_CIP_SCHEDULE_MAJOR_PROJECTS = True,
+                            first_cip_future_debt_issuance_year = 2022):
+    import numpy as np
     # read in approximate "caps" on annual debt service out to 2038
     # based on existing debt only - will need to add debt
     # as new projects come online
-    import numpy as np
     total_budgeted_debt_service = \
-        existing_debt_targets['Total'].iloc[year - start_year]
-    
+        existing_debt_targets['Total'].iloc[year - start_year] 
+        
+    # Jan 2022: now this process is overridden by use of the CIP project 
+    #   schedule for major projects, if desired. This will ignore
+    #   triggering of specific projects and instead assume the CIP schedule
+    #   is followed. Adhere to this schedule post-FY2022, when future revenue
+    #   bonds begin to be repaid for new projects according to the schedule.
+    if year >= first_cip_future_debt_issuance_year:
+        total_budgeted_debt_service = \
+            major_cip_projects_schedule['Revenue Bonds (320)'].loc[year - start_year] + \
+            major_cip_projects_schedule['Revenue Bonds (350)'].loc[year - start_year] + \
+            major_cip_projects_schedule['Revenue Bonds (Future)'].loc[year - start_year] + \
+            other_cip_projects_schedule['Revenue Bonds (320)'].loc[year - start_year] + \
+            other_cip_projects_schedule['Revenue Bonds (350)'].loc[year - start_year] + \
+            other_cip_projects_schedule['Revenue Bonds (Future)'].loc[year - start_year]
+
     # check for new debt/projects and adjust targets
     # existing debt in 2019 has ID nan, any debt issued
     # during modeling has a real ID
-    for bond in range(0,len(existing_debt['ID'])):
-        if ~np.isnan(existing_debt['ID'].iloc[bond]):
-            # how much should even annual payments mean to
-            # add to this year?            
-            total_principal_owed = existing_debt['Original Amount'].iloc[bond]
-            repayment_years = existing_debt['Maturity'].iloc[bond] - existing_debt['Principal Payments Start '].iloc[bond]
-            interest_rate = existing_debt['Interest Rate (actual or min)'].iloc[bond]/100
-            remaining_principal_owed = existing_debt['Outstanding Principal'].iloc[bond]
-            
-            # calculate even annual payments, including interest
-            # TO ADD: CAP IF TOTAL DEBT SERVICE RISES TOO HIGH
-            if remaining_principal_owed > 1e4:
-                if existing_debt['Principal Payments Start '].iloc[bond] <= year:
-                    level_debt_service_payment = \
-                        total_principal_owed * \
-                        (interest_rate * (1 + interest_rate)**repayment_years) / \
-                        ((1 + interest_rate)**(repayment_years)-1)
-                    existing_debt['Outstanding Principal'].iloc[bond] -= \
-                        level_debt_service_payment - \
-                        interest_rate*remaining_principal_owed
-                else: # only pay interest before principal repayment begins
-                    level_debt_service_payment = \
-                        remaining_principal_owed * interest_rate
-                        
-                total_budgeted_debt_service += level_debt_service_payment
+    if FOLLOW_CIP_SCHEDULE_MAJOR_PROJECTS == False:
+        for bond in range(0,len(existing_debt['ID'])):
+            if ~np.isnan(existing_debt['ID'].iloc[bond]):
+                # how much should even annual payments mean to
+                # add to this year?            
+                total_principal_owed = existing_debt['Original Amount'].iloc[bond]
+                repayment_years = existing_debt['Maturity'].iloc[bond] - existing_debt['Principal Payments Start '].iloc[bond]
+                interest_rate = existing_debt['Interest Rate (actual or min)'].iloc[bond]/100
+                remaining_principal_owed = existing_debt['Outstanding Principal'].iloc[bond]
+                
+                # calculate even annual payments, including interest
+                # TO ADD: CAP IF TOTAL DEBT SERVICE RISES TOO HIGH
+                if remaining_principal_owed > 1e4:
+                    if existing_debt['Principal Payments Start '].iloc[bond] <= year:
+                        level_debt_service_payment = \
+                            total_principal_owed * \
+                            (interest_rate * (1 + interest_rate)**repayment_years) / \
+                            ((1 + interest_rate)**(repayment_years)-1)
+                        existing_debt['Outstanding Principal'].iloc[bond] -= \
+                            level_debt_service_payment - \
+                            interest_rate*remaining_principal_owed
+                    else: # only pay interest before principal repayment begins
+                        level_debt_service_payment = \
+                            remaining_principal_owed * interest_rate
+                            
+                    total_budgeted_debt_service += level_debt_service_payment
             
     return total_budgeted_debt_service, existing_debt
 
@@ -1750,6 +1774,8 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                             reserve_deposits,
                             FOLLOW_CIP_SCHEDULE = True,
                             FLEXIBLE_CIP_SPENDING = True):
+    # for debugging: dv_list = dvs; rdm_factor_list = dufs; FOLLOW_CIP_SCHEDULE = True; FLEXIBLE_CIP_SPENDING = True
+    
     # set constants and variables as necessary
     convert_kgal_to_MG = 1000
     n_days_in_year = 365
@@ -1775,10 +1801,12 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
         
     # check if debt for a new project has been issued
     # add to existing debt based on supply model triggered projects
+    # Jan 2022: override this with CIP schedule if desired
     existing_issued_debt = add_NewDebt(FY,
                                        existing_issued_debt, 
                                        potential_projects,
-                                       new_projects_to_finance)
+                                       new_projects_to_finance,
+                                       FOLLOW_CIP_SCHEDULE)
     
     # set debt service target (for now, predetermined cap?)
     # and adjust existing debt based on payments on new debt
@@ -1789,7 +1817,10 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
             set_BudgetedDebtService(existing_issued_debt, 
                                     current_FY_final_net_revenue, 
                                     existing_debt_targets, 
-                                    FY+1, first_modeled_fy)
+                                    actual_major_cip_expenditures_by_source_by_year,
+                                    actual_other_cip_expenditures_by_source_by_year,
+                                    FY+1, first_modeled_fy,
+                                    FOLLOW_CIP_SCHEDULE_MAJOR_PROJECTS = FOLLOW_CIP_SCHEDULE)
     else:
         next_FY_budgeted_debt_service = annual_budgets['Debt Service'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
     
@@ -1870,6 +1901,10 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
         next_FY_budgeted_tampa_tbc_delivery * \
         next_FY_budgeted_tbc_rate * convert_kgal_to_MG
         
+    # -------------------------------------------------------------------------
+    # Jan 2022: update here to replace budgeted transfers and deposits with 
+    #   CIP scheduled amounts from each reserve fund, if desired
+        
     # estimate any transfers in from funds
     # budgets note that >=$1.5M is expected to be transferred in
     # from rate stabilization annually, with a minimum balance of
@@ -1887,7 +1922,21 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     # (aka capital improvement not covered by uniform rate, R&R fund, or debt)
     # from historical budgets, this is always zero
     next_FY_budgeted_cip_fund_transfer_in = 0
-        
+    
+    # estimate CIP Fund deposit - in the past are
+    # 0.001-1% of last FY raw gross revenue
+    past_FY_raw_gross_revenue = \
+        annual_budgets['Gross Revenues'].loc[annual_budgets['Fiscal Year'] == (FY-1)].values[0]
+    next_FY_budgeted_cip_fund_deposit = \
+        np.random.uniform(low = past_FY_raw_gross_revenue * 0.001, 
+                          high = past_FY_raw_gross_revenue * 0.01)
+    
+    if FOLLOW_CIP_SCHEDULE:
+        next_FY_budgeted_cip_fund_transfer_in = \
+            actual_other_cip_expenditures_by_source_by_year['Capital Improvement Fund'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0]
+        next_FY_budgeted_cip_fund_deposit = \
+            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Capital Improvement Fund'].values[0]
+            
     # SECONDARY NOTE: IF THE RATE STABILIZATION FUND BECOMES VERY
     # LARGE, OR MANAGEMENT WISHES TO REDUCE THE UNIFORM RATE, 
     # MORE CAN BE TRANSFERRED IN. FOR NOW, WE ASSUME THAT THE 
@@ -1951,7 +2000,13 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     next_FY_budgeted_rr_deposit = \
         np.round(np.random.uniform(low = 2.5, high = 5),
                  decimals = 1) * 1000000
-        
+                 
+    if FOLLOW_CIP_SCHEDULE:
+        next_FY_budgeted_rr_transfer_in = \
+            actual_other_cip_expenditures_by_source_by_year['Renewal and Replacement Fund'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0]
+        next_FY_budgeted_rr_deposit = \
+            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Renewal and Replacement Fund'].values[0]
+
     # double-check R&R fund balance, adjust transfers if it is
     # being drawn down too much by reducing transfer in
     current_FY_final_rr_fund_balance = \
@@ -1987,16 +2042,17 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     # could be up to $2.2M. Will make it a uniform random value
     # between $200k and $2M
     # historically, it has often been $0 or less than $2M, so do that range
-    next_FY_budgeted_other_deposits = np.random.uniform(
+    # Jan 2022: account for energy fund, replacing "other" funds
+    next_FY_budgeted_energy_deposit = np.random.uniform(
                 low = 0, high = 2000000)
+    next_FY_budgeted_energy_transfer_in = 0
     
-    # estimate CIP Fund deposit - in the past are
-    # 0.001-1% of last FY raw gross revenue
-    past_FY_raw_gross_revenue = \
-        annual_budgets['Gross Revenues'].loc[annual_budgets['Fiscal Year'] == (FY-1)].values[0]
-    next_FY_budgeted_cip_fund_deposit = \
-        np.random.uniform(low = past_FY_raw_gross_revenue * 0.001, 
-                          high = past_FY_raw_gross_revenue * 0.01)
+    if FOLLOW_CIP_SCHEDULE:
+        next_FY_budgeted_energy_transfer_in = \
+            actual_other_cip_expenditures_by_source_by_year['Energy Fund'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0]
+        next_FY_budgeted_energy_deposit = \
+            reserve_deposits['FY ' + str(FY)].loc[reserve_deposits['Fund Name'] == 'Energy Fund'].values[0]
+
     
     # not an actual step in any documents, but if there is a deficit
     # or loss of reserve funding in previous FY and fund balance
@@ -2086,6 +2142,7 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
         next_FY_budgeted_variable_operating_costs
     
     next_FY_budgeted_other_transfer_in = 0
+    next_FY_budgeted_other_deposit = 0
     next_FY_budgeted_rate_stabilization_deposit = 0
     annual_budgets.loc[annual_budgets['Fiscal Year'] == (FY+1)] = \
                     pd.DataFrame([FY+1, 
@@ -2100,7 +2157,7 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                                   next_FY_budgeted_unencumbered_funds, 
                                   next_FY_budgeted_rr_deposit, 
                                   next_FY_budgeted_rate_stabilization_deposit, 
-                                  next_FY_budgeted_other_deposits, 
+                                  next_FY_budgeted_other_deposit, 
                                   next_FY_uniform_rate, 
                                   next_FY_variable_uniform_rate, 
                                   next_FY_budgeted_tbc_rate, 
@@ -2109,7 +2166,9 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                                   next_FY_budgeted_other_transfer_in, # never any other funds budgeted transferred in?
                                   next_FY_budgeted_interest_income, 
                                   next_FY_budgeted_cip_fund_transfer_in,
-                                  next_FY_budgeted_cip_fund_deposit]).transpose().values # basically saying interest is only non-sales revenue... 
+                                  next_FY_budgeted_cip_fund_deposit,
+                                  next_FY_budgeted_energy_transfer_in,
+                                  next_FY_budgeted_energy_deposit]).transpose().values 
 
     
     return annual_budgets, existing_issued_debt, potential_projects, \
