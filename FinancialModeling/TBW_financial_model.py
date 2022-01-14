@@ -1004,7 +1004,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     rr_fund_balance_failure_counter = 0
     COVENANT_FAILURE = 1
     current_FY_needed_reserve_deposit = 0
-    first_debt_service_override_year = 2022
+#    first_debt_service_override_year = 2022
     
     # decision variables
     covenant_threshold_net_revenue_plus_fund_balance = dv_list[0]
@@ -1810,7 +1810,7 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                                     existing_debt_targets, 
                                     actual_major_cip_expenditures_by_source_by_year,
                                     actual_other_cip_expenditures_by_source_by_year,
-                                    FY+1, first_modeled_fy,
+                                    FY+1, first_modeled_fy-1,
                                     FOLLOW_CIP_SCHEDULE_MAJOR_PROJECTS = FOLLOW_CIP_SCHEDULE)
     else:
         next_FY_budgeted_debt_service = annual_budgets['Debt Service'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
