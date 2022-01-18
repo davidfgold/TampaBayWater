@@ -1328,7 +1328,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
 
     if ACTIVE_DEBUGGING:
         print(str(FY) + ': GR: Unencumbered is ' + str(current_FY_unencumbered_funds))
-        print(str(FY) + ': GR: RS Transfer In is ' + str(current_FY_rate_stabilization_final_transfer_in))
+        print(str(FY) + ': GR: RS Transfer In (Check 1) is ' + str(current_FY_rate_stabilization_final_transfer_in))
         print(str(FY) + ': GR: R&R Transfer In is ' + str(current_FY_rr_transfer_in))
         print(str(FY) + ': GR: Non-Sales Rev is ' + str(current_FY_non_sales_revenue))
         print(str(FY) + ': GR: RS Deposit is ' + str(current_FY_budgeted_rate_stabilization_fund_deposit))
@@ -1408,7 +1408,9 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             current_FY_cip_deposit + \
             current_FY_budgeted_rr_deposit - \
             current_FY_netted_net_revenue
-            
+ 
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': GR: RS Transfer In (Check 2) is ' + str(current_FY_rate_stabilization_final_transfer_in))           
             
     # this is not the "true" debt coverage test (done below) but 
     # "calibrates" whether required transfers in from different 
@@ -1430,6 +1432,9 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             np.max([current_FY_rate_stabilization_final_transfer_in,
                     adjustment])
     
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': GR: RS Transfer In (Check 3) is ' + str(current_FY_rate_stabilization_final_transfer_in))         
+    
     # annual transfer in from rate stabilization account is capped
     # at the smallest of either:
     # (a) 3% of budgeted revenue for previous FY
@@ -1446,14 +1451,18 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # if it occurs that the maximum transfer in from the rate 
     # stabilization fund cannot balance the budget, assume other 
     # funds can be drawn from to meet the difference
-    required_other_funds_transferred_in = 0
+    potential_other_funds_transferred_in = 0
     if current_FY_rate_stabilization_final_transfer_in > \
             current_FY_rate_stabilization_transfer_cap:
-        required_other_funds_transferred_in += \
+        potential_other_funds_transferred_in += \
             current_FY_rate_stabilization_final_transfer_in - \
             current_FY_rate_stabilization_transfer_cap
         current_FY_rate_stabilization_final_transfer_in = \
             current_FY_rate_stabilization_transfer_cap
+            
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': GR: RS Transfer In (Check 4) is ' + str(current_FY_rate_stabilization_final_transfer_in))    
+        print(str(FY) + ': Additional Transfer In Potential is ' + str(potential_other_funds_transferred_in))
                
     ### take record of current FY performance ---------------------
     # first, re-calculate "actual" current gross revenues and
@@ -1478,12 +1487,28 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_cip_deposit + \
         current_FY_budgeted_rr_deposit + \
         current_FY_budgeted_energy_deposit
+        
+    if ACTIVE_DEBUGGING:   
+        print(str(FY) + ': Expenses before deposits is ' + str(current_FY_expenses_before_optional_deposits))
+        print(str(FY) + ': Net gross revenue is ' + str(current_FY_netted_gross_revenue))
+        print(str(FY) + ': Netted net revenue is ' + str(current_FY_netted_net_revenue))
 
     # next, determine how remaining unencumbered funds 
     # are split among reserve funds or preserved as unencumbered
     current_FY_budget_surplus = \
         current_FY_netted_net_revenue - \
         current_FY_expenses_before_optional_deposits
+    
+    # if there is a deficit, take the money that was meant to be transferred in
+    # from rate stabilization but capped and mark any of it that must be
+    # used to balance the budget as "required"    
+    required_other_funds_transferred_in = 0
+    if current_FY_budget_surplus < 0:
+        required_other_funds_transferred_in = \
+            np.min([potential_other_funds_transferred_in, -current_FY_budget_surplus])
+    
+    if ACTIVE_DEBUGGING:   
+        print(str(FY) + ': Additional Transfer In Required is ' + str(required_other_funds_transferred_in))
     
     # if there is a budget deficit, pull from reserve fund
     # also check rate stabilization fund flows and take percentage
@@ -1503,6 +1528,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         
     if ACTIVE_DEBUGGING:
         print(str(FY) + ': Initial Budget Surplus is ' + str(current_FY_budget_surplus))
+        
     
     # July 2020: any required transfers from 'other' funds
     # to cover budget shortfalls above will be pulled from 
@@ -1519,6 +1545,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # be covered should be proportionally covered by reducing deposits into
         # CIP, R&R, and Energy Funds. Cap the reductions at the amount of planned
         # deposits into funds from operating budget
+        print("Spending from Energy, R&R, and CIP funds is being adjusted as necessary")
         current_FY_cip_deposit -= np.max([required_other_funds_transferred_in * \
             (current_FY_budgeted_cip_deposit / \
              (current_FY_budgeted_cip_deposit + current_FY_budgeted_rr_deposit + current_FY_budgeted_energy_deposit)),
@@ -2574,7 +2601,8 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
                         oms_output_path = oms_path,
                         outpath = output_path, formulation_id = run_id,
                         PRE_CLEANED = True, ACTIVE_DEBUGGING = True,
-                        FOLLOW_CIP_MAJOR_SCHEDULE = True)
+                        FOLLOW_CIP_MAJOR_SCHEDULE = True,
+                        FLEXIBLE_OTHER_CIP_SCHEDULE = False)
             
             ### -----------------------------------------------------------------------
             # collect data of some results across all realizations
