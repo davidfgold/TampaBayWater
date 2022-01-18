@@ -353,7 +353,7 @@ def set_BudgetedDebtService(existing_debt, last_year_net_revenue,
                             other_cip_projects_schedule,
                             year = 2021, start_year = 2021,
                             FOLLOW_CIP_SCHEDULE_MAJOR_PROJECTS = True,
-                            first_cip_future_debt_issuance_year = 2022):
+                            first_cip_future_debt_issuance_year = 2023):
     import numpy as np
     # read in approximate "caps" on annual debt service out to 2038
     # based on existing debt only - will need to add debt
@@ -707,7 +707,8 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
                             AMPL_cleaned_data, TBC_raw_sales_to_CoT, Month, Year,
                             fiscal_years_to_keep, first_modeled_fy, n_months_in_year, 
                             annual_demand_growth_rate, last_fy_month,
-                            outpath):
+                            outpath, 
+                            keep_extra_fy_of_approved_budget_data = True):
     
     earliest_fy_budget_available = min(budget_projections['Fiscal Year'])
     earliest_fy_actuals_available = min(annual_budget['Fiscal Year'])
@@ -757,7 +758,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
                         earliest_fy_sales_available]) <= fy), \
                 "Must start at later FY: full historic records not available."
         
-        if fy <= first_modeled_fy:
+        if fy <= first_modeled_fy+int(keep_extra_fy_of_approved_budget_data):
             current_fy_index = [tf for tf in (budget_projections['Fiscal Year'] == fy)]
             annual_budgets.loc[annual_budgets['Fiscal Year'] == fy,:] = [v for v in budget_projections.iloc[current_fy_index,:].values]
         
@@ -1003,7 +1004,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     rr_fund_balance_failure_counter = 0
     COVENANT_FAILURE = 1
     current_FY_needed_reserve_deposit = 0
-    first_debt_service_override_year = 2022
+#    first_debt_service_override_year = 2022
     
     # decision variables
     covenant_threshold_net_revenue_plus_fund_balance = dv_list[0]
@@ -1139,20 +1140,10 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     #   use the revenue bond CIP schedule after FY22
     #   before that, rely on planned debt service spending from
     #   approved budgets for consistency before "future" debt service
-    #   begins being added in FY23
-    if FOLLOW_CIP_SCHEDULE and FY > first_debt_service_override_year:
-        if actual_major_cip_expenditures_by_source_by_year['Revenue Bonds (Future)'].loc[actual_major_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0] > 0 or \
-                actual_other_cip_expenditures_by_source_by_year['Revenue Bonds (Future)'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0] > 0:
-            current_FY_debt_service = \
-                actual_major_cip_expenditures_by_source_by_year['Revenue Bonds (320)'].loc[actual_major_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0] + \
-                actual_major_cip_expenditures_by_source_by_year['Revenue Bonds (350)'].loc[actual_major_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0] + \
-                actual_major_cip_expenditures_by_source_by_year['Revenue Bonds (Future)'].loc[actual_major_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0] + \
-                actual_other_cip_expenditures_by_source_by_year['Revenue Bonds (320)'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0] + \
-                actual_other_cip_expenditures_by_source_by_year['Revenue Bonds (350)'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0] + \
-                actual_other_cip_expenditures_by_source_by_year['Revenue Bonds (Future)'].loc[actual_other_cip_expenditures_by_source_by_year['Fiscal Year'] == FY].values[0]
-    else:
-        current_FY_debt_service = \
-            annual_budgets['Debt Service'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
+    #   begins being added in FY23. This is determined during the
+    #   budget-setting process later on
+    current_FY_debt_service = \
+        annual_budgets['Debt Service'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
             
     current_FY_acquisition_credits = \
         annual_budgets['Acquisition Credits'].loc[annual_budgets['Fiscal Year'] == FY].values[0]
@@ -1819,7 +1810,7 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                                     existing_debt_targets, 
                                     actual_major_cip_expenditures_by_source_by_year,
                                     actual_other_cip_expenditures_by_source_by_year,
-                                    FY+1, first_modeled_fy,
+                                    FY+1, first_modeled_fy-1,
                                     FOLLOW_CIP_SCHEDULE_MAJOR_PROJECTS = FOLLOW_CIP_SCHEDULE)
     else:
         next_FY_budgeted_debt_service = annual_budgets['Debt Service'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
@@ -2093,21 +2084,34 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     # the AE as calculated above does not account for additional deposits/transfers
     # so we need to include them here to isolate a comparison against
     # water sales revenues only
-    next_FY_uniform_rate, next_FY_annual_estimate, \
-    next_FY_budgeted_rate_stabilization_transfer_in = \
-        estimate_UniformRate(annual_estimate = next_FY_annual_estimate, 
-                             demand_estimate = next_FY_demand_estimate_mgd, 
-                             current_uniform_rate = annual_budgets['Uniform Rate'].loc[annual_budgets['Fiscal Year'] == FY].values[0],
-                             rs_transfer_in = next_FY_budgeted_rate_stabilization_transfer_in,
-                             rs_fund_total = current_FY_final_rate_stabilization_fund_balance,
-                             high_rate_bound = managed_uniform_rate_increase_rate,
-                             low_rate_bound = managed_uniform_rate_decrease_rate,
-                             MANAGE_RATE = KEEP_UNIFORM_RATE_STABLE)
-            
-    next_FY_variable_uniform_rate = \
-        estimate_VariableRate(next_FY_annual_estimate - next_FY_budgeted_rr_transfer_in,
-                              next_FY_budgeted_variable_operating_costs, 
-                              next_FY_uniform_rate)
+    # Jan 2022: if it is FY2022 or earlier, rely on existing approved budgets
+    #   rather than re-calculating the uniform rate and other costs
+    if FY >= first_modeled_fy:
+        next_FY_uniform_rate, next_FY_annual_estimate, \
+        next_FY_budgeted_rate_stabilization_transfer_in = \
+            estimate_UniformRate(annual_estimate = next_FY_annual_estimate, 
+                                 demand_estimate = next_FY_demand_estimate_mgd, 
+                                 current_uniform_rate = annual_budgets['Uniform Rate'].loc[annual_budgets['Fiscal Year'] == FY].values[0],
+                                 rs_transfer_in = next_FY_budgeted_rate_stabilization_transfer_in,
+                                 rs_fund_total = current_FY_final_rate_stabilization_fund_balance,
+                                 high_rate_bound = managed_uniform_rate_increase_rate,
+                                 low_rate_bound = managed_uniform_rate_decrease_rate,
+                                 MANAGE_RATE = KEEP_UNIFORM_RATE_STABLE)
+                
+        next_FY_variable_uniform_rate = \
+            estimate_VariableRate(next_FY_annual_estimate - next_FY_budgeted_rr_transfer_in,
+                                  next_FY_budgeted_variable_operating_costs, 
+                                  next_FY_uniform_rate)
+        
+    else:
+        next_FY_uniform_rate = \
+            annual_budgets['Uniform Rate'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
+        next_FY_variable_uniform_rate = \
+            annual_budgets['Variable Uniform Rate'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
+        next_FY_annual_estimate = \
+            annual_budgets['Annual Estimate'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
+        next_FY_budgeted_rate_stabilization_transfer_in = \
+            annual_budgets['Rate Stabilization Fund Transfers In'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
     
     # collect all elements of new FY budget projection
     # to match rows of budget_projections
@@ -2430,23 +2434,28 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
         # (a) estimate debt service and split among bond issues
         # (b) set Annual Estimate
         # (c) extimate demand and set Uniform Rates (full and variable)
+        # UPDATE, Jan 2022: begin forecasting the budget one FY after modeling
+        #   of actuals begins, because in FY2021 when modeling begins, the
+        #   FY22 budget has already been approved.
+        next_modeled_fy_budget_already_approved = int(True)
         annual_budgets, existing_issued_debt, potential_projects, \
                 accumulated_new_operational_fixed_costs_from_infra, \
                 accumulated_new_operational_variable_costs_from_infra = \
-            calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_data, 
-                                        annual_budgets, annual_actuals, financial_metrics, 
-                                        existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
-                                        accumulated_new_operational_fixed_costs_from_infra,
-                                        accumulated_new_operational_variable_costs_from_infra,
-                                        decision_variables, 
-                                        rdm_factors,
-                                        ACTIVE_DEBUGGING,
-                                        actual_major_cip_expenditures_by_source_by_year,
-                                        actual_other_cip_expenditures_by_source_by_year,
-                                        reserve_balances,
-                                        reserve_deposits,
-                                        FOLLOW_CIP_SCHEDULE = FOLLOW_CIP_MAJOR_SCHEDULE,
-                                        FLEXIBLE_CIP_SPENDING = FLEXIBLE_OTHER_CIP_SCHEDULE)
+            calculate_NextFYBudget(FY, first_modeled_fy+next_modeled_fy_budget_already_approved, 
+                                    current_FY_data, past_FY_year_data, 
+                                    annual_budgets, annual_actuals, financial_metrics, 
+                                    existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
+                                    accumulated_new_operational_fixed_costs_from_infra,
+                                    accumulated_new_operational_variable_costs_from_infra,
+                                    decision_variables, 
+                                    rdm_factors,
+                                    ACTIVE_DEBUGGING,
+                                    actual_major_cip_expenditures_by_source_by_year,
+                                    actual_other_cip_expenditures_by_source_by_year,
+                                    reserve_balances,
+                                    reserve_deposits,
+                                    FOLLOW_CIP_SCHEDULE = FOLLOW_CIP_MAJOR_SCHEDULE,
+                                    FLEXIBLE_CIP_SPENDING = FLEXIBLE_OTHER_CIP_SCHEDULE)
     
     # step 4: end loop and export results, including objectives
     # Nov 2020: adjust paths to also show current model formulation (infrastructure pathway)
