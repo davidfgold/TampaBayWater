@@ -2564,7 +2564,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
                         orop_output_path = ampl_output_path,
                         oms_output_path = oms_path,
                         outpath = output_path, formulation_id = run_id,
-                        PRE_CLEANED = True, ACTIVE_DEBUGGING = False,
+                        PRE_CLEANED = True, ACTIVE_DEBUGGING = True,
                         FOLLOW_CIP_MAJOR_SCHEDULE = True)
             
             ### -----------------------------------------------------------------------
