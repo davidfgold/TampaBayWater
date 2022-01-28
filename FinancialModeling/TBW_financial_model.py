@@ -1802,6 +1802,7 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     KEEP_UNIFORM_RATE_STABLE = bool(np.round(dv_list[2])) # if range is [0,1], will round to either bound for T/F value
     managed_uniform_rate_increase_rate = dv_list[3]
     managed_uniform_rate_decrease_rate = dv_list[4]
+    debt_service_cap_fraction_of_gross_revenues = dv_list[6]
     
     # deeply uncertain factors
     rate_stabilization_minimum_ratio = rdm_factor_list[0]
@@ -1840,7 +1841,21 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                                     FY+1, first_modeled_fy-1,
                                     FOLLOW_CIP_SCHEDULE_MAJOR_PROJECTS = FOLLOW_CIP_SCHEDULE)
     else:
-        next_FY_budgeted_debt_service = annual_budgets['Debt Service'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
+        next_FY_budgeted_debt_service = \
+            annual_budgets['Debt Service'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
+    
+    # Jan 2022: new DV is a cap on what annual debt service can be w.r.t. gross revenues
+    # if too high, defer debt to next year tracked with a deferral variable
+    # begin the calculation by including the rollover debt service deferred
+    # from the previous FY
+    next_FY_deferred_debt_service = 0
+    next_FY_budgeted_debt_service += annual_budgets['Debt Service Deferred'].loc[annual_budgets['Fiscal Year'] == (FY)].values[0]
+    current_FY_gross_revenues = annual_actuals['Gross Revenues'].loc[annual_actuals['Fiscal Year'] == FY].values[0]
+    if next_FY_budgeted_debt_service > debt_service_cap_fraction_of_gross_revenues * current_FY_gross_revenues:
+        print('Debt service deferred in FY' + str(FY))
+        next_FY_deferred_debt_service = \
+            next_FY_budgeted_debt_service - debt_service_cap_fraction_of_gross_revenues * current_FY_gross_revenues
+        next_FY_budgeted_debt_service -= next_FY_deferred_debt_service
     
     # if a new water supply project is added, bond issue will cover capital costs
     # but also adjust annual operating costs to account for the change
@@ -2199,7 +2214,8 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                                   next_FY_budgeted_cip_fund_transfer_in,
                                   next_FY_budgeted_cip_fund_deposit,
                                   next_FY_budgeted_energy_transfer_in,
-                                  next_FY_budgeted_energy_deposit]).transpose().values 
+                                  next_FY_budgeted_energy_deposit,
+                                  next_FY_deferred_debt_service]).transpose().values 
 
     
     return annual_budgets, existing_issued_debt, potential_projects, \
@@ -2258,7 +2274,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     # give number of variables tracked in outputs
     n_financial_metric_outcomes = 15
     n_actual_budget_outcomes = 27
-    n_proposed_budget_outcomes = 24
+    n_proposed_budget_outcomes = 25
     n_deliveries_sales_variables = 23
                 
     ### -----------------------------------------------------------------------
