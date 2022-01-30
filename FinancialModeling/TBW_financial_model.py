@@ -1029,6 +1029,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     energy_transfer_factor = rdm_factor_list[16]
     utility_reserve_fund_deficit_reduction_fraction = rdm_factor_list[17] # assumed to be 0.2
     rate_stabilization_fund_deficit_reduction_fraction = 1 - utility_reserve_fund_deficit_reduction_fraction
+    rate_stabilization_transfer_in_cap_fraction_of_gross_revenues = 0.03
     
     # give number of variables tracked in outputs
     fixed_column_index_range = [9,10,11,12,13,14]
@@ -1451,7 +1452,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     previous_FY_budgeted_raw_gross_revenue = \
         annual_budgets['Gross Revenues'].loc[annual_budgets['Fiscal Year'] == (FY-1)].values[0]
     current_FY_rate_stabilization_transfer_cap = \
-        np.min([previous_FY_budgeted_raw_gross_revenue * 0.03, # (a)
+        np.min([previous_FY_budgeted_raw_gross_revenue * rate_stabilization_transfer_in_cap_fraction_of_gross_revenues, # (a)
                 current_FY_unencumbered_funds, # (b)
                 previous_FY_rate_stabilization_deposit, # (c)
                 previous_FY_rate_stabilization_fund_balance]) # can't make fund go negative
@@ -1880,6 +1881,7 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     managed_uniform_rate_increase_rate = dv_list[3]
     managed_uniform_rate_decrease_rate = dv_list[4]
     debt_service_cap_fraction_of_gross_revenues = dv_list[6]
+    reserve_fund_floor_fraction_of_gross_revenues = dv_list[10]
     
     # deeply uncertain factors
     rate_stabilization_minimum_ratio = rdm_factor_list[0]
@@ -2170,9 +2172,9 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     # utility reserve fund
     next_FY_budgeted_reserve_fund_deposit = 0
     if current_FY_final_reserve_fund_balance < \
-            current_FY_final_gross_revenue * 0.1:
+            current_FY_final_gross_revenue * reserve_fund_floor_fraction_of_gross_revenues:
         next_FY_budgeted_reserve_fund_deposit += \
-            current_FY_final_gross_revenue * 0.1 - \
+            current_FY_final_gross_revenue * reserve_fund_floor_fraction_of_gross_revenues - \
             current_FY_final_reserve_fund_balance
     
     # finalize Annual Estimate
