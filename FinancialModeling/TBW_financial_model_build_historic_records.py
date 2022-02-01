@@ -428,7 +428,8 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                                'CIP Fund Transfer In', 
                                'CIP Fund Deposit', # includes interest
                                'Energy Savings Fund Transfer In',
-                               'Energy Savings Fund Deposit'] 
+                               'Energy Savings Fund Deposit',
+                               'Debt Service Deferred'] 
     
     # manually record values from FY22 Approved Operating Budget Report, p.31
     # to be incorporated into modeling later when historical records of demand
@@ -456,6 +457,7 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0,
                      0+0,
                      0,
+                     0,
                      0]
     
     # manually record values from FY21 Approved Operating Budget Report, p.32
@@ -481,6 +483,7 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      3211966, 
                      0,
                      1500000+275965,
+                     0,
                      0,
                      0]
     
@@ -510,6 +513,7 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      1893889, 
                      0,
                      2200000+143772,
+                     0,
                      0,
                      0]
     
@@ -560,6 +564,7 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      1262480, 
                      0,
                      92481,
+                     0,
                      0,
                      0]
     
@@ -615,6 +620,7 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0,
                      1000000+61977,
                      0,
+                     0,
                      0]
     
     # manually enter FY 2017 approved budget from its report
@@ -640,6 +646,7 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      907870, 
                      0,
                      34165,
+                     0,
                      0,
                      0]
 
@@ -667,6 +674,7 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0,
                      26995,
                      0,
+                     0,
                      0]
     
     # manually enter FY 2015 approved budget from its report
@@ -693,6 +701,7 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      0,
                      37923, # CIP costs, p.59
                      0,
+                     0,
                      0] 
     
     # manually enter FY 2014 approved budget from its report
@@ -718,6 +727,7 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                      842986, 
                      0,
                      38768,
+                     0,
                      0,
                      0]
     
@@ -780,10 +790,10 @@ def append_UpToJan2021DeliveryAndSalesData(monthly_record,
     # (2) calculate variable sales revenue for each month of 2019 and 2020
     # NOTE: A LOT OF INDICES HERE ARE HARD CODED AND WILL BE WRONG IF MORE OR LESS COLUMNS ARE ADDED TO INPUT DATASETS
     # MAR 2021: UPDATED FOR ADDITIONAL MONTHS OF 2020
-    fy20_uniform_rate_variable_portion = FY2020_approved_budget[-10]
-    fy21_uniform_rate_variable_portion = FY2021_proposed_budget[-10]
-    fy20_tbc_rate = FY2020_approved_budget[-9]
-    fy21_tbc_rate = FY2021_proposed_budget[-9]
+    fy20_uniform_rate_variable_portion = FY2020_approved_budget[-11]
+    fy21_uniform_rate_variable_portion = FY2021_proposed_budget[-11]
+    fy20_tbc_rate = FY2020_approved_budget[-10]
+    fy21_tbc_rate = FY2021_proposed_budget[-10]
     
     additional_monthly_variable_water_sales_FY20 = additional_monthly_water_deliveries.iloc[:12,1:-1] * fy20_uniform_rate_variable_portion * convert_kgal_to_MG
     additional_monthly_tbc_sales_FY20 = additional_monthly_water_deliveries.iloc[:12,-1] * fy20_tbc_rate * convert_kgal_to_MG
