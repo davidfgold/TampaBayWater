@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-data_path = 'f:/MonteCarlo_Project/Cornell_UNC/financial_model_output'
+data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/local_results'
 
 # plot data across simulations/evaluations and all realizations
 n_metrics = 2
@@ -20,7 +20,6 @@ n_formulations = 2; f_type = ['SCH Pipeline', 'SCH Pipeline + SWTP Exp.']; f_num
 #fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(n_formulations, n_metrics, sharey = False, figsize = (8,10))
 for sim in range(0,n_sims):
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(n_formulations, n_metrics, sharey = False, figsize = (8,8))
-        
     dc_plotting_index_set = 18 * [0]
     rc_plotting_index_set = 18 * [0]
     for f in f_num:
