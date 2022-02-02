@@ -955,7 +955,7 @@ def get_ReserveDepositSchedule(hist_financial_path):
 #           in future, if this is run in a larger loop across realizations
 #           consider reading in historical data outside function once
 #           and passed here
-local_base_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data'
+local_base_data_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data'
 hist_financial_path = local_base_data_path + '/financials'
 
 monthly_water_deliveries_and_sales = build_HistoricalMonthlyWaterDeliveriesAndSalesData(hist_financial_path)

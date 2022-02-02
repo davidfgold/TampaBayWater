@@ -2497,7 +2497,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                           fraction_cip_spending_for_major_projects_by_year_by_source,
                                           generic_CIP_plan,
                                           generic_fraction_cip_spending_for_major_projects_by_year_by_source,
-                                          outpath, PRINT_INITIAL_ALLOCATIONS = True)
+                                          outpath, PRINT_INITIAL_ALLOCATIONS = False)
         
     # initialize "actual" CIP spending datasets to compare to planned spending at end of simulation
     actual_other_cip_expenditures_by_source_by_year = planned_other_cip_expenditures_by_source_full_model_period.copy()
@@ -2612,10 +2612,10 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
 import numpy as np; import pandas as pd
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
-local_base_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW'
-local_data_sub_path = '/Data'
-local_code_sub_path = '/Code'
-local_MonteCarlo_data_base_path = 'C:/Users/dgorelic/Desktop/TBWruns'
+local_base_path = 'F:/MonteCarlo_Project/Cornell_UNC'
+local_data_sub_path = '/financial_model_input_data'
+local_code_sub_path = ''
+local_MonteCarlo_data_base_path = 'F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMPL_files'
 
 # read in decision variables from spreadsheet
 dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
@@ -2656,8 +2656,8 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     # set additional required paths
     scripts_path = local_base_path + local_code_sub_path + '/TampaBayWater/data_management'
     ampl_output_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
-    oms_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
-    output_path = local_base_path + local_data_sub_path + '/local_results'
+    oms_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_' + str(run_id)
+    output_path = local_base_path + '/updated_financial_model_output'
     
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
