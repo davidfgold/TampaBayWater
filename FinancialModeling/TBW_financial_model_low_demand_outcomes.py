@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
 data_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_output'
-sim = 0
+sim = 2
 
 # get demand averages and identify which fall into which quantile ranges
 demand_averages = pd.read_csv('F:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/avg_demand_2040.csv', header = None)
@@ -31,8 +31,8 @@ financial_high_demand_indexes = financial_demand_averages.values >= demand_quant
 financial_low_demand_indexes = financial_demand_averages.values <= demand_quantiles.iloc[-1] # bottom 5th percentile
      
 # plot data across simulations/evaluations and select realizations
-for run_id in [141]:
-    sim_colors = ['g', 'b']; sim_type = ['Hands-Off', '5th %ile Demand Futures']
+for run_id in [143]:
+    sim_colors = ['#929591', '#069AF3']; sim_type = ['Controlled Growth', '1-5th Percentile (Low) Demands']
     fig, (ax1, ax2) = plt.subplots(1, 2, sharey = False, figsize = (10,5))
 
     # read data
@@ -85,7 +85,7 @@ for run_id in [141]:
              color = 'k', linewidth = 3, linestyle = '--')
     ax2.legend(loc = 'lower right', title = 'Uniform Rate Policy')
     
-    ax1.set_ylim((2,4.5))
+    ax1.set_ylim((2.5,3.5))
     ax2.set_ylim((0,3))
     
     ax1.set_xticks([str(x) for x in range(int(min_year),int(max_year+2),5)])
