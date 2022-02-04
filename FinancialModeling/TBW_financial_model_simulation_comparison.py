@@ -15,10 +15,10 @@ data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel
 
 # plot data across simulations/evaluations and all realizations
 for run_id in [125]:
-    n_sims = 3; shift_size = 0; sim_colors = ['g', 'g', 'g']; sim_type = ['Hands-Off', 'Fixed', 'Controlled Growth']
+    n_sims = 9; shift_size = 0; sim_colors = ['g', 'g', 'g']; sim_type = ['Hands-Off', 'Fixed', 'Controlled Growth']
 #    fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (14,5))
-    for sim in range(0+shift_size,n_sims+shift_size):
-        fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (14,5))
+    for sim in range(0, n_sims):
+        fig, (ax1, ax2, ax3) = plt.subplots(1,3, sharey = False, figsize = (14,5))
         # read data
         ur_data = pd.read_csv(data_path + '/UR_f' + str(run_id) + '_s' + str(sim) + '.csv', index_col = 0)
         rc_data = pd.read_csv(data_path + '/RC_f' + str(run_id) + '_s' + str(sim) + '.csv', index_col = 0)
@@ -37,21 +37,21 @@ for run_id in [125]:
         ax1.fill_between(ur_data.columns,
                          np.max(ur_data, axis = 0), 
                          np.min(ur_data, axis = 0), 
-                         color = sim_colors[sim-shift_size], 
+                         color = sim_colors[0], 
                          alpha = 0.4,  linewidth = 2,
-                         edgecolor = sim_colors[sim-shift_size], label = sim_type[sim-shift_size])
+                         edgecolor = sim_colors[0], label = sim_type[0])
         ax2.fill_between(dc_data.columns, 
                          np.max(dc_data, axis = 0), 
                          np.min(dc_data, axis = 0), 
-                         color = sim_colors[sim-shift_size], 
+                         color = sim_colors[0], 
                          alpha = 0.4, 
-                         edgecolor = sim_colors[sim-shift_size], label = sim_type[sim-shift_size])
+                         edgecolor = sim_colors[0], label = sim_type[0])
         ax3.fill_between(rc_data.columns, 
                          np.max(rc_data, axis = 0), 
                          np.min(rc_data, axis = 0), 
-                         color = sim_colors[sim-shift_size], 
+                         color = sim_colors[0], 
                          alpha = 0.4, 
-                         edgecolor = sim_colors[sim-shift_size], label = sim_type[sim-shift_size])
+                         edgecolor = sim_colors[0], label = sim_type[0])
         
         ax2.plot(dc_data.columns, [1] * len(dc_data.columns), 
                  color = 'k', linewidth = 3, linestyle = '--')

@@ -1028,7 +1028,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
 #    other_transfer_factor = rdm_factor_list[12]
     required_cip_factor = rdm_factor_list[13]
     energy_transfer_factor = rdm_factor_list[16]
-    utility_reserve_fund_deficit_reduction_fraction = rdm_factor_list[17] # assumed to be 0.2
+    utility_reserve_fund_deficit_reduction_fraction = rdm_factor_list[17]
     rate_stabilization_fund_deficit_reduction_fraction = 1 - utility_reserve_fund_deficit_reduction_fraction
     rate_stabilization_transfer_in_cap_fraction_of_gross_revenues = 0.03
     
@@ -2198,8 +2198,8 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     # is all costs before deposits into reserve funds
     next_FY_annual_estimate = \
         next_FY_budgeted_total_expenditures_before_fund_adjustment + \
-        next_FY_budgeted_rr_deposit - \
         next_FY_budgeted_rate_stabilization_transfer_in
+#        next_FY_budgeted_rr_deposit - \
 #        next_FY_budgeted_other_deposits + \
 #        next_FY_budgeted_reserve_fund_deposit + \
 #        next_FY_budgeted_cip_fund_deposit
