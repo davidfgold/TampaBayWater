@@ -15,9 +15,9 @@ data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel
 
 # plot data across simulations/evaluations and all realizations
 for run_id in [125]:
-    n_sims = 3; sim_colors = ['g', 'g', 'g']; sim_type = ['Hands-Off', 'Fixed', 'Controlled Growth']
+    n_sims = 3; shift_size = 0; sim_colors = ['g', 'g', 'g']; sim_type = ['Hands-Off', 'Fixed', 'Controlled Growth']
 #    fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (14,5))
-    for sim in range(0,n_sims):
+    for sim in range(0+shift_size,n_sims+shift_size):
         fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (14,5))
         # read data
         ur_data = pd.read_csv(data_path + '/UR_f' + str(run_id) + '_s' + str(sim) + '.csv', index_col = 0)
@@ -37,21 +37,21 @@ for run_id in [125]:
         ax1.fill_between(ur_data.columns,
                          np.max(ur_data, axis = 0), 
                          np.min(ur_data, axis = 0), 
-                         color = sim_colors[sim], 
+                         color = sim_colors[sim-shift_size], 
                          alpha = 0.4,  linewidth = 2,
-                         edgecolor = sim_colors[sim], label = sim_type[sim])
+                         edgecolor = sim_colors[sim-shift_size], label = sim_type[sim-shift_size])
         ax2.fill_between(dc_data.columns, 
                          np.max(dc_data, axis = 0), 
                          np.min(dc_data, axis = 0), 
-                         color = sim_colors[sim], 
+                         color = sim_colors[sim-shift_size], 
                          alpha = 0.4, 
-                         edgecolor = sim_colors[sim], label = sim_type[sim])
+                         edgecolor = sim_colors[sim-shift_size], label = sim_type[sim-shift_size])
         ax3.fill_between(rc_data.columns, 
                          np.max(rc_data, axis = 0), 
                          np.min(rc_data, axis = 0), 
-                         color = sim_colors[sim], 
+                         color = sim_colors[sim-shift_size], 
                          alpha = 0.4, 
-                         edgecolor = sim_colors[sim], label = sim_type[sim])
+                         edgecolor = sim_colors[sim-shift_size], label = sim_type[sim-shift_size])
         
         ax2.plot(dc_data.columns, [1] * len(dc_data.columns), 
                  color = 'k', linewidth = 3, linestyle = '--')
@@ -84,27 +84,27 @@ for run_id in [125]:
     
 # quick plot to show difference in debt schedule between existing debt
 # and future with SHC pipeline added
-sim = 1; real = 1
-modeled_data_142 = pd.read_csv(data_path + '/budget_actuals_f' + str(142) + '_s' + str(sim) + '_r' + str(real) + '.csv', index_col = 0)
-modeled_data_144 = pd.read_csv(data_path + '/budget_actuals_f' + str(144) + '_s' + str(sim) + '_r' + str(real) + '.csv', index_col = 0)
-historic_data = pd.read_excel('f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data' + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
-
-# make plot
-fig, ax = plt.subplots(1,1, sharey = False, figsize = (5,5))
-#ax.fill_between(modeled_data_144['Fiscal Year'].iloc[2:], modeled_data_144['Debt Service'].iloc[2:]/1000000, 
-#                color = 'c', label = '2028: SWTP Expansion')
-ax.fill_between(modeled_data_142['Fiscal Year'].iloc[2:], modeled_data_142['Debt Service'].iloc[2:]/1000000, 
-                color = 'b', label = '2028: South County Pipeline')
-ax.fill_between(historic_data['Fiscal Year'].iloc[:-1], historic_data['Total'].iloc[:-1]/1000000, 
-                color = 'k', alpha = 0.7, label = 'Existing Debt')
-ax.set_xlabel('Fiscal Year')
-ax.set_ylabel('$ Millions')
-ax.set_title('Debt Service')
-ax.set_ylim((0,100))
-ax.legend(loc = (0.1,0.1), title = 'Debt Service')
-
-plt.savefig(data_path + '/DebtService_Sample_Comparison_142.png', bbox_inches= 'tight')
-plt.close()
+#sim = 1; real = 1
+#modeled_data_142 = pd.read_csv(data_path + '/budget_actuals_f' + str(142) + '_s' + str(sim) + '_r' + str(real) + '.csv', index_col = 0)
+#modeled_data_144 = pd.read_csv(data_path + '/budget_actuals_f' + str(144) + '_s' + str(sim) + '_r' + str(real) + '.csv', index_col = 0)
+#historic_data = pd.read_excel('f:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data' + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
+#
+## make plot
+#fig, ax = plt.subplots(1,1, sharey = False, figsize = (5,5))
+##ax.fill_between(modeled_data_144['Fiscal Year'].iloc[2:], modeled_data_144['Debt Service'].iloc[2:]/1000000, 
+##                color = 'c', label = '2028: SWTP Expansion')
+#ax.fill_between(modeled_data_142['Fiscal Year'].iloc[2:], modeled_data_142['Debt Service'].iloc[2:]/1000000, 
+#                color = 'b', label = '2028: South County Pipeline')
+#ax.fill_between(historic_data['Fiscal Year'].iloc[:-1], historic_data['Total'].iloc[:-1]/1000000, 
+#                color = 'k', alpha = 0.7, label = 'Existing Debt')
+#ax.set_xlabel('Fiscal Year')
+#ax.set_ylabel('$ Millions')
+#ax.set_title('Debt Service')
+#ax.set_ylim((0,100))
+#ax.legend(loc = (0.1,0.1), title = 'Debt Service')
+#
+#plt.savefig(data_path + '/DebtService_Sample_Comparison_142.png', bbox_inches= 'tight')
+#plt.close()
 
 # ax2.plot(dc_data.columns, [1] * len(dc_data.columns), 
 #          color = 'k', linewidth = 3, linestyle = '--')

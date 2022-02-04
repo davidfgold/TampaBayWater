@@ -1530,7 +1530,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     current_FY_final_unencumbered_funds = 0
     current_FY_final_reserve_fund_balance = \
         previous_FY_utility_reserve_fund_balance + current_FY_reserve_interest_income + \
-        current_FY_remaining_unallocated_interest
+        current_FY_remaining_unallocated_interest 
     current_FY_rate_stabilization_fund_deposit = \
         current_FY_budgeted_rate_stabilization_fund_deposit    
         
@@ -1547,7 +1547,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     if current_FY_budget_surplus < 0:
         # determine how much to pull from utility reserve to handle deficit
         # if fund is already emptied, account for this (the min-max statement)
-        reserve_fund_adjustment = np.min([current_FY_budget_surplus * utility_reserve_fund_deficit_reduction_fraction, 
+        reserve_fund_adjustment = np.min([-current_FY_budget_surplus * utility_reserve_fund_deficit_reduction_fraction, 
                                           np.max([0.0, current_FY_final_reserve_fund_balance])])    
         current_FY_final_reserve_fund_balance -= reserve_fund_adjustment
         current_FY_budget_surplus += reserve_fund_adjustment
@@ -1555,46 +1555,50 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # because the rate stabilization fund has budgeted transfers and deposits,
         # first reduce the planned withdrawals from the fund for the operating
         # budget (can't reduce deposit because planned deposits are always zero)
-        rs_fund_adjustment = np.min([current_FY_budget_surplus * rate_stabilization_fund_deficit_reduction_fraction, 
+        rs_fund_adjustment = np.min([-current_FY_budget_surplus * rate_stabilization_fund_deficit_reduction_fraction, 
                                      np.max([0.0, previous_FY_rate_stabilization_fund_balance])])        
         current_FY_rate_stabilization_final_transfer_in -= np.min([current_FY_rate_stabilization_final_transfer_in, 
                                                                    rs_fund_adjustment])
         current_FY_budget_surplus += np.min([current_FY_rate_stabilization_final_transfer_in, 
                                              rs_fund_adjustment])
         
-        # once the transfer in has been reduced as much as possible, take remaining
-        # needed funding from the fund balance        
-        rs_fund_adjustment -= np.min([current_FY_rate_stabilization_final_transfer_in, 
-                                      rs_fund_adjustment])
-        previous_FY_rate_stabilization_fund_balance -= np.min([previous_FY_rate_stabilization_fund_balance, rs_fund_adjustment])
-        current_FY_budget_surplus += np.min([previous_FY_rate_stabilization_fund_balance, rs_fund_adjustment])
-        
         # if there is still deficit left, pull from R&R fund,
-        # reducing transfer in and then fund balance
+        # increase transfer in (increase operating revenues for this FY)
+        # and then reduce fund balance in the final budget calculations below
         if current_FY_budget_surplus < 0:
-            current_FY_rr_transfer_in -= np.max([current_FY_budget_surplus, current_FY_rr_transfer_in])
-            current_FY_budget_surplus += np.max([current_FY_budget_surplus, current_FY_rr_transfer_in])   
+            # check that there is an ability to reduce the R&R fund beyond
+            # currently-planned transfers into the operating budget
+            # if not possible while balancing the fund, move on to next fund
+            potential_rr_transfer_in_increase_margin = \
+                previous_FY_rr_fund_balance - current_FY_netted_gross_revenue * rr_fund_floor_fraction_of_gross_revenues
+            if potential_rr_transfer_in_increase_margin >= 0:
+                current_FY_rr_transfer_in += np.min([-current_FY_budget_surplus, potential_rr_transfer_in_increase_margin])
+                current_FY_budget_surplus += np.min([-current_FY_budget_surplus, potential_rr_transfer_in_increase_margin])
+                
+        # ...then from CIP fund   
         if current_FY_budget_surplus < 0:
-            previous_FY_rr_fund_balance -= np.max([current_FY_budget_surplus, previous_FY_rr_fund_balance])
-            current_FY_budget_surplus += np.max([current_FY_budget_surplus, previous_FY_rr_fund_balance])
-            
-        # ...then from CIP fund         
-        if current_FY_budget_surplus < 0:
-            current_FY_cip_transfer_in -= np.max([current_FY_budget_surplus, current_FY_cip_transfer_in])
-            current_FY_budget_surplus += np.max([current_FY_budget_surplus, current_FY_cip_transfer_in])   
-        if current_FY_budget_surplus < 0:
-            previous_FY_cip_fund_balance -= np.max([current_FY_budget_surplus, previous_FY_cip_fund_balance])
-            current_FY_budget_surplus += np.max([current_FY_budget_surplus, previous_FY_cip_fund_balance])
-            
+            # check that there is an ability to reduce the CIP fund beyond
+            # currently-planned transfers into the operating budget
+            potential_cip_transfer_in_increase_margin = \
+                previous_FY_cip_fund_balance - current_FY_netted_gross_revenue * cip_fund_floor_fraction_of_gross_revenues
+            if potential_rr_transfer_in_increase_margin >= 0:
+                current_FY_cip_transfer_in += np.min([-current_FY_budget_surplus, potential_cip_transfer_in_increase_margin])
+                current_FY_budget_surplus  += np.min([-current_FY_budget_surplus, potential_cip_transfer_in_increase_margin])
+           
+        # if there isn't any budget margin left, can't push leftovers into the
+        # reserve fund, so zero out this quantity
+        current_FY_needed_reserve_deposit_realized = 0
     else:
         # if surplus is large enough, increase fund balance
         # if not, increase it as much as possible
         if current_FY_budget_surplus > current_FY_needed_reserve_deposit:
             current_FY_final_reserve_fund_balance += current_FY_needed_reserve_deposit
             current_FY_budget_surplus -= current_FY_needed_reserve_deposit
+            current_FY_needed_reserve_deposit_realized = current_FY_needed_reserve_deposit
         else:
             current_FY_final_reserve_fund_balance += current_FY_budget_surplus
             current_FY_budget_surplus = 0
+            current_FY_needed_reserve_deposit_realized = current_FY_budget_surplus
         
         # mark some funds unencumbered
         # THIS IS GOING NEGATIVE, WHY? BECAUSE UNIFORM RATE 
@@ -1768,7 +1772,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_non_sales_revenue - \
         current_FY_acquisition_credits - \
         current_FY_rate_stabilization_fund_deposit - \
-        current_FY_needed_reserve_deposit
+        current_FY_needed_reserve_deposit_realized
     current_FY_final_netted_net_revenue = \
         current_FY_final_netted_gross_revenue - \
         current_FY_fixed_operational_expenses - \
@@ -2662,7 +2666,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    start_fy = 2021; end_fy = 2040; n_reals_tested = 1 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    start_fy = 2021; end_fy = 2040; n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
     #for sim in range(0,len(DVs)): # sim = 0 for testing
     #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
