@@ -1654,7 +1654,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # Jan 2022: if CIP planning is flexible, the required additional transfers
     #   can instead be diverted from CIP funding sources before the reserve 
     #   fund is tapped
-    print(str(FY) + ': GR: Budgeted R&R Deposit (Check FIRST) is ' + str(current_FY_budgeted_rr_deposit))
+#    print(str(FY) + ': GR: Budgeted R&R Deposit (Check FIRST) is ' + str(current_FY_budgeted_rr_deposit))
     
     current_FY_rr_deposit = current_FY_budgeted_rr_deposit
     current_FY_energy_deposit = current_FY_budgeted_energy_deposit
@@ -1683,7 +1683,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                                                        required_other_funds_transferred_in])
 
     current_FY_final_reserve_fund_balance -= required_other_funds_transferred_in
-    print(str(FY) + ': GR: Budgeted R&R Deposit (Check MIDDLE) is ' + str(current_FY_rr_deposit))
+#    print(str(FY) + ': GR: Budgeted R&R Deposit (Check MIDDLE) is ' + str(current_FY_rr_deposit))
     
     # Jan 2022: re-balance CIP/R&R/Energy funds to ensure they don't drop low
     #   if too much CIP investment is planned and not large enough deposits are
@@ -1698,7 +1698,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_cip_deposit + \
         current_FY_cip_interest_income
     if current_FY_cip_fund_balance < np.max([0.0, current_FY_netted_gross_revenue * cip_fund_floor_fraction_of_gross_revenues]):
-        print('Must rebalance CIP Fund in FY' + str(FY))
+        #print('Must rebalance CIP Fund in FY' + str(FY))
         cip_deficit = np.max([0.0, current_FY_netted_gross_revenue * cip_fund_floor_fraction_of_gross_revenues]) - current_FY_cip_fund_balance
         current_FY_cip_deposit += cip_deficit
     
@@ -1709,7 +1709,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_rr_deposit + \
         current_FY_rr_interest_income
     if current_FY_rr_fund_balance < np.max([0.0, current_FY_netted_gross_revenue * rr_fund_floor_fraction_of_gross_revenues]):
-        print('Must rebalance R&R Fund in FY' + str(FY))
+        #print('Must rebalance R&R Fund in FY' + str(FY))
         rr_deficit = np.max([0.0, current_FY_netted_gross_revenue * rr_fund_floor_fraction_of_gross_revenues]) - current_FY_rr_fund_balance
         current_FY_rr_deposit += rr_deficit
     
@@ -1720,7 +1720,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_energy_deposit + \
         current_FY_energy_interest_income
     if current_FY_energy_fund_balance < np.max([0.0, current_FY_netted_gross_revenue * energy_fund_floor_fraction_of_gross_revenues]):
-        print('Must rebalance Energy Fund in FY' + str(FY))
+        #print('Must rebalance Energy Fund in FY' + str(FY))
         energy_deficit = np.max([0.0, current_FY_netted_gross_revenue * energy_fund_floor_fraction_of_gross_revenues]) - current_FY_energy_fund_balance
         current_FY_energy_deposit += energy_deficit
         
@@ -1762,12 +1762,12 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_unencumbered_funds + \
         current_FY_rs_interest_income
     if current_FY_rate_stabilization_fund_balance < 0:
-        print(str(FY) + ': Failure of the Rate Stabilization Fund')
+        #print(str(FY) + ': Failure of the Rate Stabilization Fund')
         total_deficit -= current_FY_rate_stabilization_fund_balance
         current_FY_rate_stabilization_fund_balance = 0
         
     if current_FY_final_reserve_fund_balance < 0:
-        print(str(FY) + ': Failure of the Utility Reserve Fund')
+        #print(str(FY) + ': Failure of the Utility Reserve Fund')
         total_deficit -= current_FY_final_reserve_fund_balance
         current_FY_final_reserve_fund_balance = 0
 
@@ -1885,7 +1885,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                       current_FY_energy_deposit,
                       current_FY_energy_transfer_in]).transpose().values
                     
-    print(str(FY) + ': GR: Budgeted R&R Deposit (Check FINAL) is ' + str(current_FY_rr_deposit))
+#    print(str(FY) + ': GR: Budgeted R&R Deposit (Check FINAL) is ' + str(current_FY_rr_deposit))
 
     return annual_actuals, annual_budgets, financial_metrics
     
@@ -1965,7 +1965,7 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     next_FY_budgeted_debt_service += annual_budgets['Debt Service Deferred'].loc[annual_budgets['Fiscal Year'] == (FY)].values[0]
     current_FY_gross_revenues = annual_actuals['Gross Revenues'].loc[annual_actuals['Fiscal Year'] == FY].values[0]
     if next_FY_budgeted_debt_service > debt_service_cap_fraction_of_gross_revenues * current_FY_gross_revenues:
-        print('Debt service deferred in FY' + str(FY))
+        #print('Debt service deferred in FY' + str(FY))
         next_FY_deferred_debt_service = \
             next_FY_budgeted_debt_service - debt_service_cap_fraction_of_gross_revenues * current_FY_gross_revenues
         next_FY_budgeted_debt_service -= next_FY_deferred_debt_service
@@ -2671,7 +2671,7 @@ projected_10year_reserve_fund_deposits = pd.read_csv(historical_data_path + '/pr
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
-for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
+for run_id in [125, 141, 142, 143, 144]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
     # run for testing: run_id = 125; sim = 0; r_id = 1
     
     ### ---------------------------------------------------------------------------
@@ -2684,7 +2684,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    start_fy = 2021; end_fy = 2040; n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    start_fy = 2021; end_fy = 2040; n_reals_tested = 999 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
     #for sim in range(0,len(DVs)): # sim = 0 for testing
     #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
