@@ -735,6 +735,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     #   and make small corrections to the dataset for clarity and re-order it
     #   Only do this for future simulation for now
     reserve_deposits_to_use = reserve_deposits.copy()
+    full_model_period_reserve_deposits = np.nan
     if min(fiscal_years_to_keep) >= first_modeled_fy-1:
         n_cip_plan_years = 11
         n_copy_years = len(annual_actuals['Fiscal Year'])-2 - n_cip_plan_years
@@ -2684,10 +2685,14 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    start_fy = 2021; end_fy = 2040; n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    start_fy = 2015; end_fy = 2021; n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    
+    if end_fy <= 2021: # if we are running historical]
+        output_path = output_path + '/historical_validation'
+    
     #for sim in range(0,len(DVs)): # sim = 0 for testing
-    #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
-    for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
+    for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
+    #for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
         ### ----------------------------------------------------------------------- ###
         ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
         ### ----------------------------------------------------------------------- ###  
