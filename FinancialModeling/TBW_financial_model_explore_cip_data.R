@@ -32,8 +32,8 @@ P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.integer(as.character(vari
   scale_x_continuous(labels = as.character(c(seq(2021,2031), "2032+")), breaks = seq(2021,2032), name = "Fiscal Year") +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.8, hjust = 0.7, size = 10), legend.position = "none",
         axis.text.y = element_text(size = 10, face = "bold"))
-ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP.png',
-       dpi = 800, units = 'in', height = 20, width = 30)
+#ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP.png',
+#       dpi = 800, units = 'in', height = 20, width = 30)
 
 CIPF_melt_sub = CIPF_melt_sub[which(CIPF_melt_sub$Project.Name != "Totals"),]
 P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.integer(as.character(variable)), y = Dollars, 
@@ -78,15 +78,15 @@ P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(vari
 ggsave('C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/otherfigures/check_CIP_bysize.png',
        dpi = 1000, units = 'in', height = 4, width = 12)
 
-CIPF_melt_sub$Current.Funding.Source[which(CIPF_melt_sub$Current.Funding.Source %in% c("Renewal and Replacement Fund",
-                                                                                       "Capital Improvement Fund",
-                                                                                       "Energy Fund"))] = "Reserve Funds"
-CIPF_melt_sub$Current.Funding.Source[which(CIPF_melt_sub$Current.Funding.Source %in% c("Revenue Bonds (Future)",
-                                                                                       "Revenue Bonds (320)",
-                                                                                       "Revenue Bonds (350)"))] = "Debt Issuance"
-CIPF_melt_sub$Current.Funding.Source[which(CIPF_melt_sub$Current.Funding.Source %in% c("SWFWMD Co-Funding",
-                                                                                       "Member Goverment Contribution-JPA",
-                                                                                       "State Grant"))] = "State and Local Grants"
+# CIPF_melt_sub$Current.Funding.Source[which(CIPF_melt_sub$Current.Funding.Source %in% c("Renewal and Replacement Fund",
+#                                                                                        "Capital Improvement Fund",
+#                                                                                        "Energy Fund"))] = "Reserve Funds"
+# CIPF_melt_sub$Current.Funding.Source[which(CIPF_melt_sub$Current.Funding.Source %in% c("Revenue Bonds (Future)",
+#                                                                                        "Revenue Bonds (320)",
+#                                                                                        "Revenue Bonds (350)"))] = "Debt Issuance"
+# CIPF_melt_sub$Current.Funding.Source[which(CIPF_melt_sub$Current.Funding.Source %in% c("SWFWMD Co-Funding",
+#                                                                                        "Member Goverment Contribution-JPA",
+#                                                                                        "State Grant"))] = "State and Local Grants"
 P = ggplot(data = CIPF_melt_sub) + geom_bar(aes(x = as.numeric(as.character(variable)), y = Dollars/1000000, 
                                                 fill = Current.Funding.Source), 
                                             color = NA, stat = 'identity') +
@@ -147,7 +147,7 @@ CIP_raw_schedule[1,2] = 7691664
 write.table(CIP_raw_schedule, sep = ",", row.names = FALSE,
             'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data/original_CIP_spending_all_projects.csv')
 
-CIP_remaining_schedule = CIPF_melt_sub[which(CIPF_melt_sub$`Total Capital Needed` != "Large (>$75m)"),] %>% 
+CIP_remaining_schedule = CIPF_melt_sub[which(CIPF_melt_sub$`Total Capital Needed` != "Large Projects (>$75m)"),] %>% 
   group_by(Current.Funding.Source, `variable`, `Total Capital Needed`) %>% 
   summarize(total = sum(Dollars))
 CIP_remaining_schedule = CIP_remaining_schedule %>% 
@@ -175,7 +175,7 @@ write.table(all_project_schedule, sep = ",", row.names = FALSE,
             'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/model_input_data/normalized_CIP_spending_all_projects.csv')
 
 major_project_schedule = 
-  sum_repayment_per_year_schedule[which(sum_repayment_per_year_schedule$`Total Capital Needed` == "Large (>$75m)"),] %>%
+  sum_repayment_per_year_schedule[which(sum_repayment_per_year_schedule$`Total Capital Needed` == "Large Projects (>$75m)"),] %>%
   group_by(`Normalized Year Index`, Current.Funding.Source) %>% summarize(Total = sum(total)) 
 major_project_schedule = reshape2::dcast(major_project_schedule, 
                                          `Current.Funding.Source` ~ `Normalized Year Index`)
@@ -185,7 +185,7 @@ major_project_fractional_splits_over_time = colSums(major_project_schedule[,2:nc
 major_project_fractional_splits_over_source = t(t(major_project_schedule[,2:ncol(major_project_schedule)]) / 
                                                   colSums(major_project_schedule[,2:ncol(major_project_schedule)]))
 remaining_project_schedule = 
-  sum_repayment_per_year_schedule[which(sum_repayment_per_year_schedule$`Total Capital Needed` != "Large (>$75m)"),] %>%
+  sum_repayment_per_year_schedule[which(sum_repayment_per_year_schedule$`Total Capital Needed` != "Large Projects (>$75m)"),] %>%
   group_by(`Normalized Year Index`, Current.Funding.Source) %>% summarize(Total = sum(total))
 remaining_project_schedule = reshape2::dcast(remaining_project_schedule, 
                                          `Current.Funding.Source` ~ `Normalized Year Index`)
