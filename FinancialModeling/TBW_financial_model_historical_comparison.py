@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/local_results'
+data_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput/historical_comparison'
 
 # read historic data
 # hard-coded covenant values from budget spreadsheets shared by TBW (Fy2019 Table 12)/reports
@@ -25,11 +25,14 @@ hist_water_delivery_sales = pd.read_csv(data_path + '/historic_sales.csv')
 #   were in previous years. However, newer CAFR from FY2020 still shows no
 #   required deposits for those (or future) FYs, so this adjustment is now
 #   removed.
+#hist_rate_covenant = [1.44,1.51,1.43,1.48,1.49,1.51,1.58,1.61, 1.61] # from FY13 -> 21 PLACEHOLDER FOR 2021
+#hist_debt_covenant = [1.0,1.01,1.0,1.01,1.0,1.11,1.16,1.19, 1.19] # from FY13 -> 21 PLACEHOLDER
+
 hist_rate_covenant = [1.44,1.51,1.43,1.48,1.49,1.51,1.58,1.61] # from FY13 -> 20
 hist_debt_covenant = [1.0,1.01,1.0,1.01,1.0,1.11,1.16,1.19] # from FY13 -> 20
 
 # make a set of colors for the plots
-n_reals = 1; sim = 0; f_id = 125
+n_reals = 10; sim = 0; f_id = 125
 
 # read modeled data
 for col in [x for x in hist_actuals.columns[2:].values]:
@@ -52,8 +55,8 @@ for col in [x for x in hist_actuals.columns[2:].values]:
     ax.plot(data_to_plot['Fiscal Year'][2:], 
             hist_actuals[col].values[2:]/y_divider, 
             color = 'k', linewidth = 5)
-    ax.set_xticks(range(2014,2021))
-    ax.set_xticklabels(range(2014,2021))
+    ax.set_xticks(range(2014,2022))
+    ax.set_xticklabels(range(2014,2022))
     plt.xlabel('Fiscal Year')
     plt.ylabel(y_label)
     plt.title(col + ' - Actuals Comparison')
@@ -108,8 +111,8 @@ for col in [x for x in hist_water_delivery_sales.columns[10:22].values]:
     ax.plot(np.unique(data_to_plot['Fiscal Year'])[1:], 
             hist_water_delivery_sales[col].groupby(hist_water_delivery_sales['Fiscal Year']).sum().values[1:]/y_divider, 
             color = 'k', linewidth = 5)
-    ax.set_xticks(range(2014,2021))
-    ax.set_xticklabels(range(2014,2021))
+    ax.set_xticks(range(2014,2022))
+    ax.set_xticklabels(range(2014,2022))
     plt.xlabel('Fiscal Year')
     plt.ylabel(y_label)
     plt.title(col + ' - Comparison')

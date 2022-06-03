@@ -734,6 +734,8 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     # Jan 2022: extend CIP plan schedule of reserve fund deposits out to 2040
     #   and make small corrections to the dataset for clarity and re-order it
     #   Only do this for future simulation for now
+    #reserve_deposits_to_use = reserve_desposits.copy()
+    full_model_period_reserve_deposits = np.nan
     if min(fiscal_years_to_keep) >= first_modeled_fy-1:
         n_cip_plan_years = 11
         n_copy_years = len(annual_actuals['Fiscal Year'])-2 - n_cip_plan_years
@@ -2638,12 +2640,20 @@ annual_budget_data = pd.read_csv(historical_data_path + '/historical_actuals.csv
 existing_debt = pd.read_csv(historical_data_path + '/existing_debt.csv')
 infrastructure_options = pd.read_csv(historical_data_path + '/potential_projects.csv')
 current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
-projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
-projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
-normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projects.csv')
-normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fraction.csv')
+projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY22.csv')
+projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fractionFY22.csv')
+normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projectsFY22.csv')
+normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fractionFY22.csv')
 projected_first_year_reserve_fund_balances = pd.read_csv(historical_data_path + '/projected_FY21_reserve_fund_starting_balances.csv')
 projected_10year_reserve_fund_deposits = pd.read_csv(historical_data_path + '/projected_reserve_fund_deposits.csv')
+
+##Space where the previous FY CIP data is being added to the new data##
+previousFY_projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
+previousFY_projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
+##previousFY_normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projects.csv')
+##previousFY_normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fraction.csv')
+projected_10year_CIP_spending.insert(1, '2021', previousFY_projected_10year_CIP_spending.loc[:,'2021'])
+projected_10year_CIP_spending_major_project_fraction.insert(1, '2021', previousFY_projected_10year_CIP_spending_major_project_fraction.loc[:, '2021'])
 
 # for simplicity? organize all input data into data dictionary to make
 # passing to functions easier THIS TBD
@@ -2666,10 +2676,13 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    start_fy = 2021; end_fy = 2040; n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    start_fy = 2021; end_fy = 2041; n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
     #for sim in range(0,len(DVs)): # sim = 0 for testing
     #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
+        if end_fy <= 2021: # if we are running historical]
+            output_path = output_path + '/historical_comparison'
+
         ### ----------------------------------------------------------------------- ###
         ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
         ### ----------------------------------------------------------------------- ###  

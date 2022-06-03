@@ -13,8 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/local_results'
-dv_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/TampaBayWater/FinancialModeling'
+data_path = "C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput"
+dv_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW/Code/TampaBayWater/FinancialModeling'
 
 # AVAILABLE DATA TO PLOT, BY OUTPUT FILE TYPE
 # IF CHOOSING VARIABLES TO PLOT WITH SAME NAME IN DIFFERENT FILES,
@@ -55,9 +55,9 @@ METRICS_VARIABLES = ['Fiscal Year', 'Debt Covenant Ratio', 'Rate Covenant Ratio'
 # what data do I want to plot? must be same as they are in output files
 data_names_to_plot = ['Rate Covenant Ratio', 'Debt Covenant Ratio', 'Uniform Rate', 'Debt Service', 'Debt Service Deferred', 'Remaining Unallocated Deficit',
                       'Utility Reserve Fund Balance (Total)', 'Rate Stabilization Fund (Total)', 'CIP Fund (Total)', 'R&R Fund (Total)', 'Energy Savings Fund (Total)']
-formulation_to_plot = [125] # list all 
-simulation_to_plot = [0,1] # list all, IDs start at 0
-realization_to_plot = [5] # list which we want, IDs start at 1 not zero
+formulation_to_plot = [125] # list all
+simulation_to_plot = [0,1,2,3,4,5,6,7,8] # list all, IDs start at 0
+realization_to_plot = [x for x in range(1,10)] # list which we want, IDs start at 1 not zero
 metrics_test_read = pd.read_csv(data_path + '/financial_metrics_f' + str(formulation_to_plot[0]) + '_s' + str(simulation_to_plot[0]) + '_r' + str(realization_to_plot[0]) + '.csv', index_col = 0)
 
 
@@ -128,7 +128,7 @@ for f in range(0,len(formulation_to_plot)):
                 ax.set_xticklabels([int(x) for x in metrics['Fiscal Year'].values], rotation = 90)
                 
         # output and close figure to avoid overloading memory
-        plt.savefig(data_path + '/Custom_Outputs_Plot_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + ('_SINGLE_REALIZATION_r' + str(realization_to_plot[r])) if len(realization_to_plot) == 1 else None + '.png', bbox_inches= 'tight', dpi = 400)
+        plt.savefig(data_path + '/Custom_Outputs_Plot_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + (('_SINGLE_REALIZATION_r' + str(realization_to_plot[r])) if len(realization_to_plot) == 1 else '') + '.png', bbox_inches= 'tight', dpi = 400)
         plt.close()
                 
   
