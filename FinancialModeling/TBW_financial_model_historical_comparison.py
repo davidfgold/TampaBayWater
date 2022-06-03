@@ -11,7 +11,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
+
 data_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput/historical_comparison'
+#data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/local_results/historical_validation'
+
 
 # read historic data
 # hard-coded covenant values from budget spreadsheets shared by TBW (Fy2019 Table 12)/reports

@@ -516,11 +516,11 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
             full_period_major_cip_expenditures.iloc[:n_total_years_to_use,1:(len(CIP_plan)+1)] = \
                 CIP_plan.iloc[:,1:(n_total_years_to_use+1)].T.values * \
                 (fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
-        
-    if PRINT_INITIAL_ALLOCATIONS:
-        full_period_major_cip_expenditures.to_csv(outpath + '/baseline_CIP_major_expenditures.csv')
-        full_period_other_cip_expenditures.to_csv(outpath + '/baseline_CIP_other_expenditures.csv')
-        
+    
+    # getting errors here from printing?    
+    #if PRINT_INITIAL_ALLOCATIONS:
+    #    full_period_major_cip_expenditures.to_csv(outpath + '/baseline_CIP_major_expenditures.csv')
+    #    full_period_other_cip_expenditures.to_csv(outpath + '/baseline_CIP_other_expenditures.csv')
     return full_period_major_cip_expenditures, full_period_other_cip_expenditures
 
 
@@ -734,7 +734,8 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     # Jan 2022: extend CIP plan schedule of reserve fund deposits out to 2040
     #   and make small corrections to the dataset for clarity and re-order it
     #   Only do this for future simulation for now
-    #reserve_deposits_to_use = reserve_desposits.copy()
+
+    reserve_deposits_to_use = reserve_deposits.copy()
     full_model_period_reserve_deposits = np.nan
     if min(fiscal_years_to_keep) >= first_modeled_fy-1:
         n_cip_plan_years = 11
@@ -742,12 +743,12 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
         deposit_years_to_copy = ['FY ' + str(FY) for FY in range(first_modeled_fy, first_modeled_fy + n_copy_years)]
         deposit_years = ['FY ' + str(FY) for FY in range(first_modeled_fy, first_modeled_fy + n_cip_plan_years)]
         future_deposit_years_to_fill = ['FY ' + str(FY) for FY in range(first_modeled_fy + n_cip_plan_years, max(fiscal_years_to_keep)+1)]
-        reserve_deposits['FY 2021'] = reserve_deposits['FY 2021'] + reserve_deposits['Remaining FY 2021']
+        reserve_deposits_to_use['FY 2021'] = reserve_deposits['FY 2021'] + reserve_deposits['Remaining FY 2021']
         
         full_model_period_reserve_deposits = pd.DataFrame(columns = ['Fund Name'] + ['FY ' + str(FY) for FY in fiscal_years_to_keep[1:]])
-        full_model_period_reserve_deposits['Fund Name'] = reserve_deposits['Fund Name'].values
-        full_model_period_reserve_deposits[deposit_years] = reserve_deposits[deposit_years].values
-        full_model_period_reserve_deposits[future_deposit_years_to_fill] = reserve_deposits[deposit_years_to_copy].values
+        full_model_period_reserve_deposits['Fund Name'] = reserve_deposits_to_use['Fund Name'].values
+        full_model_period_reserve_deposits[deposit_years] = reserve_deposits_to_use[deposit_years].values
+        full_model_period_reserve_deposits[future_deposit_years_to_fill] = reserve_deposits_to_use[deposit_years_to_copy].values
 
     # loop across every year modeling will occur, and needed historical years,
     # to collect data into proper datasets for use in realization loop
@@ -1299,6 +1300,9 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     #       MUST BE >125% of required debt service
     # (c) Net Revenues must cover 100% of the sum of debt service,
     #       required R&R deposits, and required Reserve deposits
+    
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': GR: Budgeted R&R Deposit (Check 1) is ' + str(current_FY_budgeted_rr_deposit))
   
     # check condition (a)
     # R&R fund budgeted transfer in from fund always covers 100% of planned
@@ -1318,6 +1322,10 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             current_FY_budgeted_rr_deposit - current_FY_budgeted_rr_transfer_in
         if (previous_FY_raw_gross_revenue * rr_fund_floor_fraction_of_gross_revenues) > previous_FY_rr_fund_balance + current_FY_rr_net_deposit:
             current_FY_budgeted_rr_deposit += current_FY_rr_net_deposit
+            
+    
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': GR: Budgeted R&R Deposit (Check 2) is ' + str(current_FY_budgeted_rr_deposit))
     
     current_FY_rr_transfer_in = current_FY_budgeted_rr_transfer_in
     if ((previous_FY_raw_gross_revenue * rr_fund_floor_fraction_of_gross_revenues) > previous_FY_rr_fund_balance):
@@ -1344,6 +1352,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         print(str(FY) + ': GR: R&R Transfer In is ' + str(current_FY_rr_transfer_in))
         print(str(FY) + ': GR: Non-Sales Rev is ' + str(current_FY_non_sales_revenue))
         print(str(FY) + ': GR: RS Deposit is ' + str(current_FY_budgeted_rate_stabilization_fund_deposit))
+        print(str(FY) + ': GR: Budgeted R&R Deposit (Check 3) is ' + str(current_FY_budgeted_rr_deposit))
         
     # check conditions under (b) 
     # there is never a budgeted deposit to the reserve fund, so don't need to
@@ -1583,7 +1592,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
             # currently-planned transfers into the operating budget
             potential_cip_transfer_in_increase_margin = \
                 previous_FY_cip_fund_balance - current_FY_netted_gross_revenue * cip_fund_floor_fraction_of_gross_revenues
-            if potential_rr_transfer_in_increase_margin >= 0:
+            if potential_cip_transfer_in_increase_margin >= 0:
                 current_FY_cip_transfer_in += np.min([-current_FY_budget_surplus, potential_cip_transfer_in_increase_margin])
                 current_FY_budget_surplus  += np.min([-current_FY_budget_surplus, potential_cip_transfer_in_increase_margin])
            
@@ -1647,6 +1656,8 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # Jan 2022: if CIP planning is flexible, the required additional transfers
     #   can instead be diverted from CIP funding sources before the reserve 
     #   fund is tapped
+    print(str(FY) + ': GR: Budgeted R&R Deposit (Check FIRST) is ' + str(current_FY_budgeted_rr_deposit))
+    
     current_FY_rr_deposit = current_FY_budgeted_rr_deposit
     current_FY_energy_deposit = current_FY_budgeted_energy_deposit
     if FLEXIBLE_CIP_SPENDING:
@@ -1656,6 +1667,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # deposits into funds from operating budget
         #print("Spending from Energy, R&R, and CIP funds is being adjusted as necessary")
         
+        # DIVIDE BY ALL BUDGETED OR ALL ACTUALS
         current_FY_cip_deposit -= np.max([required_other_funds_transferred_in * \
             (current_FY_budgeted_cip_deposit / \
              (current_FY_budgeted_cip_deposit + current_FY_budgeted_rr_deposit + current_FY_budgeted_energy_deposit)),
@@ -1663,7 +1675,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         current_FY_rr_deposit -= np.max([required_other_funds_transferred_in * \
             (current_FY_budgeted_rr_deposit / \
              (current_FY_budgeted_cip_deposit + current_FY_budgeted_rr_deposit + current_FY_budgeted_energy_deposit)),
-             current_FY_budgeted_rr_deposit])
+             current_FY_rr_deposit])
         current_FY_energy_deposit -= np.max([required_other_funds_transferred_in * \
             (current_FY_budgeted_energy_deposit / \
              (current_FY_budgeted_cip_deposit + current_FY_budgeted_rr_deposit + current_FY_budgeted_energy_deposit)),
@@ -1673,6 +1685,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                                                        required_other_funds_transferred_in])
 
     current_FY_final_reserve_fund_balance -= required_other_funds_transferred_in
+    print(str(FY) + ': GR: Budgeted R&R Deposit (Check MIDDLE) is ' + str(current_FY_rr_deposit))
     
     # Jan 2022: re-balance CIP/R&R/Energy funds to ensure they don't drop low
     #   if too much CIP investment is planned and not large enough deposits are
@@ -1763,6 +1776,9 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     # if the deficit remains, mark a failure here and record how much remains
     if total_deficit > 0:
         final_budget_failure_counter += FINAL_BUDGET_FAILURE
+        
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': GR: R&R Deposit (Check 4) is ' + str(current_FY_rr_deposit))
     
     ### -----------------------------------------------------------------------
     # finally, take the final budget calculations of gross/net revenues
@@ -1870,6 +1886,8 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
                       current_FY_final_energy_fund_balance,
                       current_FY_energy_deposit,
                       current_FY_energy_transfer_in]).transpose().values
+                    
+    print(str(FY) + ': GR: Budgeted R&R Deposit (Check FINAL) is ' + str(current_FY_rr_deposit))
 
     return annual_actuals, annual_budgets, financial_metrics
     

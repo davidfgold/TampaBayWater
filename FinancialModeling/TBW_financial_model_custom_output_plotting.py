@@ -55,6 +55,7 @@ METRICS_VARIABLES = ['Fiscal Year', 'Debt Covenant Ratio', 'Rate Covenant Ratio'
 # what data do I want to plot? must be same as they are in output files
 data_names_to_plot = ['Rate Covenant Ratio', 'Debt Covenant Ratio', 'Uniform Rate', 'Debt Service', 'Debt Service Deferred', 'Remaining Unallocated Deficit',
                       'Utility Reserve Fund Balance (Total)', 'Rate Stabilization Fund (Total)', 'CIP Fund (Total)', 'R&R Fund (Total)', 'Energy Savings Fund (Total)']
+
 formulation_to_plot = [125] # list all
 simulation_to_plot = [0,1,2,3,4,5,6,7,8] # list all, IDs start at 0
 realization_to_plot = [x for x in range(1,10)] # list which we want, IDs start at 1 not zero
@@ -82,6 +83,9 @@ for f in range(0,len(formulation_to_plot)):
         # cycle through realizations to collect data
         for r in range(0,len(realization_to_plot)):
             print('\t\tCollecting output for Realization ' + str(realization_to_plot[r]))
+            
+            if realization_to_plot[r] == 95:
+                continue
                 
             # read data input files
             actuals = pd.read_csv(data_path + '/budget_actuals_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + '_r' + str(realization_to_plot[r]) + '.csv', index_col = 0)
