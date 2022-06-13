@@ -16,6 +16,7 @@ sns.set()
 data_path = 'F:/MonteCarlo_Project/Cornell_UNC/updated_financial_model_output'
 dv_path = 'F:/MonteCarlo_Project/Cornell_UNC/TampaBayWater/FinancialModeling'
 
+
 # AVAILABLE DATA TO PLOT, BY OUTPUT FILE TYPE
 # IF CHOOSING VARIABLES TO PLOT WITH SAME NAME IN DIFFERENT FILES,
 # WILL DEFAULT TO PRIORITY PLOTTING ORDER (A) ACTUALS (B) BUDGET (C) METRICS
@@ -55,7 +56,8 @@ METRICS_VARIABLES = ['Fiscal Year', 'Debt Covenant Ratio', 'Rate Covenant Ratio'
 # what data do I want to plot? must be same as they are in output files
 data_names_to_plot = ['Rate Covenant Ratio', 'Debt Covenant Ratio', 'Uniform Rate', 'Debt Service', 'Debt Service Deferred', 'Remaining Unallocated Deficit',
                       'Utility Reserve Fund Balance (Total)', 'Rate Stabilization Fund (Total)', 'CIP Fund (Total)', 'R&R Fund (Total)', 'Energy Savings Fund (Total)']
-formulation_to_plot = [125] # list all 
+
+formulation_to_plot = [125] # list all
 simulation_to_plot = [0,1,2,3,4,5,6,7,8] # list all, IDs start at 0
 realization_to_plot = [x for x in range(1,2)] # list which we want, IDs start at 1 not zero
 metrics_test_read = pd.read_csv(data_path + '/financial_metrics_f' + str(formulation_to_plot[0]) + '_s' + str(simulation_to_plot[0]) + '_r' + str(realization_to_plot[0]) + '.csv', index_col = 0)

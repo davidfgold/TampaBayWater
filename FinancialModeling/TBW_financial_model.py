@@ -450,6 +450,7 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
     full_period_other_cip_expenditures = pd.DataFrame(full_period_other_cip_expenditures)
     full_period_other_cip_expenditures.columns = ['Fiscal Year'] + [x for x in CIP_plan['Current.Funding.Source'].values]
             
+    ##historiccip
     n_total_years_to_use = len(full_period_major_cip_expenditures)        
     if end_year <= first_modeled_fy: 
         # if running historic sim, use generic/normalized cip schedule
@@ -734,7 +735,9 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     # Jan 2022: extend CIP plan schedule of reserve fund deposits out to 2040
     #   and make small corrections to the dataset for clarity and re-order it
     #   Only do this for future simulation for now
+
     reserve_deposits_to_use = reserve_deposits.copy()
+    full_model_period_reserve_deposits = np.nan
     if min(fiscal_years_to_keep) >= first_modeled_fy-1:
         n_cip_plan_years = 11
         n_copy_years = len(annual_actuals['Fiscal Year'])-2 - n_cip_plan_years
@@ -2634,6 +2637,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
 import numpy as np; import pandas as pd
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
+start_fy = 2015; end_fy = 2021; first_modeled_fy = 2021
 local_base_path = 'F:/MonteCarlo_Project/Cornell_UNC'
 local_data_sub_path = '/financial_model_input_data'
 local_code_sub_path = ''
@@ -2648,7 +2652,7 @@ DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
 
 ### ---------------------------------------------------------------------------
 # read in historic records
-historical_data_path = local_base_path + local_data_sub_path + '/model_input_data'
+historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
 
 monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + '/water_sales_and_deliveries_all_2020.csv')
 historical_annual_budget_projections = pd.read_csv(historical_data_path + '/historical_budgets.csv')
@@ -2656,12 +2660,25 @@ annual_budget_data = pd.read_csv(historical_data_path + '/historical_actuals.csv
 existing_debt = pd.read_csv(historical_data_path + '/existing_debt.csv')
 infrastructure_options = pd.read_csv(historical_data_path + '/potential_projects.csv')
 current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
-projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
-projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
-normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projects.csv')
-normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fraction.csv')
 projected_first_year_reserve_fund_balances = pd.read_csv(historical_data_path + '/projected_FY21_reserve_fund_starting_balances.csv')
 projected_10year_reserve_fund_deposits = pd.read_csv(historical_data_path + '/projected_reserve_fund_deposits.csv')
+
+if end_fy <= first_modeled_fy:
+    projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY18.csv')
+    projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fractionFY18.csv')
+    normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projectsFY18.csv')
+    normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fractionFY18.csv')
+
+else:
+    projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY22.csv')
+    projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fractionFY22.csv')
+    normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projectsFY22.csv')
+    normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fractionFY22.csv')
+    ##Space where the previous FY CIP data is being added to the new data##
+    previousFY_projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
+    previousFY_projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
+    projected_10year_CIP_spending.insert(1, '2021', previousFY_projected_10year_CIP_spending.loc[:,'2021'])
+    projected_10year_CIP_spending_major_project_fraction.insert(1, '2021', previousFY_projected_10year_CIP_spending_major_project_fraction.loc[:, '2021'])
 
 # for simplicity? organize all input data into data dictionary to make
 # passing to functions easier THIS TBD
@@ -2684,10 +2701,13 @@ for run_id in [125, 141, 142, 143, 144]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 R
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    start_fy = 2021; end_fy = 2040; n_reals_tested = 999 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    n_reals_tested = 999 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
     #for sim in range(0,len(DVs)): # sim = 0 for testing
-    #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
-    for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
+    for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
+    #for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
+        if end_fy <= 2022: # if we are running historical]
+            output_path = output_path + '/historical_comparison'
+
         ### ----------------------------------------------------------------------- ###
         ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
         ### ----------------------------------------------------------------------- ###  
