@@ -459,6 +459,10 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
         assert (end_year-start_year <= n_available_generic_years), \
             "Error in allocate_InitialAnnualCIPSpending: CIP scheduling not designed for historic simulation longer than 9 years"
         
+        # uses old CIP schedule from 2018 for historic modeling from 2018 to first modeled year
+        # Normalized data from the old CIP schedule is used for years 2015-2017
+        # starts by using the normalized years
+      
         # beginning at start of generic CIP schedule, fill in historic plan and 
         # multiply by the inverse of the fraction used for major projects only 
         # repeat for major projects schedule, but dont invert fraction multiplier
@@ -468,6 +472,14 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
         full_period_major_cip_expenditures.iloc[:,1:] = \
             generic_CIP_plan.iloc[:,1:(n_total_years_to_use+1)].T.values * \
             (generic_fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
+        
+        # now fill in with actual CIP for relevant years. (need to figure out how to make more dynamic)
+        full_period_other_cip_expenditures.iloc[3:,1:] = \
+            CIP_plan.iloc[:,1:5].T.values * \
+            (1 - fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:5].T.values)
+        full_period_major_cip_expenditures.iloc[3:,1:] = \
+            CIP_plan.iloc[:,1:5].T.values * \
+            (fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:5].T.values)
     else:
         # if running future simulation, ASSUME FY2021 start
         # and follow 2021-2031 schedule, succeeded by normalized
