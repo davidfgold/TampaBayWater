@@ -2667,7 +2667,8 @@ DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
 
 ### ---------------------------------------------------------------------------
 # read in historic records
-historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
+#historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
+historical_data_path = local_base_path + local_data_sub_path + '/model_input_data'
 
 monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + '/water_sales_and_deliveries_all_2020.csv')
 historical_annual_budget_projections = pd.read_csv(historical_data_path + '/historical_budgets.csv')
@@ -2678,22 +2679,28 @@ current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_Bon
 projected_first_year_reserve_fund_balances = pd.read_csv(historical_data_path + '/projected_FY21_reserve_fund_starting_balances.csv')
 projected_10year_reserve_fund_deposits = pd.read_csv(historical_data_path + '/projected_reserve_fund_deposits.csv')
 
-if end_fy <= first_modeled_fy:
-    projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY18.csv')
-    projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fractionFY18.csv')
-    normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projectsFY18.csv')
-    normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fractionFY18.csv')
+#if end_fy <= first_modeled_fy:
+#    projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY18.csv')
+#    projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fractionFY18.csv')
+#    normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projectsFY18.csv')
+#    normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fractionFY18.csv')
+#
+#else:
+#    projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY22.csv')
+#    projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fractionFY22.csv')
+#    normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projectsFY22.csv')
+#    normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fractionFY22.csv')
+#    ##Space where the previous FY CIP data is being added to the new data##
+#    previousFY_projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
+#    previousFY_projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
+#    projected_10year_CIP_spending.insert(1, '2021', previousFY_projected_10year_CIP_spending.loc[:,'2021'])
+#    projected_10year_CIP_spending_major_project_fraction.insert(1, '2021', previousFY_projected_10year_CIP_spending_major_project_fraction.loc[:, '2021'])
 
-else:
-    projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY22.csv')
-    projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fractionFY22.csv')
-    normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projectsFY22.csv')
-    normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fractionFY22.csv')
-    ##Space where the previous FY CIP data is being added to the new data##
-    previousFY_projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
-    previousFY_projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
-    projected_10year_CIP_spending.insert(1, '2021', previousFY_projected_10year_CIP_spending.loc[:,'2021'])
-    projected_10year_CIP_spending_major_project_fraction.insert(1, '2021', previousFY_projected_10year_CIP_spending_major_project_fraction.loc[:, '2021'])
+projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
+projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
+normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projects.csv')
+normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fraction.csv')
+
 
 # for simplicity? organize all input data into data dictionary to make
 # passing to functions easier THIS TBD
@@ -2703,16 +2710,16 @@ else:
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
-n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+n_reals_tested = 1 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
 for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
     # run for testing: run_id = 125; sim = 0; r_id = 1
     
     ### ---------------------------------------------------------------------------
     # set additional required paths
     scripts_path = local_base_path + local_code_sub_path + '/TampaBayWater/data_management'
-    ampl_output_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
-    oms_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
-    output_path = local_MonteCarlo_data_base_path + '/Modeloutput'
+    ampl_output_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
+    oms_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
+    output_path = local_base_path + local_code_sub_path + '/local_results'
     
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
