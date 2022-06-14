@@ -11,7 +11,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
+
+#data_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput/historical_comparison'
 data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/local_results/historical_validation'
+
 
 # read historic data
 # hard-coded covenant values from budget spreadsheets shared by TBW (Fy2019 Table 12)/reports
@@ -25,6 +28,9 @@ hist_water_delivery_sales = pd.read_csv(data_path + '/historic_sales.csv')
 #   were in previous years. However, newer CAFR from FY2020 still shows no
 #   required deposits for those (or future) FYs, so this adjustment is now
 #   removed.
+#hist_rate_covenant = [1.44,1.51,1.43,1.48,1.49,1.51,1.58,1.61, 1.61] # from FY13 -> 21 PLACEHOLDER FOR 2021
+#hist_debt_covenant = [1.0,1.01,1.0,1.01,1.0,1.11,1.16,1.19, 1.19] # from FY13 -> 21 PLACEHOLDER
+
 hist_rate_covenant = [1.44,1.51,1.43,1.48,1.49,1.51,1.58,1.61] # from FY13 -> 20
 hist_debt_covenant = [1.0,1.01,1.0,1.01,1.0,1.11,1.16,1.19] # from FY13 -> 20
 
