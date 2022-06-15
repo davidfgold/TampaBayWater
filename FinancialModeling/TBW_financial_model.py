@@ -474,10 +474,10 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
             (generic_fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:(n_total_years_to_use+1)].T.values)
         
         # now fill in with actual CIP for relevant years. (need to figure out how to make more dynamic)
-        full_period_other_cip_expenditures.iloc[3:,1:] = \
+        full_period_other_cip_expenditures.iloc[4:,1:] = \
             CIP_plan.iloc[:,1:5].T.values * \
             (1 - fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:5].T.values)
-        full_period_major_cip_expenditures.iloc[3:,1:] = \
+        full_period_major_cip_expenditures.iloc[4:,1:] = \
             CIP_plan.iloc[:,1:5].T.values * \
             (fraction_cip_spending_for_major_projects_by_year_by_source.iloc[:,1:5].T.values)
     else:
@@ -727,6 +727,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     earliest_fy_budget_available = min(budget_projections['Fiscal Year'])
     earliest_fy_actuals_available = min(annual_budget['Fiscal Year'])
     earliest_fy_sales_available = min(water_deliveries_and_sales['Fiscal Year'])
+    latest_full_fy_sales_available = max(water_deliveries_and_sales['Fiscal Year'])-1
     
     # because we need one extra historic year of actuals, grab it 
     prelim_year = min(fiscal_years_to_keep) - 1
@@ -735,19 +736,18 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     current_fy_index = [tf for tf in (annual_budget['Fiscal Year'] == prelim_year)]
     annual_actuals.loc[annual_actuals['Fiscal Year'] == prelim_year,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
         
-    # Nov 2021: for FY20, overwrite actual reserve fund levels as necessary
-    # with CIP Report data from Maribel
+    # Nov 2021: overwrite actual reserve fund levels as necessary
+    # with CIP Report data from Maribel from most recent FY
     annual_actuals['R&R Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (first_modeled_fy-1)] = \
-        reserve_balances['FY ' + str(first_modeled_fy)].loc[reserve_balances['Fund Name'] == 'Renewal and Replacement Fund']
+        reserve_balances['Starting FY'].loc[reserve_balances['Fund Name'] == 'Renewal and Replacement Fund']
     annual_actuals['CIP Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (first_modeled_fy-1)] = \
-        reserve_balances['FY ' + str(first_modeled_fy)].loc[reserve_balances['Fund Name'] == 'Capital Improvement Fund']
+        reserve_balances['Starting FY'].loc[reserve_balances['Fund Name'] == 'Capital Improvement Fund']
     annual_actuals['Energy Savings Fund (Total)'].loc[annual_actuals['Fiscal Year'] == (first_modeled_fy-1)] = \
-        reserve_balances['FY ' + str(first_modeled_fy)].loc[reserve_balances['Fund Name'] == 'Energy Fund']
+        reserve_balances['Starting FY'].loc[reserve_balances['Fund Name'] == 'Energy Fund']
         
     # Jan 2022: extend CIP plan schedule of reserve fund deposits out to 2040
     #   and make small corrections to the dataset for clarity and re-order it
     #   Only do this for future simulation for now
-
     reserve_deposits_to_use = reserve_deposits.copy()
     full_model_period_reserve_deposits = np.nan
     if min(fiscal_years_to_keep) >= first_modeled_fy-1:
@@ -784,15 +784,7 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
         # record as well as add in any records from modeling
         # HARD-CODED ASSUMPTION HERE (AND ABOVE WHERE MODELING DATA IS READ)
         # IS THAT MODELING BEGINS WITH JAN 1, 2021
-        if fy < first_modeled_fy:
-            # fill from historic data
-            current_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == fy)]
-            water_delivery_sales.loc[water_delivery_sales.iloc[:,0] == fy,2:] = water_deliveries_and_sales.iloc[current_fy_index,1:-3].values
-            
-            # repeat for actuals from historic record (go through FY 2020 now that observed data fills out the record)
-            current_fy_index = [tf for tf in (annual_budget['Fiscal Year'] == fy)]
-            annual_actuals.loc[annual_actuals.iloc[:,0] == fy,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
-        elif fy == first_modeled_fy:
+        if fy == first_modeled_fy or first_modeled_fy == latest_full_fy_sales_available+1 or fy == latest_full_fy_sales_available+1:
             # special case with 3 months of observed data in Oct-Dec 2020 for start of FY2021
             # followed by 9 months of model data - for this year, use FY21 accepted budget to calculate revenues
             current_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == fy)]
@@ -810,6 +802,18 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
             # plug remaining FY21 data into dataset
             water_delivery_sales.loc[(water_delivery_sales['Fiscal Year'] == fy) & (water_delivery_sales['Month'] <= last_fy_month),2:(uniform_rate_member_deliveries.shape[1]+2)] = uniform_rate_member_deliveries.values
             water_delivery_sales['TBC Delivery - City of Tampa'].loc[(water_delivery_sales['Fiscal Year'] == fy) & (water_delivery_sales['Month'] <= last_fy_month)] = month_TBC_raw_deliveries.values
+            
+            # include actuals from historic record (go through FY 2021 now that observed data fills out the record)
+            current_fy_index = [tf for tf in (annual_budget['Fiscal Year'] == fy)]
+            annual_actuals.loc[annual_actuals.iloc[:,0] == fy,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
+        elif fy < first_modeled_fy:
+            # fill from historic data
+            current_fy_index = [tf for tf in (water_deliveries_and_sales['Fiscal Year'] == fy)]
+            water_delivery_sales.loc[water_delivery_sales.iloc[:,0] == fy,2:] = water_deliveries_and_sales.iloc[current_fy_index,1:-3].values
+            
+            # repeat for actuals from historic record (go through FY 2020 now that observed data fills out the record)
+            current_fy_index = [tf for tf in (annual_budget['Fiscal Year'] == fy)]
+            annual_actuals.loc[annual_actuals.iloc[:,0] == fy,:] = [v for v in annual_budget.iloc[current_fy_index,:].values]
         else:
             # modeled data from here on out, just collect deliveries 
             # for any future years that will be modeled
@@ -833,8 +837,8 @@ def collect_ExistingRecords(annual_actuals, annual_budgets, water_delivery_sales
     # while they contain observed, real actuals for ease of comparison later
     # (assumes this is being done for one simulation, one realization)
     if max(fiscal_years_to_keep) < first_modeled_fy:
-        # also, because if end_fiscal_year = 2021, then the last fiscal_year_to_keep value
-        # will be 2020, so when doing historic simulation make sure one extra budget FY
+        # also, because if end_fiscal_year = 2022, then the last fiscal_year_to_keep value
+        # will be 2021, so when doing historic simulation make sure one extra budget FY
         # is included
         last_fy_to_add = int(max(fiscal_years_to_keep)) + 1
         current_fy_index = [tf for tf in (budget_projections['Fiscal Year'] == last_fy_to_add)]
@@ -853,7 +857,7 @@ def pull_ModeledData(additional_scripts_path, orop_output_path, oms_output_path,
     import os
     AMPL_cleaned_data = [np.nan]; TBC_raw_sales_to_CoT = [np.nan]; Year = [np.nan]; Month = [np.nan]
     one_thousand_added_to_read_files = 1000; n_days_in_year = 365
-    if end_fiscal_year > first_modeled_fy: # meaning the last FY modeled financially is 2020
+    if end_fiscal_year >= first_modeled_fy: # meaning the last FY modeled financially is 2020
         os.chdir(additional_scripts_path); from analysis_functions import read_AMPL_csv, read_AMPL_out
         if PRE_CLEANED:
             AMPL_cleaned_data = pd.read_csv(orop_output_path + '/ampl_0' + str(one_thousand_added_to_read_files + realization_id)[1:] + '.csv')
@@ -1958,7 +1962,10 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     # set debt service target (for now, predetermined cap?)
     # and adjust existing debt based on payments on new debt
     # only do this if simulating future, otherwise no need
+    # make a caveat to not do this if the first modeled year is the 
+    # last year of historic simulation...
     if FY >= first_modeled_fy:
+        print('code goes here in year ' + str(FY))
         current_FY_final_net_revenue = financial_metrics['Final Net Revenues'].loc[financial_metrics['Fiscal Year'] == FY].values[0]
         next_FY_budgeted_debt_service, existing_issued_debt = \
             set_BudgetedDebtService(existing_issued_debt, 
@@ -1969,9 +1976,13 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                                     FY+1, first_modeled_fy-1,
                                     FOLLOW_CIP_SCHEDULE_MAJOR_PROJECTS = FOLLOW_CIP_SCHEDULE)
     else:
+        print('actually, code goes here in year ' + str(FY))
         next_FY_budgeted_debt_service = \
             annual_budgets['Debt Service'].loc[annual_budgets['Fiscal Year'] == (FY+1)].values[0]
     
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': Budgeted Debt Service (1) is ' + str(next_FY_budgeted_debt_service))
+        
     # Jan 2022: new DV is a cap on what annual debt service can be w.r.t. gross revenues
     # if too high, defer debt to next year tracked with a deferral variable
     # begin the calculation by including the rollover debt service deferred
@@ -1979,11 +1990,18 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
     next_FY_deferred_debt_service = 0
     next_FY_budgeted_debt_service += annual_budgets['Debt Service Deferred'].loc[annual_budgets['Fiscal Year'] == (FY)].values[0]
     current_FY_gross_revenues = annual_actuals['Gross Revenues'].loc[annual_actuals['Fiscal Year'] == FY].values[0]
+    
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': Budgeted Debt Service (2) is ' + str(next_FY_budgeted_debt_service))
+    
     if next_FY_budgeted_debt_service > debt_service_cap_fraction_of_gross_revenues * current_FY_gross_revenues:
         print('Debt service deferred in FY' + str(FY))
         next_FY_deferred_debt_service = \
             next_FY_budgeted_debt_service - debt_service_cap_fraction_of_gross_revenues * current_FY_gross_revenues
         next_FY_budgeted_debt_service -= next_FY_deferred_debt_service
+        
+    if ACTIVE_DEBUGGING:
+        print(str(FY) + ': Budgeted Debt Service (3) is ' + str(next_FY_budgeted_debt_service))
     
     # if a new water supply project is added, bond issue will cover capital costs
     # but also adjust annual operating costs to account for the change
@@ -2382,13 +2400,14 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            PRE_CLEANED = True,
                                            ACTIVE_DEBUGGING = False,
                                            FOLLOW_CIP_MAJOR_SCHEDULE = True,
-                                           FLEXIBLE_OTHER_CIP_SCHEDULE = True):
+                                           FLEXIBLE_OTHER_CIP_SCHEDULE = True,
+                                           first_modeled_fy = 2022):
     # get necessary packages
     import pandas as pd; import numpy as np
     
     ### -----------------------------------------------------------------------
     # constants (some assigned elsewhere...)
-    last_fy_month = 9; first_modeled_fy = 2021
+    last_fy_month = 9;
     n_months_in_year = 12
     accumulated_new_operational_fixed_costs_from_infra = 0
     accumulated_new_operational_variable_costs_from_infra = 0
@@ -2411,7 +2430,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     #   based on the starting fiscal year, will also need the preceeding FY
     #   for some calculations.
     assert (start_fiscal_year < end_fiscal_year), 'End year must be greater than start year.'
-    assert (start_fiscal_year <= first_modeled_fy), 'Start FY must be <= first modeled FY (2021)'
+    assert (start_fiscal_year <= first_modeled_fy), 'Start FY must be <= first modeled FY (2022)'
     fiscal_years_to_keep = [int(y) for y in range(start_fiscal_year-1,end_fiscal_year)]
     
     financial_metrics = np.empty((len(fiscal_years_to_keep)-1,n_financial_metric_outcomes))
@@ -2710,7 +2729,7 @@ normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_pat
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
-n_reals_tested = 1 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
 for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
     # run for testing: run_id = 125; sim = 0; r_id = 1
     
@@ -2719,7 +2738,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     scripts_path = local_base_path + local_code_sub_path + '/TampaBayWater/data_management'
     ampl_output_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
     oms_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id)
-    output_path = local_base_path + local_code_sub_path + '/local_results'
+    output_path = local_base_path + local_data_sub_path + '/local_results'
     
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
@@ -2752,7 +2771,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
             
     #    for r_id in range(1,2): # r_id = 1 for testing
             # run this line for testing: 
-            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True   
+            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True; first_modeled_fy = first_modeled_fy   
                         
             budget_projection, actuals, outcomes, water_vars, final_debt = \
                 run_FinancialModelForSingleRealization(
@@ -2777,9 +2796,10 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
                         orop_output_path = ampl_output_path,
                         oms_output_path = oms_path,
                         outpath = output_path, formulation_id = run_id,
-                        PRE_CLEANED = True, ACTIVE_DEBUGGING = False,
+                        PRE_CLEANED = True, ACTIVE_DEBUGGING = True,
                         FOLLOW_CIP_MAJOR_SCHEDULE = FOLLOW_CIP_SCHEDULE_TOGGLE,
-                        FLEXIBLE_OTHER_CIP_SCHEDULE = FLEXIBLE_CIP_SCHEDULE_TOGGLE)
+                        FLEXIBLE_OTHER_CIP_SCHEDULE = FLEXIBLE_CIP_SCHEDULE_TOGGLE,
+                        first_modeled_fy = first_modeled_fy)
             
             ### -----------------------------------------------------------------------
             # collect data of some results across all realizations

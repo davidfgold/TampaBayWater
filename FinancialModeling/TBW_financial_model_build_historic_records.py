@@ -984,13 +984,17 @@ def get_CIPSchedule(hist_financial_path):
 
 def get_ReserveDepositSchedule(hist_financial_path):
     # read in data from Maribel on planned fund deposits from FY21-31
+    # June 2022: right now, we only have this data starting for FY21
+    #   so that will be the default starting point for fund sizes 
+    #   in other runs as well
     import pandas as pd
     reserve_deposit_data = pd.read_excel(hist_financial_path + '/FinancialModelAvailableBalanceandDeposits10yrmultiplesourcesTBW.xlsx', sheet_name = 'Sheet1')
     reserve_data_cleaned = reserve_deposit_data.iloc[9:,:].drop(columns = reserve_deposit_data.columns[[0,1,3,4,5]], axis = 1)
     reserve_data_cleaned.columns = ['Type'] + list(reserve_deposit_data.iloc[8,[6,7,8,9,10,11,12,13,14,15,16,17,18]].values)
     
-    # collect starting fund balances
+    # collect starting fund balances, rename starting balance column
     reserve_fund_starting_balances = reserve_data_cleaned[reserve_data_cleaned['Type'] == 'Fund Projected Fiscal Year Beginning Balance'][['Fund Name','FY 2021']]
+    reserve_fund_starting_balances = reserve_fund_starting_balances.rename(columns = {"FY 2021": "Starting FY"})
     
     # collect future annual projected fund deposits
     reserve_fund_projected_deposits = reserve_data_cleaned[reserve_data_cleaned['Type'] != 'Fund Projected Fiscal Year Beginning Balance']
