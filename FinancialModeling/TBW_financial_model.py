@@ -347,11 +347,26 @@ def calculate_RateCoverageRatio(net_revenues,
     # if ratio < 1.25, covenant failure
     return (net_revenues + fund_balance) / (debt_service)
 
+def debt_issue(bond_issue_amount, years_of_debtservice, interest_rate, UNIFORM_debt, multiplier_list):
+    if UNIFORM_debt == True:
+                debt_issue_shape = np.ones(years_of_debtservice)
+                debt_issue_shape /= years_of_debtservice
+                debt_issue = bond_issue_amount * debt_issue_shape
+                debt_issue *= 1 + interest_rate
+    else:
+        ## years of debt service will need to match
+        multipliers = multiplier_list
+        debt_issue_shape = np.array(multipliers)
+        debt_issue = bond_issue_amount * debt_issue_shape
+        debt_issue *= 1 + interest_rate
+    return debt_issue
+
 def set_BudgetedDebtService(existing_debt, last_year_net_revenue, 
-                            existing_debt_targets, 
+                            existing_debt_targets,
+                            dv_list,
                             major_cip_projects_schedule,
                             other_cip_projects_schedule,
-                            year = 2021, start_year = 2021,
+                            year = 2025, start_year = 2021,
                             FOLLOW_CIP_SCHEDULE_MAJOR_PROJECTS = True,
                             first_cip_future_debt_issuance_year = 2023):
     import numpy as np
@@ -359,21 +374,64 @@ def set_BudgetedDebtService(existing_debt, last_year_net_revenue,
     # based on existing debt only - will need to add debt
     # as new projects come online
     total_budgeted_debt_service = \
-        existing_debt_targets['Total'].iloc[year - start_year] 
-        
+        existing_debt_targets['Total'].iloc[year - start_year] #This grabs the wrong year. Need to change the variable name and add to new issued debt.
+    ## Add project_cost (TAG FOR NOW - DELETE LATER)    
     # Jan 2022: now this process is overridden by use of the CIP project 
     #   schedule for major projects, if desired. This will ignore
     #   triggering of specific projects and instead assume the CIP schedule
     #   is followed. Adhere to this schedule post-FY2022, when future revenue
     #   bonds begin to be repaid for new projects according to the schedule.
     if year >= first_cip_future_debt_issuance_year:
-        total_budgeted_debt_service = \
-            major_cip_projects_schedule['Revenue Bonds (320)'].loc[year - start_year] + \
-            major_cip_projects_schedule['Revenue Bonds (350)'].loc[year - start_year] + \
-            major_cip_projects_schedule['Revenue Bonds (Future)'].loc[year - start_year] + \
-            other_cip_projects_schedule['Revenue Bonds (320)'].loc[year - start_year] + \
-            other_cip_projects_schedule['Revenue Bonds (350)'].loc[year - start_year] + \
-            other_cip_projects_schedule['Revenue Bonds (Future)'].loc[year - start_year]
+        #total_budgeted_debt_service = \
+            #major_cip_projects_schedule['Revenue Bonds (320)'].loc[year - start_year] + \
+            #major_cip_projects_schedule['Revenue Bonds (350)'].loc[year - start_year] + \
+            #major_cip_projects_schedule['Revenue Bonds (Future)'].loc[year - start_year] + \
+            #other_cip_projects_schedule['Revenue Bonds (320)'].loc[year - start_year] + \
+            #other_cip_projects_schedule['Revenue Bonds (350)'].loc[year - start_year] + \
+            #other_cip_projects_schedule['Revenue Bonds (Future)'].loc[year - start_year]
+        #dv_list = dvs
+        uniform_debt2023 = bool(np.round(dv_list[11]))
+        uniform_debt2025 = bool(np.round(dv_list[12]))
+        uniform_debt2027 = bool(np.round(dv_list[13]))
+        uniform_debt2029 = bool(np.round(dv_list[14]))
+        debt_payoffyears_for_2023 = int(dv_list[15])
+        interest_rate_2023bond = dv_list[16]
+        debt_payoffyears_for_2025 = int(dv_list[17])
+        interest_rate_2025bond = dv_list[18]
+        debt_payoffyears_for_2027 = int(dv_list[19])
+        interest_rate_2027bond = dv_list[20]
+        debt_payoffyears_for_2029 = int(dv_list[21])
+        interest_rate_2029bond = dv_list[22]
+        multiplier_list = dv_list[23:]
+        
+        if year < 2025:
+            ###bond_issue = 130000000 #make into bond issue table
+            debt_issue_2023 = debt_issue(130000000, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list) #debt_issue(130000000, 20, 0.06, True)
+            total_budgeted_debt_service += debt_issue_2023[year - 2023]
+        elif 2025 <= year < 2027:
+            ###bond_issue = 139000000 #make into bond issue table
+            debt_issue_2023 = debt_issue(130000000, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list)
+            debt_issue_2025 = debt_issue(139000000, debt_payoffyears_for_2025, interest_rate_2025bond, uniform_debt2025, multiplier_list) #debt_issue(139000000, 25, 0.0625, True)
+            total_budgeted_debt_service += (debt_issue_2023[year - 2023] + \
+                                          debt_issue_2025[year - 2025])
+        elif 2027 <= year < 2029:
+            ###bond_issue = 306000000 #make into bond issue table
+            debt_issue_2023 = debt_issue(130000000, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list)
+            debt_issue_2025 = debt_issue(139000000, debt_payoffyears_for_2025, interest_rate_2025bond, uniform_debt2025, multiplier_list)
+            debt_issue_2027 = debt_issue(306000000, debt_payoffyears_for_2027, interest_rate_2027bond, uniform_debt2027, multiplier_list) #debt_issue(306000000, 25, 0.06, True)
+            total_budgeted_debt_service += (debt_issue_2023[year - 2023] + \
+                                          debt_issue_2025[year - 2025] + \
+                                          debt_issue_2027[year - 2027])
+        elif year >= 2029:
+            ###bond_issue = 150382000 #make into bond issue table
+            debt_issue_2023 = debt_issue(130000000, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list)
+            debt_issue_2025 = debt_issue(139000000, debt_payoffyears_for_2025, interest_rate_2025bond, uniform_debt2025, multiplier_list)
+            debt_issue_2027 = debt_issue(306000000, debt_payoffyears_for_2027, interest_rate_2027bond, uniform_debt2027, multiplier_list)
+            debt_issue_2029 = debt_issue(150382000, debt_payoffyears_for_2029, interest_rate_2029bond, uniform_debt2029, multiplier_list) #debt_issue(150382000, 20, 0.0625, True)
+            total_budgeted_debt_service += (debt_issue_2023[year - 2023] + \
+                                          debt_issue_2025[year - 2025] + \
+                                          debt_issue_2027[year - 2027] + \
+                                          debt_issue_2029[year - 2029])
 
     # check for new debt/projects and adjust targets
     # existing debt in 2019 has ID nan, any debt issued
@@ -536,11 +594,12 @@ def allocate_InitialAnnualCIPSpending(start_year, end_year, first_modeled_fy,
     #    full_period_other_cip_expenditures.to_csv(outpath + '/baseline_CIP_other_expenditures.csv')
     return full_period_major_cip_expenditures, full_period_other_cip_expenditures
 
-
+#import numpy as np
+#actual_major_cip_expenditures_by_source_full_model_period = actual_major_cip_expenditures_by_source_by_year
 def update_MajorSupplyInfrastructureInvestment(FOLLOW_CIP_SCHEDULE,
                                                FY, 
                                                first_modeled_fy, 
-                                               last_fy_month, 
+                                               last_fy_month,
                                                Month, 
                                                Year, 
                                                formulation_id,
@@ -548,12 +607,18 @@ def update_MajorSupplyInfrastructureInvestment(FOLLOW_CIP_SCHEDULE,
                                                actual_major_cip_expenditures_by_source_full_model_period):
     # initialize empty list to fill if capital projects are triggered
     new_projects_to_finance = []
-    
+    # bring in dv for number of planned years of debt service for the project
+    # uses 30 as default because supply project bonds follow a 30-year issue period
+    ###years_of_debtservice = 30 #dv_list[11] add dv_list to function arguments
+    ###UNIFORM_debt = False #dv_list[12]
+    ###interest_rate = 0.06 #dv_list[13] maybe change to duf list
+     
     if FOLLOW_CIP_SCHEDULE:
         # Nov 2021: default to use of major CIP schedule
         # currently no action needed, print an acknowledgement 
         if FY == first_modeled_fy+1:
             print("Following CIP schedule over modeling period.")
+            
     else:
         # track if new infrastructure is triggered in the current FY
         if ((len(AMPL_cleaned_data) > 1) and (FY > first_modeled_fy)): # if using model data
@@ -1963,7 +2028,8 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
         next_FY_budgeted_debt_service, existing_issued_debt = \
             set_BudgetedDebtService(existing_issued_debt, 
                                     current_FY_final_net_revenue, 
-                                    existing_debt_targets, 
+                                    existing_debt_targets,
+                                    dvs,
                                     actual_major_cip_expenditures_by_source_by_year,
                                     actual_other_cip_expenditures_by_source_by_year,
                                     FY+1, first_modeled_fy-1,
@@ -2649,7 +2715,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
 import numpy as np; import pandas as pd
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
-start_fy = 2015; end_fy = 2021; first_modeled_fy = 2021
+start_fy = 2021; end_fy = 2041; first_modeled_fy = 2021
 local_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW'
 local_data_sub_path = '/Data'
 local_code_sub_path = '/Code'
@@ -2674,6 +2740,7 @@ infrastructure_options = pd.read_csv(historical_data_path + '/potential_projects
 current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_BondIssues.xlsx', sheet_name = 'FutureDSTotals')
 projected_first_year_reserve_fund_balances = pd.read_csv(historical_data_path + '/projected_FY21_reserve_fund_starting_balances.csv')
 projected_10year_reserve_fund_deposits = pd.read_csv(historical_data_path + '/projected_reserve_fund_deposits.csv')
+project_costs = pd.read_excel(historical_data_path + '/Current_Future_BondIssues.xlsx', sheet_name = 'PotentialProjsforModeling')
 
 if end_fy <= first_modeled_fy:
     projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY18.csv')
@@ -2714,8 +2781,8 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
     n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
-    #for sim in range(0,len(DVs)): # sim = 0 for testing
-    for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
+    for sim in range(0,len(DVs)): # sim = 0 for testing
+    #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     #for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
         if end_fy <= 2022: # if we are running historical]
             output_path = output_path + '/historical_comparison'
