@@ -13,7 +13,7 @@ import os
 import glob
 
 os.chdir("F:/SWRE/Output//")
-for run in ['0141', '0142', '0143', '0144']:
+for run in ['0152']:
     for filename in glob.glob("rrv_" + run + "//*.csv"):
         csv_out = pd.read_csv(filename, sep = ',') # about a year is 50,000 rows
         realization = filename[-8:-4]
