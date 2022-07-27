@@ -2637,7 +2637,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
 import numpy as np; import pandas as pd
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
-start_fy = 2015; end_fy = 2021; first_modeled_fy = 2021
+start_fy = 2021; end_fy = 2041; first_modeled_fy = 2021
 local_base_path = 'F:/MonteCarlo_Project/Cornell_UNC'
 local_data_sub_path = '/financial_model_input_data'
 local_code_sub_path = ''
@@ -2652,7 +2652,7 @@ DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
 
 ### ---------------------------------------------------------------------------
 # read in historic records
-historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
+historical_data_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data'
 
 monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + '/water_sales_and_deliveries_all_2020.csv')
 historical_annual_budget_projections = pd.read_csv(historical_data_path + '/historical_budgets.csv')
@@ -2670,15 +2670,15 @@ if end_fy <= first_modeled_fy:
     normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fractionFY18.csv')
 
 else:
-    projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY22.csv')
-    projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fractionFY22.csv')
-    normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projectsFY22.csv')
-    normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fractionFY22.csv')
+    projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
+    projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
+    normalized_CIP_spending = pd.read_csv(historical_data_path + '/normalized_CIP_spending_all_projects.csv')
+    normalized_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/normalized_CIP_spending_major_projects_fraction.csv')
     ##Space where the previous FY CIP data is being added to the new data##
-    previousFY_projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
-    previousFY_projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
-    projected_10year_CIP_spending.insert(1, '2021', previousFY_projected_10year_CIP_spending.loc[:,'2021'])
-    projected_10year_CIP_spending_major_project_fraction.insert(1, '2021', previousFY_projected_10year_CIP_spending_major_project_fraction.loc[:, '2021'])
+    #previousFY_projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projects.csv')
+    #previousFY_projected_10year_CIP_spending_major_project_fraction = pd.read_csv(historical_data_path + '/original_CIP_spending_major_projects_fraction.csv')
+    #projected_10year_CIP_spending.insert(1, '2021', previousFY_projected_10year_CIP_spending.loc[:,'2021'])
+    #projected_10year_CIP_spending_major_project_fraction.insert(1, '2021', previousFY_projected_10year_CIP_spending_major_project_fraction.loc[:, '2021'])
 
 # for simplicity? organize all input data into data dictionary to make
 # passing to functions easier THIS TBD
@@ -2688,7 +2688,7 @@ else:
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
-for run_id in [125, 141, 142, 143, 144]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
+for run_id in [147]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
     # run for testing: run_id = 125; sim = 0; r_id = 1
     
     ### ---------------------------------------------------------------------------
@@ -2701,10 +2701,10 @@ for run_id in [125, 141, 142, 143, 144]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 R
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    n_reals_tested = 999 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    n_reals_tested = 99 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
     #for sim in range(0,len(DVs)): # sim = 0 for testing
-    for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
-    #for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
+    #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
+    for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
         if end_fy <= 2022: # if we are running historical]
             output_path = output_path + '/historical_comparison'
 
