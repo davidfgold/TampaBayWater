@@ -2716,21 +2716,29 @@ import numpy as np; import pandas as pd
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
 start_fy = 2021; end_fy = 2041; first_modeled_fy = 2021
-local_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW'
-local_data_sub_path = '/Data'
-local_code_sub_path = '/Code'
-local_MonteCarlo_data_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW'
+###local_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW'
+local_base_path = 'F:/MonteCarlo_Project/Cornell_UNC' #Vgrid pathways
+###local_data_sub_path = '/Data'
+local_data_sub_path = '/financial_model_input_data' #Vgrid pathway
+###local_code_sub_path = '/Code'
+local_code_sub_path = '' #Vgrid pathway
+###local_MonteCarlo_data_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW'
+local_MonteCarlo_data_base_path = 'F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMPL_files' #Vgrid pathway
 
 # read in decision variables from spreadsheet
-dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
-DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
+###dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
+dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling' #Vgrid pathway
+###DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
+DVs = pd.read_csv(dv_path + '/financial_modelDVs.csv', header = None) #Vgrid pathway
 
 # read in deeply uncertain factors
-DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
+###DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
+DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None) #Vgrid pathway
 
 ### ---------------------------------------------------------------------------
 # read in historic records
-historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
+###historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
+historical_data_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data' #Vgrid pathway
 
 monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + '/water_sales_and_deliveries_all_2020.csv')
 historical_annual_budget_projections = pd.read_csv(historical_data_path + '/historical_budgets.csv')
@@ -2773,9 +2781,12 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     ### ---------------------------------------------------------------------------
     # set additional required paths
     scripts_path = local_base_path + local_code_sub_path + '/TampaBayWater/data_management'
-    ampl_output_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
-    oms_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
-    output_path = local_MonteCarlo_data_base_path + '/Modeloutput'
+    ###ampl_output_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
+    ampl_output_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id) #Vgrid pathway
+    ###oms_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
+    oms_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_' + str(run_id) #Vgrid pathway
+    ###output_path = local_MonteCarlo_data_base_path + '/Modeloutput'
+    output_path = local_base_path + '/updated_financial_model_output'
     
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
