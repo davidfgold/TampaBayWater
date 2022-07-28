@@ -13,8 +13,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-data_path = "C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput"
-dv_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW/Code/TampaBayWater/FinancialModeling'
+###data_path = "C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput"
+data_path = 'F:/MonteCarlo_Project/Cornell_UNC/updated_financial_model_output' #Vgrid pathway
+###dv_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW/Code/TampaBayWater/FinancialModeling'
+dv_path = 'F:/MonteCarlo_Project/Cornell_UNC/TampaBayWater/FinancialModeling' #Vgrid pathway
 
 # AVAILABLE DATA TO PLOT, BY OUTPUT FILE TYPE
 # IF CHOOSING VARIABLES TO PLOT WITH SAME NAME IN DIFFERENT FILES,
