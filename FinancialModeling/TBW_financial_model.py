@@ -364,6 +364,8 @@ def debt_issue(bond_issue_amount, years_of_debtservice, interest_rate, UNIFORM_d
 def set_BudgetedDebtService(existing_debt, last_year_net_revenue, 
                             existing_debt_targets,
                             dv_list,
+                            bond_amounts,
+                            formulation_id,
                             major_cip_projects_schedule,
                             other_cip_projects_schedule,
                             year = 2025, start_year = 2021,
@@ -403,31 +405,47 @@ def set_BudgetedDebtService(existing_debt, last_year_net_revenue,
         debt_payoffyears_for_2029 = int(dv_list[21])
         interest_rate_2029bond = dv_list[22]
         multiplier_list = dv_list[23:]
+        if formulation_id == 145:
+            bond2023 = bond_amounts['pipeline'].iloc[0]
+            bond2025 = bond_amounts['pipeline'].iloc[1]
+            bond2027 = bond_amounts['pipeline'].iloc[2]
+            bond2029 = bond_amounts['pipeline'].iloc[3]
+            
+        elif formulation_id == 152:
+            bond2023 = bond_amounts['pipeline_supply'].iloc[0]
+            bond2025 = bond_amounts['pipeline_supply'].iloc[1]
+            bond2027 = bond_amounts['pipeline_supply'].iloc[2]
+            bond2029 = bond_amounts['pipeline_supply'].iloc[3]
+        else:
+            bond2023 = bond_amounts['full_amount'].iloc[0]
+            bond2025 = bond_amounts['full_amount'].iloc[1]
+            bond2027 = bond_amounts['full_amount'].iloc[2]
+            bond2029 = bond_amounts['full_amount'].iloc[3]
         
         if year < 2025:
             ###bond_issue = 130000000 #make into bond issue table
-            debt_issue_2023 = debt_issue(130000000, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list) #debt_issue(130000000, 20, 0.06, True)
+            debt_issue_2023 = debt_issue(bond2023, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list) #debt_issue(130000000, 20, 0.06, True)
             total_budgeted_debt_service += debt_issue_2023[year - 2023]
         elif 2025 <= year < 2027:
             ###bond_issue = 139000000 #make into bond issue table
-            debt_issue_2023 = debt_issue(130000000, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list)
-            debt_issue_2025 = debt_issue(139000000, debt_payoffyears_for_2025, interest_rate_2025bond, uniform_debt2025, multiplier_list) #debt_issue(139000000, 25, 0.0625, True)
+            debt_issue_2023 = debt_issue(bond2023, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list)
+            debt_issue_2025 = debt_issue(bond2025, debt_payoffyears_for_2025, interest_rate_2025bond, uniform_debt2025, multiplier_list) #debt_issue(139000000, 25, 0.0625, True)
             total_budgeted_debt_service += (debt_issue_2023[year - 2023] + \
                                           debt_issue_2025[year - 2025])
         elif 2027 <= year < 2029:
             ###bond_issue = 306000000 #make into bond issue table
-            debt_issue_2023 = debt_issue(130000000, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list)
-            debt_issue_2025 = debt_issue(139000000, debt_payoffyears_for_2025, interest_rate_2025bond, uniform_debt2025, multiplier_list)
-            debt_issue_2027 = debt_issue(306000000, debt_payoffyears_for_2027, interest_rate_2027bond, uniform_debt2027, multiplier_list) #debt_issue(306000000, 25, 0.06, True)
+            debt_issue_2023 = debt_issue(bond2023, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list)
+            debt_issue_2025 = debt_issue(bond2025, debt_payoffyears_for_2025, interest_rate_2025bond, uniform_debt2025, multiplier_list)
+            debt_issue_2027 = debt_issue(bond2027, debt_payoffyears_for_2027, interest_rate_2027bond, uniform_debt2027, multiplier_list) #debt_issue(306000000, 25, 0.06, True)
             total_budgeted_debt_service += (debt_issue_2023[year - 2023] + \
                                           debt_issue_2025[year - 2025] + \
                                           debt_issue_2027[year - 2027])
         elif year >= 2029:
             ###bond_issue = 150382000 #make into bond issue table
-            debt_issue_2023 = debt_issue(130000000, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list)
-            debt_issue_2025 = debt_issue(139000000, debt_payoffyears_for_2025, interest_rate_2025bond, uniform_debt2025, multiplier_list)
-            debt_issue_2027 = debt_issue(306000000, debt_payoffyears_for_2027, interest_rate_2027bond, uniform_debt2027, multiplier_list)
-            debt_issue_2029 = debt_issue(150382000, debt_payoffyears_for_2029, interest_rate_2029bond, uniform_debt2029, multiplier_list) #debt_issue(150382000, 20, 0.0625, True)
+            debt_issue_2023 = debt_issue(bond2023, debt_payoffyears_for_2023, interest_rate_2023bond, uniform_debt2023, multiplier_list)
+            debt_issue_2025 = debt_issue(bond2025, debt_payoffyears_for_2025, interest_rate_2025bond, uniform_debt2025, multiplier_list)
+            debt_issue_2027 = debt_issue(bond2027, debt_payoffyears_for_2027, interest_rate_2027bond, uniform_debt2027, multiplier_list)
+            debt_issue_2029 = debt_issue(bond2029, debt_payoffyears_for_2029, interest_rate_2029bond, uniform_debt2029, multiplier_list) #debt_issue(150382000, 20, 0.0625, True)
             total_budgeted_debt_service += (debt_issue_2023[year - 2023] + \
                                           debt_issue_2025[year - 2025] + \
                                           debt_issue_2027[year - 2027] + \
@@ -1975,7 +1993,9 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                             existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
                             accumulated_new_operational_fixed_costs_from_infra,
                             accumulated_new_operational_variable_costs_from_infra,
-                            dv_list, 
+                            dv_list,
+                            bond_amounts,
+                            formulation_id,
                             rdm_factor_list,
                             ACTIVE_DEBUGGING,
                             actual_major_cip_expenditures_by_source_by_year,
@@ -2030,6 +2050,8 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                                     current_FY_final_net_revenue, 
                                     existing_debt_targets,
                                     dvs,
+                                    bond_amounts,
+                                    formulation_id,
                                     actual_major_cip_expenditures_by_source_by_year,
                                     actual_other_cip_expenditures_by_source_by_year,
                                     FY+1, first_modeled_fy-1,
@@ -2433,6 +2455,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            existing_issued_debt,
                                            existing_debt_targets,
                                            potential_projects,
+                                           bond_amounts,
                                            CIP_plan,
                                            fraction_cip_spending_for_major_projects_by_year_by_source,
                                            generic_CIP_plan,
@@ -2686,7 +2709,9 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                     existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
                                     accumulated_new_operational_fixed_costs_from_infra,
                                     accumulated_new_operational_variable_costs_from_infra,
-                                    decision_variables, 
+                                    decision_variables,
+                                    bond_amounts,
+                                    formulation_id,
                                     rdm_factors,
                                     ACTIVE_DEBUGGING,
                                     actual_major_cip_expenditures_by_source_by_year,
@@ -2716,21 +2741,29 @@ import numpy as np; import pandas as pd
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
 start_fy = 2021; end_fy = 2041; first_modeled_fy = 2021
-local_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW'
-local_data_sub_path = '/Data'
-local_code_sub_path = '/Code'
-local_MonteCarlo_data_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW'
+###local_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW'
+local_base_path = 'F:/MonteCarlo_Project/Cornell_UNC' #Vgrid pathways
+###local_data_sub_path = '/Data'
+local_data_sub_path = '/financial_model_input_data' #Vgrid pathway
+###local_code_sub_path = '/Code'
+local_code_sub_path = '' #Vgrid pathway
+###local_MonteCarlo_data_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW'
+local_MonteCarlo_data_base_path = 'F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMPL_files' #Vgrid pathway
 
 # read in decision variables from spreadsheet
-dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
-DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
+###dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
+dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling' #Vgrid pathway
+###DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
+DVs = pd.read_csv(dv_path + '/financial_modelDVs.csv', header = None) #Vgrid pathway
 
 # read in deeply uncertain factors
-DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
+###DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
+DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None) #Vgrid pathway
 
 ### ---------------------------------------------------------------------------
 # read in historic records
-historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
+###historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
+historical_data_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data' #Vgrid pathway
 
 monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + '/water_sales_and_deliveries_all_2020.csv')
 historical_annual_budget_projections = pd.read_csv(historical_data_path + '/historical_budgets.csv')
@@ -2741,6 +2774,7 @@ current_debt_targets = pd.read_excel(historical_data_path + '/Current_Future_Bon
 projected_first_year_reserve_fund_balances = pd.read_csv(historical_data_path + '/projected_FY21_reserve_fund_starting_balances.csv')
 projected_10year_reserve_fund_deposits = pd.read_csv(historical_data_path + '/projected_reserve_fund_deposits.csv')
 project_costs = pd.read_excel(historical_data_path + '/Current_Future_BondIssues.xlsx', sheet_name = 'PotentialProjsforModeling')
+bond_issue_amounts = pd.read_csv(historical_data_path + '/bond_issues.csv')
 
 if end_fy <= first_modeled_fy:
     projected_10year_CIP_spending = pd.read_csv(historical_data_path + '/original_CIP_spending_all_projectsFY18.csv')
@@ -2773,9 +2807,12 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     ### ---------------------------------------------------------------------------
     # set additional required paths
     scripts_path = local_base_path + local_code_sub_path + '/TampaBayWater/data_management'
-    ampl_output_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
-    oms_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
-    output_path = local_MonteCarlo_data_base_path + '/Modeloutput'
+    ###ampl_output_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
+    ampl_output_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id) #Vgrid pathway
+    ###oms_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
+    oms_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_' + str(run_id) #Vgrid pathway
+    ###output_path = local_MonteCarlo_data_base_path + '/Modeloutput'
+    output_path = local_base_path + '/updated_financial_model_output'
     
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
@@ -2823,6 +2860,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
                         existing_issued_debt = existing_debt,
                         existing_debt_targets = current_debt_targets,
                         potential_projects = infrastructure_options,
+                        bond_amounts = bond_issue_amounts,
                         CIP_plan = projected_10year_CIP_spending,
                         fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction,
                         generic_CIP_plan = normalized_CIP_spending,
