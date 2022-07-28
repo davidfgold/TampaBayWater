@@ -411,7 +411,7 @@ def set_BudgetedDebtService(existing_debt, last_year_net_revenue,
             bond2027 = bond_amounts['pipeline'].iloc[2]
             bond2029 = bond_amounts['pipeline'].iloc[3]
             
-        elif formulation_id == 152:
+        elif formulation_id == 147:
             bond2023 = bond_amounts['pipeline_supply'].iloc[0]
             bond2025 = bond_amounts['pipeline_supply'].iloc[1]
             bond2027 = bond_amounts['pipeline_supply'].iloc[2]
@@ -2754,7 +2754,7 @@ local_MonteCarlo_data_base_path = 'F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMP
 ###dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
 dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling' #Vgrid pathway
 ###DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
-DVs = pd.read_csv(dv_path + '/financial_modelDVs.csv', header = None) #Vgrid pathway
+DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None) #Vgrid pathway
 
 # read in deeply uncertain factors
 ###DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
@@ -2801,7 +2801,7 @@ else:
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
-for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
+for run_id in [145]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
     # run for testing: run_id = 125; sim = 0; r_id = 1
     
     ### ---------------------------------------------------------------------------
@@ -2817,8 +2817,8 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
-    for sim in range(0,len(DVs)): # sim = 0 for testing
+    n_reals_tested = 99 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    for sim in range(0,9): # sim = 0 for testing
     #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     #for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
         if end_fy <= 2022: # if we are running historical]
