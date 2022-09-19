@@ -123,8 +123,8 @@ for col in [x for x in hist_water_delivery_sales.columns[10:22].values]:
     plt.close()
 
 # exceptions for covenants
-DC = pd.DataFrame({'Fiscal Year': [2015,2016,2017,2018,2019,2020]})
-RC = pd.DataFrame({'Fiscal Year': [2015,2016,2017,2018,2019,2020]})
+DC = pd.DataFrame({'Fiscal Year': [2015,2016,2017,2018,2019,2020,2021]})
+RC = pd.DataFrame({'Fiscal Year': [2015,2016,2017,2018,2019,2020,2021]})
 fig, (ax1, ax2) = plt.subplots(1,2, sharey = False, figsize = (12,5))
 for r_id in range(1,n_reals+1):
     model_metrics = pd.read_csv(data_path + '/financial_metrics_f' + str(f_id) + '_s' + str(sim) + '_r' + str(r_id) + '.csv')
@@ -147,10 +147,10 @@ ax2.fill_between(RC['Fiscal Year'],
 ax2.plot(RC['Fiscal Year'], hist_rate_covenant[-(len(RC['Fiscal Year'])):], 
         color = 'k', linewidth = 5)
 
-ax1.set_xticks(range(2015,2021))
-ax1.set_xticklabels(range(2015,2021))
-ax2.set_xticks(range(2015,2021))
-ax2.set_xticklabels(range(2015,2021))
+ax1.set_xticks(range(2015,2022))
+ax1.set_xticklabels(range(2015,2022))
+ax2.set_xticks(range(2015,2022))
+ax2.set_xticklabels(range(2015,2022))
 ax1.set_xlabel('Fiscal Year')
 ax2.set_xlabel('Fiscal Year')
 ax1.set_ylabel('Covenant Ratio')
