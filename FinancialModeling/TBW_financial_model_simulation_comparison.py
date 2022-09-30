@@ -11,11 +11,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/local_results'
+data_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput'
 
 # plot data across simulations/evaluations and all realizations
 for run_id in [125]:
-    n_sims = 9; shift_size = 0; sim_colors = ['g', 'g', 'g']; sim_type = ['Hands-Off', 'Fixed', 'Controlled Growth']
+    n_sims = 3; shift_size = 0; sim_colors = ['b', 'g', 'm'] 
+    #sim_type = ['Hands-Off', 'Fixed', 'Controlled Growth']
+    sim_type = ['Origianl Planning', 'Higher Interest Rates', 'High Interest Rates and Inflation']
 #    fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (14,5))
     for sim in range(0, n_sims):
         fig, (ax1, ax2, ax3) = plt.subplots(1,3, sharey = False, figsize = (14,5))
@@ -37,21 +39,21 @@ for run_id in [125]:
         ax1.fill_between(ur_data.columns,
                          np.max(ur_data, axis = 0), 
                          np.min(ur_data, axis = 0), 
-                         color = sim_colors[0], 
+                         color = sim_colors[sim], 
                          alpha = 0.4,  linewidth = 2,
-                         edgecolor = sim_colors[0], label = sim_type[0])
+                         edgecolor = sim_colors[sim], label = sim_type[sim])
         ax2.fill_between(dc_data.columns, 
                          np.max(dc_data, axis = 0), 
                          np.min(dc_data, axis = 0), 
-                         color = sim_colors[0], 
+                         color = sim_colors[sim], 
                          alpha = 0.4, 
-                         edgecolor = sim_colors[0], label = sim_type[0])
+                         edgecolor = sim_colors[sim], label = sim_type[sim])
         ax3.fill_between(rc_data.columns, 
                          np.max(rc_data, axis = 0), 
                          np.min(rc_data, axis = 0), 
-                         color = sim_colors[0], 
+                         color = sim_colors[sim], 
                          alpha = 0.4, 
-                         edgecolor = sim_colors[0], label = sim_type[0])
+                         edgecolor = sim_colors[sim], label = sim_type[sim])
         
         ax2.plot(dc_data.columns, [1] * len(dc_data.columns), 
                  color = 'k', linewidth = 3, linestyle = '--')
@@ -78,9 +80,10 @@ for run_id in [125]:
         ax2.set_title('Debt Covenant')
         ax3.set_title('Rate Covenant')
 #        plt.savefig(data_path + '/Simulation_Covenant_Comparisons_f' + str(run_id) + '_animated' + str(sim) + '.png', bbox_inches= 'tight', dpi = 800)
-        plt.savefig(data_path + '/Simulation_Covenant_Comparisons_f' + str(run_id) + '_individual' + str(sim) + '.png', bbox_inches= 'tight', dpi = 800)
-    
-        plt.close()
+        #plt.savefig(data_path + '/Simulation_Covenant_Comparisons_f' + str(run_id) + '_individual' + str(sim) + '.png', bbox_inches= 'tight', dpi = 800)
+        
+        plt.show()
+        #plt.close()
     
 # quick plot to show difference in debt schedule between existing debt
 # and future with SHC pipeline added
