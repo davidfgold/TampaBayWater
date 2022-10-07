@@ -1,0 +1,2 @@
+Path to financial model input data:
+F:\MonteCarlo_Project\Cornell_UNC
