@@ -82,9 +82,11 @@ data_names_to_plot = ['Rate Covenant Ratio', 'Debt Covenant Ratio', 'Uniform Rat
 
 formulation_to_plot = [run_id]
 simulation_to_plot = np.arange(0, num_sim, dtype=int)
+
 #formulation_to_plot = [125] # list all
 #simulation_to_plot = [0,1,2,3,4,5,6,7,8] # list all, IDs start at 0
-realization_to_plot = [x for x in range(1,num_sim+1)] # list which we want, IDs start at 1 not zero
+#realization_to_plot = [x for x in range(1,num_sim+1)] # list which we want, IDs start at 1 not zero
+realization_to_plot = [1]
 metrics_test_read = pd.read_csv(results_path + 'financial_metrics_f' + str(formulation_to_plot[0]) +
                                 '_s' + str(simulation_to_plot[0]) + '_r' + str(realization_to_plot[0]) + '.csv',
                                 index_col = 0)
@@ -121,10 +123,85 @@ elif figure_to_plot == "R&R Fund (Total)":
 elif figure_to_plot == "Energy Savings Fund (Total)":
     data_name_to_plot = data_names_to_plot[10]
 
-
 # loop through all results to report data
 for f in range(0,len(formulation_to_plot)):
     print('Plotting output for Formulation ' + str(formulation_to_plot[f]))
+
+    for r in range(0,len(realization_to_plot)):
+        print('\t\tCollecting output for Realization ' + str(realization_to_plot[r]))
+
+        if realization_to_plot[r] == 95:
+            continue
+        fig, axs = plt.subplots(1, 1, sharey = False, figsize = (7,7))
+        # prepare data structure to hold collected data to plot
+        hold_all_data_to_plot = np.zeros((num_sim, len(metrics_test_read['Fiscal Year'])))
+
+        for s in range(0,len(simulation_to_plot)):
+            print('\tPlotting output for Simulation ' + str(simulation_to_plot[s]))
+
+            # identify simulation conditions
+            #dvs = [x for x in DVs.iloc[simulation_to_plot[s],:]]
+            #dufs = [x for x in DUFs.iloc[simulation_to_plot[s],:]]
+            # read data input files
+            actuals = pd.read_csv(results_path + 'budget_actuals_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + '_r' + str(realization_to_plot[r]) + '.csv', index_col = 0)
+            budgets = pd.read_csv(results_path + 'budget_projections_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + '_r' + str(realization_to_plot[r]) + '.csv', index_col = 0)
+            metrics = pd.read_csv(results_path + 'financial_metrics_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + '_r' + str(realization_to_plot[r]) + '.csv', index_col = 0)
+
+            # collect data we want - reminder that actuals goes from
+            # 2 years before first modeled year (so 2019, if starting 2021)
+            # and ends at the final year (2039), budgets cover +1 year on
+            # both sides (ex: 2020 to 2040), metrics are exact range (2021-2039)
+            # so they need to be trimmed to match up in time with just the
+            # modeled period...
+            item = data_name_to_plot
+            if item in actuals.columns:
+                print('\t\t\tCollecting ' + item + ' from actuals...') if r == 0 else None
+                hold_all_data_to_plot[s,:] = actuals[item].values[2:]
+
+            elif item in budgets.columns:
+                print('\t\t\tCollecting ' + item + ' from budget...') if r == 0 else None
+                hold_all_data_to_plot[s,:] = budgets[item].values[1:-1]
+
+            elif item in metrics.columns:
+                print('\t\t\tCollecting ' + item + ' from metrics...') if r == 0 else None
+                hold_all_data_to_plot[s,:] = metrics[item].values[:]
+
+            else:
+                print('ERROR: CANNOT LOCATE ITEM: ' + item)
+                err.write('ERROR: CANNOT LOCATE ITEM: ' + item)
+                err.write("\n")
+
+        #print(hold_all_data_to_plot)
+        # plot a long row of subplots together for as many
+        # variables as have been chosen to visualize
+        #fig, axs = plt.subplots(1, 1, sharey = False, figsize = (5,5))
+
+        # if plotting a single realization, make a special case
+        if len(simulation_to_plot) == 1:
+            #for ax, y_data, series_name in zip(axs, hold_all_data_to_plot, data_name_to_plot):
+            axs.plot(metrics['Fiscal Year'].values, hold_all_data_to_plot[0])
+            axs.set_title(data_name_to_plot)
+            axs.set_xticklabels(metrics['Fiscal Year'].values.astype(int), rotation = 90)
+        else:
+            #for ax, y_data, series_name in zip(axs, hold_all_data_to_plot, data_name_to_plot):
+            axs.boxplot(hold_all_data_to_plot[:][:])
+            axs.set_title(data_name_to_plot)
+            axs.set_xticklabels(metrics['Fiscal Year'].values.astype(int), rotation = 90)
+
+        axs.set_xlabel('Fiscal Year')
+        axs.set_ylabel("USD$")
+    # output and close figure to avoid overloading memory
+    plt.savefig(figures_out_path + data_name_to_plot + '_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + (('_SINGLE_REALIZATION_r' + str(realization_to_plot[r])) if len(realization_to_plot) == 1 else '') + '.png', bbox_inches= 'tight', dpi = 400)
+    plt.show()
+
+
+'''
+# loop through all results to report data
+for f in range(0,len(formulation_to_plot)):
+    print('Plotting output for Formulation ' + str(formulation_to_plot[f]))
+
+    fig, axs = plt.subplots(1, 1, sharey = False, figsize = (5,5))
+
     for s in range(0,len(simulation_to_plot)):
         print('\tPlotting output for Simulation ' + str(simulation_to_plot[s]))
 
@@ -135,6 +212,7 @@ for f in range(0,len(formulation_to_plot)):
         # prepare data structure to hold collected data to plot
         hold_all_data_to_plot = [np.empty(shape = (0, len(metrics_test_read['Fiscal Year'])))]*1
         # cycle through realizations to collect data
+
         for r in range(0,len(realization_to_plot)):
             print('\t\tCollecting output for Realization ' + str(realization_to_plot[r]))
 
@@ -145,6 +223,7 @@ for f in range(0,len(formulation_to_plot)):
             actuals = pd.read_csv(results_path + 'budget_actuals_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + '_r' + str(realization_to_plot[r]) + '.csv', index_col = 0)
             budgets = pd.read_csv(results_path + 'budget_projections_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + '_r' + str(realization_to_plot[r]) + '.csv', index_col = 0)
             metrics = pd.read_csv(results_path + 'financial_metrics_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + '_r' + str(realization_to_plot[r]) + '.csv', index_col = 0)
+
             # collect data we want - reminder that actuals goes from
             # 2 years before first modeled year (so 2019, if starting 2021)
             # and ends at the final year (2039), budgets cover +1 year on
@@ -171,23 +250,23 @@ for f in range(0,len(formulation_to_plot)):
         print(hold_all_data_to_plot)
         # plot a long row of subplots together for as many
         # variables as have been chosen to visualize
-        fig, axs = plt.subplots(1, 1, sharey = False, figsize = (5,5))
+        #fig, axs = plt.subplots(1, 1, sharey = False, figsize = (5,5))
 
         # if plotting a single realization, make a special case
-        if len(realization_to_plot) == 1:
-            #for ax, y_data, series_name in zip(axs, hold_all_data_to_plot, data_name_to_plot):
-            axs.plot(metrics['Fiscal Year'].values, hold_all_data_to_plot[0])
-            axs.set_title(data_name_to_plot)
-            axs.set_xticklabels(metrics['Fiscal Year'].values, rotation = 90)
-        else:
-            #for ax, y_data, series_name in zip(axs, hold_all_data_to_plot, data_name_to_plot):
-            axs.boxplot(hold_all_data_to_plot[0][:])
-            axs.set_title(data_name_to_plot)
-            axs.set_xticklabels(metrics['Fiscal Year'].values, rotation = 90)
+    if len(realization_to_plot) == 1:
+        #for ax, y_data, series_name in zip(axs, hold_all_data_to_plot, data_name_to_plot):
+        axs.plot(metrics['Fiscal Year'].values, hold_all_data_to_plot[0])
+        axs.set_title(data_name_to_plot)
+        axs.set_xticklabels(metrics['Fiscal Year'].values, rotation = 90)
+    else:
+        #for ax, y_data, series_name in zip(axs, hold_all_data_to_plot, data_name_to_plot):
+        axs.boxplot(hold_all_data_to_plot[:][:])
+        axs.set_title(data_name_to_plot)
+        axs.set_xticklabels(metrics['Fiscal Year'].values, rotation = 90)
 
-        # output and close figure to avoid overloading memory
-        plt.savefig(figures_out_path + data_name_to_plot + '_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + (('_SINGLE_REALIZATION_r' + str(realization_to_plot[r])) if len(realization_to_plot) == 1 else '') + '.png', bbox_inches= 'tight', dpi = 400)
-        plt.show()
-
+    # output and close figure to avoid overloading memory
+    plt.savefig(figures_out_path + data_name_to_plot + '_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + (('_SINGLE_REALIZATION_r' + str(realization_to_plot[r])) if len(realization_to_plot) == 1 else '') + '.png', bbox_inches= 'tight', dpi = 400)
+    plt.show()
+'''
 err.write("End error file.")
 err.close()

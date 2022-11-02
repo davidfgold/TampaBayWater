@@ -2661,7 +2661,8 @@ err = open('../../Output/error_files/err_financial_model.txt', 'w')
 start_FY = run_model_sheet['D32'].value
 end_FY = run_model_sheet['D33'].value
 curr_year = start_FY - 1
-num_sims = int(run_model_sheet['D35'].value)
+num_sims = int(run_model_sheet['D35'].value)    # number of different scenarios
+num_reals = int(run_model_sheet['D34'].value)   # number of different .mat files
 
 # read in decision variables from spreadsheet
 #dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
@@ -2798,12 +2799,15 @@ for run_id in [curr_run_id]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FO
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    start_fy = start_FY; end_fy = end_FY; n_reals_tested = num_sims # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    start_fy = start_FY; end_fy = end_FY
+    #n_reals_tested = num_sims
+    n_reals_tested = num_reals
+    # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
     #for sim in range(0,len(DVs)): # sim = 0 for testing
     #for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     for sim in range(0,num_sims): # FOR RUNNING MULTIPLE SIMULATIONS
         ### ----------------------------------------------------------------------- ###
-        ### RUN REALIZATION FINANCIAL MODEL ACROSS SET OF REALIZATIONS
+        ### RUN REALIZATION FINANCIALMODELACROSS SET OF REALIZATIONS
         ### ----------------------------------------------------------------------- ###
         dvs = [x for x in DVs.iloc[sim,:]]
         dufs = [x for x in DUFs.iloc[sim,:]]
@@ -2901,8 +2905,6 @@ for run_id in [curr_run_id]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FO
         DC.to_csv(output_path + '/DC_f' + str(run_id) + '_s' + str(sim) + '.csv')
         RC.to_csv(output_path + '/RC_f' + str(run_id) + '_s' + str(sim) + '.csv')
         UR.to_csv(output_path + '/UR_f' + str(run_id) + '_s' + str(sim) + '.csv')
-
-
 
     ### ---------------------------------------------------------------------------
     # write output file for all objectives
