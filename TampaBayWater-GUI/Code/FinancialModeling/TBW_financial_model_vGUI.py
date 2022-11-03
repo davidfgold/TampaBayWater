@@ -614,6 +614,7 @@ def estimate_UniformRate(annual_estimate,
     # assume the goal is to maintain the UR and skip all below calcs
     # no change to Annual Estimate because that is sum of expenditures,
     # which will not change if UR changes
+
     assert (high_rate_bound >= low_rate_bound), \
         "Uniform Rate high management bound must be >= lower bound"
 
@@ -2636,38 +2637,48 @@ import numpy as np; import pandas as pd
 from openpyxl import load_workbook
 from os.path import exists
 import sys
-sys.path.insert(1, '../data_management')
+sys.path.insert(1, 'Code/data_management')
 
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
 
-GUI = load_workbook('../../Financial_Model_GUI.xlsm')
+#GUI = load_workbook('../../Finanical_Model_GUI.xlsm')
+GUI = load_workbook('Data/model_input_data/model_setup.xlsx')
+
+input_filenames = load_workbook('Data/model_input_data/input_filenames.xlsx')
+
 BAR = '/'
-run_model_sheet = GUI['3-Run Model']
+run_model_sheet = GUI['Sheet1']
+input_filenames_sheet = input_filenames['Sheet1']
 
 #local_data_sub_path = '/Data'
 #local_code_sub_path = '/Code'
 #local_MonteCarlo_data_base_path = 'C:/Users/dgorelic/Desktop/TBWruns'
-local_base_path = run_model_sheet['D6'].value
+local_base_path = run_model_sheet['A2'].value
 local_data_sub_path = 'Data' + BAR
-local_model_input_path = run_model_sheet['C11'].value + BAR
-local_dv_du_path = run_model_sheet['C24'].value + BAR
-local_MC_database_path = local_base_path + local_data_sub_path + 'run' + str(run_model_sheet['D30'].value)
+local_model_input_path = 'model_input_data/'
+local_dv_du_path = 'parameters/'
+#local_MC_database_path = local_base_path + local_data_sub_path + 'run' + str(run_model_sheet['D30'].value)
+
+# Use this if on VGrid
+local_MC_database_path = r"F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMPL_files/run"
 
 # open the error file
-err = open('../../Output/error_files/err_financial_model.txt', 'w')
+err_filepath = local_base_path + 'Output/error_files/err_financial_model.txt'
+err = open(err_filepath, 'w')
 
 # model simulation start and end dates
-start_FY = run_model_sheet['D32'].value
-end_FY = run_model_sheet['D33'].value
+start_FY = run_model_sheet['D2'].value
+end_FY = run_model_sheet['E2'].value
 curr_year = start_FY - 1
-num_sims = int(run_model_sheet['D35'].value)    # number of different scenarios
-num_reals = int(run_model_sheet['D34'].value)   # number of different .mat files
+num_sims = int(run_model_sheet['G2'].value)    # number of different scenarios
+num_reals = int(run_model_sheet['F2'].value)   # number of different .mat files
 
 # read in decision variables from spreadsheet
 #dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
 #DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
-dv_path = local_base_path + local_data_sub_path + local_dv_du_path + run_model_sheet['E24'].value
+dv_path = local_base_path + local_data_sub_path + local_dv_du_path + 'financial_model_DVs.csv'
+
 if exists(dv_path) == False:
     err.write("ERROR: Decision variable file does not exist in required location")
     err.write("\n")
@@ -2675,7 +2686,8 @@ DVs = pd.read_csv(dv_path, header=None)
 
 # read in deeply uncertain factors
 #DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
-du_path = local_base_path + local_data_sub_path + local_dv_du_path + run_model_sheet['E25'].value
+du_path = local_base_path + local_data_sub_path + local_dv_du_path + 'financial_model_DUfactors.csv'
+
 if exists(du_path) == False:
     err.write("ERROR: Uncertainty parameters file does not exist in required location")
     err.write("\n")
@@ -2700,101 +2712,101 @@ normalized_CIP_spending_major_project_fraction = ""
 projected_first_year_reserve_fund_balances = ""
 projected_10year_reserve_fund_deposits = ""
 
-if exists(historical_data_path + run_model_sheet['E11'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['A2'].value) == False:
     err.write("ERROR: Water deliveries and sales file does not exist in required location")
     err.write("\n")
 else:
-    monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + run_model_sheet['E11'].value)
+    monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + input_filenames_sheet['A2'].value)
 
-if exists(historical_data_path + run_model_sheet['E12'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['B2'].value) == False:
     err.write("ERROR: Projected annual budget file does not exist in required location")
     err.write("\n")
 else:
-    historical_annual_budget_projections = pd.read_csv(historical_data_path + run_model_sheet['E12'].value)
+    historical_annual_budget_projections = pd.read_csv(historical_data_path + input_filenames_sheet['B2'].value)
 
-if exists(historical_data_path + run_model_sheet['E13'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['C2'].value) == False:
     err.write("ERROR: Actual annual budget file does not exist in required location")
     err.write("\n")
 else:
-    annual_budget_data = pd.read_csv(historical_data_path + run_model_sheet['E13'].value)
+    annual_budget_data = pd.read_csv(historical_data_path + input_filenames_sheet['C2'].value)
 
-if exists(historical_data_path + run_model_sheet['E14'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['D2'].value) == False:
     err.write("ERROR: Existing file does not exist in required location")
     err.write("\n")
 else:
-    existing_debt = pd.read_csv(historical_data_path + run_model_sheet['E14'].value)
+    existing_debt = pd.read_csv(historical_data_path + input_filenames_sheet['D2'].value)
 
-if exists(historical_data_path + run_model_sheet['E15'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['E2'].value) == False:
     err.write("ERROR: Potential projects file does not exist in required location")
     err.write("\n")
 else:
-    infrastructure_options = pd.read_csv(historical_data_path + run_model_sheet['E15'].value)
+    infrastructure_options = pd.read_csv(historical_data_path + input_filenames_sheet['E2'].value)
 
-if exists(historical_data_path + run_model_sheet['E16'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['F2'].value) == False:
     err.write("ERROR: Current and future issued bond files does not exist in required location")
     err.write("\n")
 else:
-    current_debt_targets = pd.read_excel(historical_data_path + run_model_sheet['E16'].value, \
+    current_debt_targets = pd.read_excel(historical_data_path + input_filenames_sheet['F2'].value, \
                                          sheet_name = 'FutureDSTotals')
 
-if exists(historical_data_path + run_model_sheet['E17'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['G2'].value) == False:
     err.write("ERROR: Projected 10-year CIP spending file does not exist in required location")
     err.write("\n")
 else:
-    projected_10year_CIP_spending = pd.read_csv(historical_data_path + run_model_sheet['E17'].value)
+    projected_10year_CIP_spending = pd.read_csv(historical_data_path + input_filenames_sheet['G2'].value)
 
-if exists(historical_data_path + run_model_sheet['E18'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['H2'].value) == False:
     err.write("ERROR: Projected 10-year CIP spending (fraction of major projects)\
               file does not exist in required location")
     err.write("\n")
 else:
     projected_10year_CIP_spending_major_project_fraction = \
-        pd.read_csv(historical_data_path + run_model_sheet['E18'].value)
+        pd.read_csv(historical_data_path + input_filenames_sheet['H2'].value)
 
-if exists(historical_data_path + run_model_sheet['E19'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['I2'].value) == False:
     err.write("ERROR: Normalized CIP file does not exist in required location")
     err.write("\n")
 else:
-    normalized_CIP_spending = pd.read_csv(historical_data_path + run_model_sheet['E19'].value)
+    normalized_CIP_spending = pd.read_csv(historical_data_path + input_filenames_sheet['I2'].value)
 
-if exists(historical_data_path + run_model_sheet['E20'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['J2'].value) == False:
     err.write("ERROR: Normalized CIP (fraction of major projects)\
               file does not exist in required location")
     err.write("\n")
 else:
     normalized_CIP_spending_major_project_fraction = \
-        pd.read_csv(historical_data_path + run_model_sheet['E20'].value)
+        pd.read_csv(historical_data_path + input_filenames_sheet['J2'].value)
 
-if exists(historical_data_path + run_model_sheet['E21'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['K2'].value) == False:
     err.write("ERROR: Projected first year RF balances file does not exist in required location")
     err.write("\n")
 else:
     projected_first_year_reserve_fund_balances = \
-        pd.read_csv(historical_data_path + run_model_sheet['E21'].value)
+        pd.read_csv(historical_data_path + input_filenames_sheet['K2'].value)
 
-if exists(historical_data_path + run_model_sheet['E22'].value) == False:
+if exists(historical_data_path + input_filenames_sheet['L2'].value) == False:
     err.write("ERROR: Projected first year RF deposits file does not exist in required location")
     err.write("\n")
 else:
     projected_10year_reserve_fund_deposits = \
-        pd.read_csv(historical_data_path + run_model_sheet['E22'].value)
+        pd.read_csv(historical_data_path + input_filenames_sheet['L2'].value)
 
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
 
-curr_run_id = run_model_sheet['D31'].value
+curr_run_id = run_model_sheet['C2'].value
 
 for run_id in [curr_run_id]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
     # run for testing: run_id = 125; sim = 0; r_id = 1
 
     ### ---------------------------------------------------------------------------
     # set additional required paths
-    scripts_path = '../data_management'
-    ampl_output_path = local_MC_database_path + str(run_id)
-    oms_path = local_MC_database_path + str(run_id)
+    scripts_path = local_base_path + 'Code/data_management'
+    ampl_output_path = local_MC_database_path + '0' + str(run_id)
+    oms_path = local_MC_database_path  + '0' + str(run_id)
     print('oms_path=', oms_path)
-    output_path = '../../Output/financial_model_results'
+    output_path = local_base_path + 'Output/financial_model_results'
 
     ### ---------------------------------------------------------------------------
     # run loop across DV sets

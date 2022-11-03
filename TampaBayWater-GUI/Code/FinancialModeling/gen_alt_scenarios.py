@@ -10,8 +10,9 @@ import pandas as pd
 import numpy as np
 from openpyxl import load_workbook
 import os
+from tkinter import *
 
-GUI = load_workbook('../../Financial_Model_GUI.xlsm')
+GUI = load_workbook('../../Finanical_Model_GUI.xlsm')
 BAR = '/'
 run_model_sheet = GUI['3-Run Model']
 gen_du_dv_sheet = GUI['2-Gen alt scenarios']
@@ -38,35 +39,44 @@ if gen_du_dv_sheet['N9'].value == "Yes":
 #%%
 # if user does not want to use default decision variable values
 # set decision variables
-covenant_threshold_net_revenue_plus_fund_balance = np.random.uniform(low=gen_du_dv_sheet['M7'].value,
-                                                     high=gen_du_dv_sheet['N7'].value,
+covenant_threshold_net_revenue_plus_fund_balance = np.random.uniform(low=float(covenant_threshold_low.get()),
+                                                     high=float(covenant_threshold_high.get()),
                                                      size=(num_simulations,))
-debt_covenant_required_ratio = np.random.uniform(low=gen_du_dv_sheet['M8'].value,
-                                                     high=gen_du_dv_sheet['N8'].value,
+
+debt_covenant_required_ratio = np.random.uniform(low=float(debt_covenant_threshold_low.get()),
+                                                     high=float(debt_covenant_threshold_high.get()),
                                                      size=(num_simulations,))
-managed_uniform_rate_increase_rate = np.random.uniform(low=gen_du_dv_sheet['M10'].value,
-                                                     high=gen_du_dv_sheet['N10'].value,
+
+managed_uniform_rate_increase_rate = np.random.uniform(low=float(managed_uniform_incr_low.get()),
+                                                     high=float(managed_uniform_incr_high.get()),
                                                      size=(num_simulations,))
-managed_uniform_rate_decrease_rate = np.random.uniform(low=gen_du_dv_sheet['M11'].value,
-                                                     high=gen_du_dv_sheet['N11'].value,
+
+managed_uniform_rate_decrease_rate = np.random.uniform(low=float(managed_uniform_decr_low.get()),
+                                                     high=float(managed_uniform_decr_high.get()),
                                                      size=(num_simulations,))
-previous_FY_unaccounted_fraction_of_total_enterprise_fund = np.random.uniform(low=gen_du_dv_sheet['M12'].value,
-                                                     high=gen_du_dv_sheet['N12'].value,
+
+previous_FY_unaccounted_fraction_of_total_enterprise_fund = np.random.uniform(low=float(prev_unacc_low.get()),
+                                                     high=float(prev_unacc_high.get()),
                                                      size=(num_simulations,))
-debt_service_cap_fraction_of_gross_revenues = np.random.uniform(low=gen_du_dv_sheet['M13'].value,
-                                                     high=gen_du_dv_sheet['N13'].value,
+
+debt_service_cap_fraction_of_gross_revenues = np.random.uniform(low=float(debt_service_cap_low.get()),
+                                                     high=float(debt_service_cap_high.get()),
                                                      size=(num_simulations,))
-rr_fund_floor_fraction_of_gross_revenues = np.random.uniform(low=gen_du_dv_sheet['M14'].value,
-                                                     high=gen_du_dv_sheet['N14'].value,
+
+rr_fund_floor_fraction_of_gross_revenues = np.random.uniform(low=float(rr_fraction_low.get()),
+                                                     high=float(rr_fraction_high.get()),
                                                      size=(num_simulations,))
-cip_fund_floor_fraction_of_gross_revenues = np.random.uniform(low=gen_du_dv_sheet['M15'].value,
-                                                     high=gen_du_dv_sheet['N15'].value,
+
+cip_fund_floor_fraction_of_gross_revenues = np.random.uniform(low=float(cip_fund_fraction_low.get()),
+                                                     high=float(cip_fund_fraction_high.get()),
                                                      size=(num_simulations,))
-energy_fund_floor_fraction_of_gross_revenues = np.random.uniform(low=gen_du_dv_sheet['M16'].value,
-                                                     high=gen_du_dv_sheet['N16'].value,
+
+energy_fund_floor_fraction_of_gross_revenues = np.random.uniform(low=float(energy_fund_fraction_low.get()),
+                                                     high=float(energy_fund_fraction_high.get()),
                                                      size=(num_simulations,))
-reserve_fund_floor_fraction_of_gross_revenues = np.random.uniform(low=gen_du_dv_sheet['M17'].value,
-                                                     high=gen_du_dv_sheet['N17'].value,
+
+reserve_fund_floor_fraction_of_gross_revenues = np.random.uniform(low=float(rf_fund_fraction_low.get()),
+                                                     high=float(rf_fund_fraction_high.get()),
                                                      size=(num_simulations,))
 
 # fill decision variable matrix
@@ -79,7 +89,7 @@ dvs[:,5] = previous_FY_unaccounted_fraction_of_total_enterprise_fund
 dvs[:,6] = debt_service_cap_fraction_of_gross_revenues
 dvs[:,7] = rr_fund_floor_fraction_of_gross_revenues
 dvs[:,8] = cip_fund_floor_fraction_of_gross_revenues
-dvs[:,9] = energy_fund_floor_fraction_of_gross_revenues
+dvs[:,9] = cip_fund_floor_fraction_of_gross_revenues
 dvs[:,10] = reserve_fund_floor_fraction_of_gross_revenues
 
 dvs_filepath = local_base_path + local_data_sub_path  + "parameters/financial_model_DVs.csv"
@@ -94,59 +104,76 @@ FOLLOW_CIP_SCHEDULE_TOGGLE = 0
 
 # if user does not want to use default DU factor values
 # set decision variables
-rate_stabilization_minimum_ratio = np.random.uniform(low=gen_du_dv_sheet['F7'].value,
-                                                     high=gen_du_dv_sheet['G7'].value,
+rate_stabilization_minimum_ratio = np.random.uniform(low=float(rate_stable_min_low.get()),
+                                                     high=float(rate_stable_min_high.get()),
                                                      size=(num_simulations,))
-rate_stabilization_maximum_ratio = np.random.uniform(low=gen_du_dv_sheet['F8'].value,
-                                                     high=gen_du_dv_sheet['G8'].value,
+
+rate_stabilization_maximum_ratio = np.random.uniform(low=float(rate_stable_max_low.get()),
+                                                     high=float(rate_stable_max_high.get()),
                                                      size=(num_simulations,))
-fraction_variable_operational_cost = np.random.uniform(low=gen_du_dv_sheet['F9'].value,
-                                                     high=gen_du_dv_sheet['G9'].value,
+
+fraction_variable_operational_cost = np.random.uniform(low=float(var_cost_low.get()),
+                                                     high=float(var_cost_high.get()),
                                                      size=(num_simulations,))
-budgeted_unencumbered_fraction = np.random.uniform(low=gen_du_dv_sheet['F10'].value,
-                                                     high=gen_du_dv_sheet['G10'].value,
+
+budgeted_unencumbered_fraction = np.random.uniform(low=float(unemcum_budget_low.get()),
+                                                     high=float(unencum_budget_high.get()),
                                                      size=(num_simulations,))
-annual_budget_fixed_operating_cost_inflation_rate = np.random.uniform(low=gen_du_dv_sheet['F11'].value,
-                                                     high=gen_du_dv_sheet['G11'].value,
+
+annual_budget_fixed_operating_cost_inflation_rate = np.random.uniform(low=float(opex_fixed_low.get()),
+                                                     high=float(opex_fixed_high.get()),
                                                      size=(num_simulations,))
-annual_demand_growth_rate = np.random.uniform(low=gen_du_dv_sheet['F12'].value,
-                                                     high=gen_du_dv_sheet['G12'].value,
+
+annual_demand_growth_rate = np.random.uniform(low=float(demand_growth_low.get()),
+                                                     high=float(demand_growth_high.get()),
                                                      size=(num_simulations,))
-next_FY_budgeted_tampa_tbc_delivery = np.random.uniform(low=gen_du_dv_sheet['F13'].value,
-                                                     high=gen_du_dv_sheet['G13'].value,
+
+next_FY_budgeted_tampa_tbc_delivery = np.random.uniform(low=float(next_fy_low.get()),
+                                                     high=float(next_fy_high.get()),
                                                      size=(num_simulations,))
-fixed_op_ex_factor = np.random.uniform(low=gen_du_dv_sheet['F14'].value,
-                                                     high=gen_du_dv_sheet['G14'].value,
+
+fixed_op_ex_factor = np.random.uniform(low=float(fixed_opex_factor_low.get()),
+                                                     high=float(fixed_opex_factor_high.get()),
                                                      size=(num_simulations,))
-variable_op_ex_factor = np.random.uniform(low=gen_du_dv_sheet['F15'].value,
-                                                     high=gen_du_dv_sheet['G15'].value,
+
+variable_op_ex_factor = np.random.uniform(low = float(var_opex_factor_low.get()),
+                                                     high=float(var_opex_factor_high.get()),
                                                      size=(num_simulations,))
-non_sales_rev_factor = np.random.uniform(low=gen_du_dv_sheet['F16'].value,
-                                                     high=gen_du_dv_sheet['G16'].value,
+
+non_sales_rev_factor = np.random.uniform(low = float(non_sale_rev_low.get()),
+                                                     high=float(non_sale_rev_high.get()),
                                                      size=(num_simulations,))
-rate_stab_transfer_factor = np.random.uniform(low=gen_du_dv_sheet['F17'].value,
-                                                     high=gen_du_dv_sheet['G17'].value,
+
+rate_stab_transfer_factor = np.random.uniform(low = float(rate_stab_factor_low.get()),
+                                                     high=float(rate_stab_factor_high.get()),
                                                      size=(num_simulations,))
-rr_transfer_factor = np.random.uniform(low=gen_du_dv_sheet['F18'].value,
-                                                     high=gen_du_dv_sheet['G18'].value,
+
+rr_transfer_factor = np.random.uniform(low = float(rr_transfer_low.get()),
+                                                     high=float(rr_transfer_high.get()),
                                                      size=(num_simulations,))
-other_transfer_factor = np.random.uniform(low=gen_du_dv_sheet['F19'].value,
-                                                     high=gen_du_dv_sheet['G19'].value,
+
+other_transfer_factor = np.random.uniform(low = float(other_transfer_low.get()),
+                                                     high=float(other_transfer_high.get()),
                                                      size=(num_simulations,))
-required_cip_factor = np.random.uniform(low=gen_du_dv_sheet['F20'].value,
-                                                     high=gen_du_dv_sheet['G20'].value,
+
+required_cip_factor = np.random.uniform(low = float(cip_factor_low.get()),
+                                                     high=float(cip_factor_high.get()),
                                                      size=(num_simulations,))
-annual_budget_variable_operating_cost_inflation_rate = np.random.uniform(low=gen_du_dv_sheet['F21'].value,
-                                                     high=gen_du_dv_sheet['G21'].value,
+
+annual_budget_variable_operating_cost_inflation_rate = np.random.uniform(low=float(opex_var_low.get()),
+                                                     high=float(opex_var_high.get()),
                                                      size=(num_simulations,))
-TAMPA_SALES_THRESHOLD_FRACTION = np.random.uniform(low=gen_du_dv_sheet['F22'].value,
-                                                     high=gen_du_dv_sheet['G22'].value,
+
+TAMPA_SALES_THRESHOLD_FRACTION = np.random.uniform(low=float(sales_threshold_low.get()),
+                                                     high=float(sales_threshold_high.get()),
                                                      size=(num_simulations,))
-energy_transfer_factor = np.random.uniform(low=gen_du_dv_sheet['F23'].value,
-                                                     high=gen_du_dv_sheet['G23'].value,
+
+energy_transfer_factor = np.random.uniform(low=float(energy_transfer_low.get()),
+                                                     high=float(energy_transfer_high.get()),
                                                      size=(num_simulations,))
-utility_reserve_fund_deficit_reduction_fraction = np.random.uniform(low=gen_du_dv_sheet['F24'].value,
-                                                     high=gen_du_dv_sheet['G24'].value,
+
+utility_reserve_fund_deficit_reduction_fraction = np.random.uniform(low=float(urf_deficit_low.get()),
+                                                     high=float(urf_deficit_high.get()),
                                                      size=(num_simulations,))
 
 dufs[:,0] = rate_stabilization_minimum_ratio

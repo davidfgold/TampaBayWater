@@ -11,7 +11,7 @@ import numpy as np
 from openpyxl import load_workbook
 import os
 
-GUI = load_workbook('../../Financial_Model_GUI.xlsm')
+GUI = load_workbook('../../Finanical_Model_GUI.xlsm')
 BAR = '/'
 run_model_sheet = GUI['3-Run Model']
 gen_du_dv_sheet = GUI['2-Gen alt scenarios']
