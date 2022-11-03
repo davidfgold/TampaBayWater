@@ -35,8 +35,12 @@ main_folder_loc = Label(frame_setup_model, text="Main folder location", justify=
 main_folder_loc_entry = Entry(frame_setup_model, width=60)
 main_folder_loc_entry.grid(row=1, column=1, sticky=W)
 #main_folder_loc_entry.insert(0, "C:/Users/llau/Desktop/TampaBayWater-GUI/")
+<<<<<<< HEAD
 gui_directory = os.getcwd()
 gui_directory = gui_directory.replace(os.sep, '/') + '/'
+=======
+gui_directory = os.getcwd() + '/'
+>>>>>>> b99b18f343cfda86e476cc1fa2cc878f056ef5b2
 main_folder_loc_entry.insert(0, gui_directory)
 
 run_num = Label(frame_setup_model, text="Run Number", anchor="w", justify=LEFT, bg='lightcyan').grid(sticky = W, row=2, column=0)
