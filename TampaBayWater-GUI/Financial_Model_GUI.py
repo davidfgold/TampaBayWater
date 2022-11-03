@@ -14,7 +14,7 @@ import seaborn as sns
 sns.set()
 
 
-# create root widget 
+# create root widget
 root = Tk()
 root.title("TBW Financial Model GUI")
 root.iconbitmap('tbw_icon.ico')
@@ -26,7 +26,7 @@ root.resizable(False, False)
 #main_folder_location = Entry(root,text="Main Folder Location", width=10)
 
 # Model setup frame
-frame_setup_model = LabelFrame(root, text="1-Setup financial model", padx=8, pady=8, 
+frame_setup_model = LabelFrame(root, text="1-Setup financial model", padx=8, pady=8,
     bg='lightcyan', font=('HelvLight', 20), width=800, height=350)
 frame_setup_model.grid(row=0,column=0,padx=10,pady=10, sticky="ew")
 frame_setup_model.grid_propagate(False)
@@ -34,17 +34,19 @@ frame_setup_model.grid_propagate(False)
 main_folder_loc = Label(frame_setup_model, text="Main folder location", justify=LEFT, bg='lightcyan').grid(sticky = W, row=1, column=0)
 main_folder_loc_entry = Entry(frame_setup_model, width=50)
 main_folder_loc_entry.grid(row=1, column=1, sticky=W)
-main_folder_loc_entry.insert(0, "C:/Users/llau/Desktop/TampaBayWater-GUI/") 
+#main_folder_loc_entry.insert(0, "C:/Users/llau/Desktop/TampaBayWater-GUI/")
+gui_directory = os.getcwd() + '/'
+main_folder_loc_entry.insert(0, gui_directory)
 
 run_num = Label(frame_setup_model, text="Run Number", anchor="w", justify=LEFT, bg='lightcyan').grid(sticky = W, row=2, column=0)
 run_num_entry = Entry(frame_setup_model, width=10)
 run_num_entry.grid(row=2, column=1, sticky = W)
-run_num_entry.insert(0, "0") 
+run_num_entry.insert(0, "0")
 
 run_id = Label(frame_setup_model, text="Run ID", anchor="w", justify=LEFT, bg='lightcyan').grid(sticky = W, row=3, column=0)
 run_id_entry = Entry(frame_setup_model, width=10)
 run_id_entry.grid(row=3, column=1, sticky = W)
-run_id_entry.insert(0, "125") 
+run_id_entry.insert(0, "125")
 
 start_fy = Label(frame_setup_model, text="Starting FY", anchor="w", justify=LEFT, bg='lightcyan').grid(sticky = W, row=4, column=0)
 start_fy_entry = Entry(frame_setup_model, width=10)
@@ -71,24 +73,24 @@ empty = Label(frame_setup_model, text=" ", anchor="w", justify=LEFT, bg='lightcy
 
 # make csv file for entry into both model and plotting
 def store_finmod_deets():
-    df = pd.DataFrame([[main_folder_loc_entry.get(), int(run_num_entry.get()), int(run_id_entry.get()), int(start_fy_entry.get()), int(end_fy_entry.get()), 
+    df = pd.DataFrame([[main_folder_loc_entry.get(), int(run_num_entry.get()), int(run_id_entry.get()), int(start_fy_entry.get()), int(end_fy_entry.get()),
                    int(num_reals_entry.get()), int(num_sim_entry.get())]], columns=['main_folder_loc', 'run_num', 'run_id', 'start_fy', 'end_fy', 'num_reals', 'num_sim'])
     df_filepath = main_folder_loc_entry.get() + 'Data/model_input_data/model_setup.xlsx'
 
     df.to_excel(df_filepath, index=False)
-    myLabel = Label(frame_setup_model, 
-                    text="Financial model initialized.\nDetails found in 'Data/model_input_data/model_setup.xlsx'", anchor='w', 
+    myLabel = Label(frame_setup_model,
+                    text="Financial model initialized.\nDetails found in 'Data/model_input_data/model_setup.xlsx'", anchor='w',
                     justify=LEFT, width=50, bg='lightcyan').grid(row=10, column=1, sticky=W)
 
-init_button = Button(frame_setup_model, text="Initialize financial model", padx=10, pady=5, command=store_finmod_deets, 
+init_button = Button(frame_setup_model, text="Initialize financial model", padx=10, pady=5, command=store_finmod_deets,
                 fg='darkslategrey', bg='lightblue', font=['HelvLight', 10, 'bold']).grid(row=10, column=0, sticky='we')
 
-def install():    
+def install():
     subprocess.check_call("pip install -r requirements.txt")
     myLabel = Label(frame_setup_model, text="Financial model software requirements installed.", anchor='w',
         justify=LEFT, width=50, bg='lightcyan').grid(row=13, column=1, sticky=W)
 
-setup_button = Button(frame_setup_model, text="Setup Financial Model", padx=10, pady=5, command=install, 
+setup_button = Button(frame_setup_model, text="Setup Financial Model", padx=10, pady=5, command=install,
                     fg='darkslategrey', bg='lightblue', font=['HelvLight', 10, 'bold']).grid(row=13, column=0, sticky='we')
 
 # Generate scenarios frame
@@ -108,26 +110,26 @@ clicked_cip_schedule.set( "Yes" )
 clicked_cip_spending = StringVar()
 clicked_cip_spending.set( "No" )
 
-param_bounds = Label(frame_gen_scenarios, text="Financial scenario parameter bounds", 
+param_bounds = Label(frame_gen_scenarios, text="Financial scenario parameter bounds",
     bg='moccasin', font=['HelvLight', 10, 'bold'], justify=LEFT).grid(row=0, column=0, sticky=W)
 
-param_bounds_low = Label(frame_gen_scenarios, text="Lower", 
+param_bounds_low = Label(frame_gen_scenarios, text="Lower",
     bg='moccasin', font=['HelvLight', 10, 'bold'], justify=LEFT).grid(row=0, column=1, sticky=W)
 
-param_bounds_upper = Label(frame_gen_scenarios, text="Upper", 
+param_bounds_upper = Label(frame_gen_scenarios, text="Upper",
     bg='moccasin', font=['HelvLight', 10, 'bold'], justify=LEFT).grid(row=0, column=2, sticky=W)
 
-fin_bounds = Label(frame_gen_scenarios, text="Financial decision bounds", 
+fin_bounds = Label(frame_gen_scenarios, text="Financial decision bounds",
     bg='moccasin', font=['HelvLight', 10, 'bold'], justify=LEFT).grid(row=0, column=4, sticky=W)
 
-fin_bounds_low = Label(frame_gen_scenarios, text="Lower", 
+fin_bounds_low = Label(frame_gen_scenarios, text="Lower",
     bg='moccasin', font=['HelvLight', 10, 'bold'], justify=LEFT).grid(row=0, column=5, sticky=W)
 
-fin_bounds_upper = Label(frame_gen_scenarios, text="Upper", 
+fin_bounds_upper = Label(frame_gen_scenarios, text="Upper",
     bg='moccasin', font=['HelvLight', 10, 'bold'], justify=LEFT).grid(row=0, column=6, sticky=W)
 
 # DU Factors
-rate_stable_min = Label(frame_gen_scenarios, text="Rate stabilization min ratio", anchor="w", justify=LEFT, 
+rate_stable_min = Label(frame_gen_scenarios, text="Rate stabilization min ratio", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=1, column=0)
 rate_stable_min_low = Entry(frame_gen_scenarios, width=10)
 rate_stable_min_low.grid(row=1, column=1)
@@ -154,7 +156,7 @@ var_cost_high = Entry(frame_gen_scenarios, width=10)
 var_cost_high.grid(row=3, column=2)
 var_cost_high.insert(0,0.15)
 
-opex_fixed = Label(frame_gen_scenarios, text="Annual budget fixed OPEX inflation rate", anchor="w", justify=LEFT, 
+opex_fixed = Label(frame_gen_scenarios, text="Annual budget fixed OPEX inflation rate", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=4, column=0)
 opex_fixed_low = Entry(frame_gen_scenarios, width=10)
 opex_fixed_low.grid(row=4, column=1)
@@ -190,7 +192,7 @@ fixed_opex_factor_high = Entry(frame_gen_scenarios, width=10)
 fixed_opex_factor_high.grid(row=7, column=2)
 fixed_opex_factor_high.insert(0,0.7)
 
-var_opex_factor = Label(frame_gen_scenarios, text="Variable OPEX factor", anchor="w", justify=LEFT, 
+var_opex_factor = Label(frame_gen_scenarios, text="Variable OPEX factor", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=8, column=0)
 var_opex_factor_low = Entry(frame_gen_scenarios, width=10)
 var_opex_factor_low.grid(row=8, column=1)
@@ -199,7 +201,7 @@ var_opex_factor_high = Entry(frame_gen_scenarios, width=10)
 var_opex_factor_high.grid(row=8, column=2)
 var_opex_factor_high.insert(0,0.9)
 
-non_sale_rev = Label(frame_gen_scenarios, text="Non-sales revenue factor", anchor="w", justify=LEFT, 
+non_sale_rev = Label(frame_gen_scenarios, text="Non-sales revenue factor", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=9, column=0)
 non_sale_rev_low = Entry(frame_gen_scenarios, width=10)
 non_sale_rev_low.grid(row=9, column=1)
@@ -208,7 +210,7 @@ non_sale_rev_high = Entry(frame_gen_scenarios, width=10)
 non_sale_rev_high.grid(row=9, column=2)
 non_sale_rev_high.insert(0,1.5)
 
-rate_stab_factor = Label(frame_gen_scenarios, text="Rate stabilization transfer factor", anchor="w", justify=LEFT, 
+rate_stab_factor = Label(frame_gen_scenarios, text="Rate stabilization transfer factor", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=10, column=0)
 rate_stab_factor_low = Entry(frame_gen_scenarios, width=10)
 rate_stab_factor_low.grid(row=10, column=1)
@@ -217,7 +219,7 @@ rate_stab_factor_high = Entry(frame_gen_scenarios, width=10)
 rate_stab_factor_high.grid(row=10, column=2)
 rate_stab_factor_high.insert(0,1.5)
 
-r_transfer = Label(frame_gen_scenarios, text="R&R transfer factor", anchor="w", justify=LEFT, 
+r_transfer = Label(frame_gen_scenarios, text="R&R transfer factor", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=11, column=0)
 rr_transfer_low = Entry(frame_gen_scenarios, width=10)
 rr_transfer_low.grid(row=11, column=1)
@@ -226,7 +228,7 @@ rr_transfer_high = Entry(frame_gen_scenarios, width=10)
 rr_transfer_high.grid(row=11, column=2)
 rr_transfer_high.insert(0,0.3)
 
-other_transfer = Label(frame_gen_scenarios, text="Other transfer factors", anchor="w", justify=LEFT, 
+other_transfer = Label(frame_gen_scenarios, text="Other transfer factors", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=12, column=0)
 other_transfer_low = Entry(frame_gen_scenarios, width=10)
 other_transfer_low.grid(row=12, column=1)
@@ -235,7 +237,7 @@ other_transfer_high = Entry(frame_gen_scenarios, width=10)
 other_transfer_high.grid(row=12, column=2)
 other_transfer_high.insert(0,1)
 
-cip_factor = Label(frame_gen_scenarios, text="Required CIP factor", anchor="w", justify=LEFT, 
+cip_factor = Label(frame_gen_scenarios, text="Required CIP factor", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=13, column=0)
 cip_factor_low = Entry(frame_gen_scenarios, width=10)
 cip_factor_low.grid(row=13, column=1)
@@ -244,7 +246,7 @@ cip_factor_high = Entry(frame_gen_scenarios, width=10)
 cip_factor_high.grid(row=13, column=2)
 cip_factor_high.insert(0,1.0)
 
-opex_var = Label(frame_gen_scenarios, text="Annual budget variable OPEX inflation rate", anchor="w", justify=LEFT, 
+opex_var = Label(frame_gen_scenarios, text="Annual budget variable OPEX inflation rate", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=14, column=0)
 opex_var_low = Entry(frame_gen_scenarios, width=10)
 opex_var_low.grid(row=14, column=1)
@@ -253,7 +255,7 @@ opex_var_high = Entry(frame_gen_scenarios, width=10)
 opex_var_high.grid(row=14, column=2)
 opex_var_high.insert(0,0.033)
 
-sales_threshold = Label(frame_gen_scenarios, text="TBW sales threshold fraction", anchor="w", justify=LEFT, 
+sales_threshold = Label(frame_gen_scenarios, text="TBW sales threshold fraction", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=15, column=0)
 sales_threshold_low = Entry(frame_gen_scenarios, width=10)
 sales_threshold_low.grid(row=15, column=1)
@@ -262,7 +264,7 @@ sales_threshold_high = Entry(frame_gen_scenarios, width=10)
 sales_threshold_high.grid(row=15, column=2)
 sales_threshold_high.insert(0, 0.2)
 
-energy_transfer = Label(frame_gen_scenarios, text="Energy transfer factor", anchor="w", justify=LEFT, 
+energy_transfer = Label(frame_gen_scenarios, text="Energy transfer factor", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=16, column=0)
 energy_transfer_low = Entry(frame_gen_scenarios, width=10)
 energy_transfer_low.grid(row=16, column=1)
@@ -271,7 +273,7 @@ energy_transfer_high = Entry(frame_gen_scenarios, width=10)
 energy_transfer_high.grid(row=16, column=2)
 energy_transfer_high.insert(0,1)
 
-urf_deficit = Label(frame_gen_scenarios, text="URF deficit reduction fraction", anchor="w", justify=LEFT, 
+urf_deficit = Label(frame_gen_scenarios, text="URF deficit reduction fraction", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=17, column=0)
 urf_deficit_low = Entry(frame_gen_scenarios, width=10)
 urf_deficit_low.grid(row=17, column=1)
@@ -280,19 +282,19 @@ urf_deficit_high = Entry(frame_gen_scenarios, width=10)
 urf_deficit_high.grid(row=17, column=2)
 urf_deficit_high.insert(0,0.75)
 
-follow_schedule_label = Label(frame_gen_scenarios, text="Follow CIP schedule?", anchor="w", justify=LEFT, 
+follow_schedule_label = Label(frame_gen_scenarios, text="Follow CIP schedule?", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=18, column=0)
 follow_schedule = OptionMenu(frame_gen_scenarios, clicked_cip_schedule , *yes_no_dropdown )
 follow_schedule.grid(row=18, column=1)
 follow_schedule.config(bg='moccasin')
 
-flex_spending_label = Label(frame_gen_scenarios, text="Enable flexible CIP spending?", anchor="w", justify=LEFT, 
+flex_spending_label = Label(frame_gen_scenarios, text="Enable flexible CIP spending?", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=19, column=0)
 flex_spending = OptionMenu(frame_gen_scenarios, clicked_cip_spending , *yes_no_dropdown )
 flex_spending.grid(row=19, column=1)
 flex_spending.config(bg='moccasin')
 
-keep_stable_label = Label(frame_gen_scenarios, text="Keep uniform rate stable?", anchor="w", justify=LEFT, 
+keep_stable_label = Label(frame_gen_scenarios, text="Keep uniform rate stable?", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=20, column=0)
 keep_stable = OptionMenu(frame_gen_scenarios, clicked_uniform_rate , *yes_no_dropdown )
 keep_stable.grid(row=20, column=1)
@@ -301,7 +303,7 @@ keep_stable.config(bg='moccasin')
 emptycol = Label(frame_gen_scenarios, text="", anchor="w", justify=LEFT, bg='moccasin').grid(sticky = W, row=19, column=3)
 
 # Decision variables
-covenant_threshold = Label(frame_gen_scenarios, text="Covenant threshold, net revenue, fund balance", anchor="w", justify=LEFT, 
+covenant_threshold = Label(frame_gen_scenarios, text="Covenant threshold, net revenue, fund balance", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=1, column=4)
 covenant_threshold_low = Entry(frame_gen_scenarios, width=10)
 covenant_threshold_low.grid(row=1, column=5)
@@ -310,7 +312,7 @@ covenant_threshold_high = Entry(frame_gen_scenarios, width=10)
 covenant_threshold_high.grid(row=1, column=6)
 covenant_threshold_high.insert(0,1.25)
 
-debt_covenant_threshold = Label(frame_gen_scenarios, text="Debt covenant required ratio", anchor="w", justify=LEFT, 
+debt_covenant_threshold = Label(frame_gen_scenarios, text="Debt covenant required ratio", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=2, column=4)
 debt_covenant_threshold_low = Entry(frame_gen_scenarios, width=10)
 debt_covenant_threshold_low.insert(0,0)
@@ -319,7 +321,7 @@ debt_covenant_threshold_high = Entry(frame_gen_scenarios, width=10)
 debt_covenant_threshold_high.grid(row=2, column=6)
 debt_covenant_threshold_high.insert(0,1.0)
 
-unencum_budget = Label(frame_gen_scenarios, text="Unencumbered budget fraction", anchor="w", justify=LEFT, 
+unencum_budget = Label(frame_gen_scenarios, text="Unencumbered budget fraction", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=3, column=4)
 unencum_budget_low = Entry(frame_gen_scenarios, width=10)
 unencum_budget_low.grid(row=3, column=5)
@@ -328,7 +330,7 @@ unencum_budget_high = Entry(frame_gen_scenarios, width=10)
 unencum_budget_high.grid(row=3, column=6)
 unencum_budget_high.insert(0,0.5)
 
-managed_uniform_incr = Label(frame_gen_scenarios, text="Managed uniform rate increase rate", anchor="w", justify=LEFT, 
+managed_uniform_incr = Label(frame_gen_scenarios, text="Managed uniform rate increase rate", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=4, column=4)
 managed_uniform_incr_low = Entry(frame_gen_scenarios, width=10)
 managed_uniform_incr_low.grid(row=4, column=5)
@@ -337,7 +339,7 @@ managed_uniform_incr_high = Entry(frame_gen_scenarios, width=10)
 managed_uniform_incr_high.grid(row=4, column=6)
 managed_uniform_incr_high.insert(0, 0.01)
 
-managed_uniform_decr = Label(frame_gen_scenarios, text="Managed uniform rate decrease rate", anchor="w", justify=LEFT, 
+managed_uniform_decr = Label(frame_gen_scenarios, text="Managed uniform rate decrease rate", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=5, column=4)
 managed_uniform_decr_low = Entry(frame_gen_scenarios, width=10)
 managed_uniform_decr_low.grid(row=5, column=5)
@@ -346,7 +348,7 @@ managed_uniform_decr_high = Entry(frame_gen_scenarios, width=10)
 managed_uniform_decr_high.grid(row=5, column=6)
 managed_uniform_decr_high.insert(0,0.005)
 
-prev_unacc = Label(frame_gen_scenarios, text="Previous unaccounted FY enterprise fund fraction", anchor="w", justify=LEFT, 
+prev_unacc = Label(frame_gen_scenarios, text="Previous unaccounted FY enterprise fund fraction", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=6, column=4)
 prev_unacc_low = Entry(frame_gen_scenarios, width=10)
 prev_unacc_low.grid(row=6, column=5)
@@ -355,7 +357,7 @@ prev_unacc_high = Entry(frame_gen_scenarios, width=10)
 prev_unacc_high.grid(row=6, column=6)
 prev_unacc_high.insert(0,0.27)
 
-debt_service_cap = Label(frame_gen_scenarios, text="Debt service cap fraction of GR", anchor="w", justify=LEFT, 
+debt_service_cap = Label(frame_gen_scenarios, text="Debt service cap fraction of GR", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=7, column=4)
 debt_service_cap_low = Entry(frame_gen_scenarios, width=10)
 debt_service_cap_low.grid(row=7, column=5)
@@ -364,7 +366,7 @@ debt_service_cap_high = Entry(frame_gen_scenarios, width=10)
 debt_service_cap_high.grid(row=7, column=6)
 debt_service_cap_high.insert(0,0.4)
 
-rr_fraction = Label(frame_gen_scenarios, text="R&R fund fraction of GR", anchor="w", justify=LEFT, 
+rr_fraction = Label(frame_gen_scenarios, text="R&R fund fraction of GR", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=8, column=4)
 rr_fraction_low = Entry(frame_gen_scenarios, width=10)
 rr_fraction_low.grid(row=8, column=5)
@@ -373,7 +375,7 @@ rr_fraction_high = Entry(frame_gen_scenarios, width=10)
 rr_fraction_high.grid(row=8, column=6)
 rr_fraction_high.insert(0,0.05)
 
-cip_fund_fraction = Label(frame_gen_scenarios, text="FIP fund fraction of GR", anchor="w", justify=LEFT, 
+cip_fund_fraction = Label(frame_gen_scenarios, text="FIP fund fraction of GR", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=9, column=4)
 cip_fund_fraction_low = Entry(frame_gen_scenarios, width=10)
 cip_fund_fraction_low.grid(row=9, column=5)
@@ -382,7 +384,7 @@ cip_fund_fraction_high = Entry(frame_gen_scenarios, width=10)
 cip_fund_fraction_high.grid(row=9, column=6)
 cip_fund_fraction_high.insert(0,0.05)
 
-energy_fund_fraction = Label(frame_gen_scenarios, text="Energy fund fraction of GR", anchor="w", justify=LEFT, 
+energy_fund_fraction = Label(frame_gen_scenarios, text="Energy fund fraction of GR", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=10, column=4)
 energy_fund_fraction_low = Entry(frame_gen_scenarios, width=10)
 energy_fund_fraction_low.grid(row=10, column=5)
@@ -391,7 +393,7 @@ energy_fund_fraction_high = Entry(frame_gen_scenarios, width=10)
 energy_fund_fraction_high.grid(row=10, column=6)
 energy_fund_fraction_high.insert(0,0.01)
 
-rf_fund_fraction = Label(frame_gen_scenarios, text="Energy fund fraction of GR", anchor="w", justify=LEFT, 
+rf_fund_fraction = Label(frame_gen_scenarios, text="Energy fund fraction of GR", anchor="w", justify=LEFT,
     bg='moccasin').grid(sticky = W, row=11, column=4)
 rf_fund_fraction_low = Entry(frame_gen_scenarios, width=10)
 rf_fund_fraction_low.grid(row=11, column=5)
@@ -453,7 +455,7 @@ def gen_default_scenario():
 
     dufs_filepath = main_folder_loc_entry.get() + "Data/parameters/financial_model_DUfactors.csv"
     np.savetxt(dufs_filepath, dufs, delimiter=",")
-    
+
     myLabel = Label(frame_gen_scenarios, text="Done!", justify=LEFT, bg='moccasin').grid(row=18, column=5, sticky="we")
 
 def gen_one_new_scenario():
@@ -547,7 +549,7 @@ def gen_one_new_scenario():
 
     rr_transfer_factor = np.full((num_simulations,), float(rr_transfer_high.get()))
 
-    other_transfer_factor = np.full((num_simulations,), float(other_transfer_high.get())) 
+    other_transfer_factor = np.full((num_simulations,), float(other_transfer_high.get()))
 
     required_cip_factor = np.full((num_simulations,), float(cip_factor_high.get()))
 
@@ -772,15 +774,15 @@ def gen_alt_scenarios():
     err.write('End error file.')
     err.close()
 
-    myLabel = Label(frame_gen_scenarios, text='Done!', 
+    myLabel = Label(frame_gen_scenarios, text='Done!',
         justify=LEFT, bg='moccasin').grid(row=20, column=5, sticky="we")
 
-frame_run_model = LabelFrame(root, text="Setup financial model", padx=8, pady=8, 
+frame_run_model = LabelFrame(root, text="Setup financial model", padx=8, pady=8,
     bg='palegreen', font=('HelvLight', 20))
 frame_run_model.grid(row=0,column=0,padx=10,pady=10, sticky="ew")
 
 gen_default_scenarios = Button(frame_gen_scenarios, text="Generate default scenarios", padx=10, pady=5, command=gen_default_scenario,
-                               fg='antiquewhite', bg='burlywood', 
+                               fg='antiquewhite', bg='burlywood',
                                font=['HelvLight',10, 'bold']).grid(row=18, column=4, sticky='we')
 
 gen_one_scenario = Button(frame_gen_scenarios, text="Explore one new scenario", padx=10, pady=5, command=gen_one_new_scenario,
@@ -792,84 +794,84 @@ gen_many_scenario = Button(frame_gen_scenarios, text="Explore many new scenarios
                            font=['HelvLight',10, 'bold']).grid(row=20, column=4, sticky='we')
 
 # Enter filenames
-frame_set_filenames = LabelFrame(root, text="2-Enter data filenames", padx=8, pady=8, bg='thistle', 
+frame_set_filenames = LabelFrame(root, text="2-Enter data filenames", padx=8, pady=8, bg='thistle',
     font=['HelvLight', 20,'normal'], width=650, height=350)
 frame_set_filenames.grid(row=0,column=1,padx=10,pady=10, sticky="ew")
 frame_set_filenames.grid_propagate(False)
 
-file_description = Label(frame_set_filenames, text="File description", anchor="w", justify=LEFT, 
+file_description = Label(frame_set_filenames, text="File description", anchor="w", justify=LEFT,
     bg='thistle', font=['HelvLight', '10', 'bold']).grid(sticky = W, row=0, column=0)
 
-filename = Label(frame_set_filenames, text="Filename", anchor="w", justify=LEFT, 
+filename = Label(frame_set_filenames, text="Filename", anchor="w", justify=LEFT,
     bg='thistle', font=['HelvLight', '10', 'bold']).grid(sticky = W, row=0, column=1)
 
-prev_water = Label(frame_set_filenames, text="Previous year water sales and deliveries", anchor="w", justify=LEFT, 
+prev_water = Label(frame_set_filenames, text="Previous year water sales and deliveries", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=1, column=0)
 prev_water_entry = Entry(frame_set_filenames, width=50)
 prev_water_entry.insert(0,'water_sales_and_deliveries_all_2020.csv')
 prev_water_entry.grid(row=1, column=1)
 
-hist_est_budget = Label(frame_set_filenames, text="Historical estimated budgets", anchor="w", justify=LEFT, 
+hist_est_budget = Label(frame_set_filenames, text="Historical estimated budgets", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=2, column=0)
 hist_est_budget_entry = Entry(frame_set_filenames, width=50)
 hist_est_budget_entry.insert(0,'historical_budgets.csv')
 hist_est_budget_entry.grid(row=2, column=1)
 
-hist_act_budget = Label(frame_set_filenames, text="Historical actual budgets", anchor="w", justify=LEFT, 
+hist_act_budget = Label(frame_set_filenames, text="Historical actual budgets", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=3, column=0)
 hist_act_budget_entry = Entry(frame_set_filenames, width=50)
 hist_act_budget_entry.insert(0,'historical_actuals.csv')
 hist_act_budget_entry.grid(row=3, column=1)
 
-ext_debt = Label(frame_set_filenames, text="Existing debt", anchor="w", justify=LEFT, 
+ext_debt = Label(frame_set_filenames, text="Existing debt", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=4, column=0)
 ext_debt_entry = Entry(frame_set_filenames, width=50)
 ext_debt_entry.insert(0,'existing_debt.csv')
 ext_debt_entry.grid(row=4, column=1)
 
-potential_projs = Label(frame_set_filenames, text="Potential projects", anchor="w", justify=LEFT, 
+potential_projs = Label(frame_set_filenames, text="Potential projects", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=5, column=0)
 potential_projs_entry = Entry(frame_set_filenames, width=50)
 potential_projs_entry.insert(0,'potential_projects.csv')
 potential_projs_entry.grid(row=5, column=1)
 
-curr_future_bonds = Label(frame_set_filenames, text="Current and future bond issues", anchor="w", justify=LEFT, 
+curr_future_bonds = Label(frame_set_filenames, text="Current and future bond issues", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=6, column=0)
 curr_future_bonds_entry = Entry(frame_set_filenames, width=50)
 curr_future_bonds_entry.insert(0,'Current_Future_BondIssues.xlsx')
 curr_future_bonds_entry.grid(row=6, column=1)
 
-og_cip_spending = Label(frame_set_filenames, text="Original CIP spending (all projects)", anchor="w", justify=LEFT, 
+og_cip_spending = Label(frame_set_filenames, text="Original CIP spending (all projects)", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=7, column=0)
 og_cip_spending_entry = Entry(frame_set_filenames, width=50)
 og_cip_spending_entry.insert(0,'original_CIP_spending_all_projects.csv')
 og_cip_spending_entry.grid(row=7, column=1)
 
-og_cip_spending_major = Label(frame_set_filenames, text="Original CIP spending (major projects)", anchor="w", justify=LEFT, 
+og_cip_spending_major = Label(frame_set_filenames, text="Original CIP spending (major projects)", anchor="w", justify=LEFT,
 bg='thistle').grid(sticky = W, row=8, column=0)
 og_cip_spending_major_entry = Entry(frame_set_filenames, width=50)
 og_cip_spending_major_entry.insert(0,'original_CIP_spending_major_projects_fraction.csv')
 og_cip_spending_major_entry.grid(row=8, column=1)
 
-norm_cip_spending = Label(frame_set_filenames, text="Normalized CIP spending (all projects)", anchor="w", justify=LEFT, 
+norm_cip_spending = Label(frame_set_filenames, text="Normalized CIP spending (all projects)", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=9, column=0)
 norm_cip_spending_entry = Entry(frame_set_filenames, width=50)
 norm_cip_spending_entry.insert(0,'normalized_CIP_spending_all_projects.csv')
 norm_cip_spending_entry.grid(row=9, column=1)
 
-norm_cip_spending_major = Label(frame_set_filenames, text="Normalized CIP spending (major projects)", anchor="w", justify=LEFT, 
+norm_cip_spending_major = Label(frame_set_filenames, text="Normalized CIP spending (major projects)", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=10, column=0)
 norm_cip_spending_major_entry = Entry(frame_set_filenames, width=50)
 norm_cip_spending_major_entry.insert(0,'normalized_CIP_spending_major_projects_fraction.csv')
 norm_cip_spending_major_entry.grid(row=10, column=1)
 
-proj_rf_start_bal = Label(frame_set_filenames, text="Projected reserve fund starting balance", anchor="w", justify=LEFT, 
+proj_rf_start_bal = Label(frame_set_filenames, text="Projected reserve fund starting balance", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=11, column=0)
 proj_rf_start_bal_entry = Entry(frame_set_filenames, width=50)
 proj_rf_start_bal_entry.insert(0,'projected_FY21_reserve_fund_starting_balances.csv')
 proj_rf_start_bal_entry.grid(row=11, column=1)
 
-proj_rf_deposit = Label(frame_set_filenames, text="Projected reserve fund deposits", anchor="w", justify=LEFT, 
+proj_rf_deposit = Label(frame_set_filenames, text="Projected reserve fund deposits", anchor="w", justify=LEFT,
     bg='thistle').grid(sticky = W, row=12, column=0)
 proj_rf_deposit_entry = Entry(frame_set_filenames, width=50)
 proj_rf_deposit_entry.insert(0,'projected_reserve_fund_deposits.csv')
@@ -877,12 +879,12 @@ proj_rf_deposit_entry.grid(row=12, column=1)
 
 
 df_filenames = pd.DataFrame([[prev_water_entry.get(), hist_est_budget_entry.get(), hist_act_budget_entry.get(), ext_debt_entry.get(),
-                              potential_projs_entry.get(), curr_future_bonds_entry.get(), og_cip_spending_entry.get(), 
+                              potential_projs_entry.get(), curr_future_bonds_entry.get(), og_cip_spending_entry.get(),
                               og_cip_spending_major_entry.get(), norm_cip_spending_entry.get(), norm_cip_spending_major_entry.get(),
-                              proj_rf_start_bal_entry.get(), proj_rf_deposit_entry.get()]], 
+                              proj_rf_start_bal_entry.get(), proj_rf_deposit_entry.get()]],
 
                             columns = ['prev_water', 'hist_est_budget', 'hist_act_budget', 'ext_debt', 'potential_projs', 'curr_future_bonds',
-                                       'og_cip_spending', 'og_cip_spending_major', 'norm_cip_spending', 'norm_cip_spending_major', 
+                                       'og_cip_spending', 'og_cip_spending_major', 'norm_cip_spending', 'norm_cip_spending_major',
                                        'proj_rf_bal', 'proj_rf_deposit'])
 
 df_filenames_filepath = main_folder_loc_entry.get() + 'Data/model_input_data/input_filenames.xlsx'
@@ -891,7 +893,7 @@ df_filenames.to_excel(df_filenames_filepath, index=False)
 
 # Run model frame
 # Run the model
-frame_run_model = LabelFrame(root, text="4-Run Model", padx=8, pady=8, 
+frame_run_model = LabelFrame(root, text="4-Run Model", padx=8, pady=8,
     bg='honeydew', font=('HelvLight', 20), width=650, height=350)
 frame_run_model.grid(row=1,column=1, padx=10, pady=10, sticky="ew")
 frame_run_model.grid_propagate(False)
@@ -900,9 +902,9 @@ def running_model():
     model_file = main_folder_loc_entry.get() + 'Code/FinancialModeling/TBW_financial_model_vGUI.py'
     command = 'python ' + model_file
     os.system(command)
-    
-    myLabel = Label(frame_run_model, 
-                    text="Model run complete.\nFind results in the 'Output/financial_model_results' folder.", 
+
+    myLabel = Label(frame_run_model,
+                    text="Model run complete.\nFind results in the 'Output/financial_model_results' folder.",
                     justify=LEFT, bg='honeydew').grid(row=2, column=1, sticky = W)
 
 run_model = Button(frame_run_model, text="Run Model", padx=10, pady=5, command=running_model,
@@ -1060,20 +1062,20 @@ def plot_data():
             axs.set_xlabel('Fiscal Year')
             axs.set_ylabel("USD$")
         # output and close figure to avoid overloading memory
-        plt.savefig(figures_out_path + data_name_to_plot + '_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + 
+        plt.savefig(figures_out_path + data_name_to_plot + '_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) +
                     (('_SINGLE_REALIZATION_r' + str(realization_to_plot[r])) if len(realization_to_plot) == 1 else '') + '.png', bbox_inches= 'tight', dpi = 400)
         plt.show()
         '''
-        canvas = FigureCanvasTkAgg(fig, master = frame_run_model)  
+        canvas = FigureCanvasTkAgg(fig, master = frame_run_model)
         canvas.draw()
-  
+
         # placing the canvas on the Tkinter window
         canvas.get_tk_widget().grid(row=7, column=0)
-        
+
         # creating the Matplotlib toolbar
         toolbar = NavigationToolbar2Tk(canvas,  frame_run_model)
         toolbar.update()
-  
+
         # placing the toolbar on the Tkinter window
         canvas.get_tk_widget().grid(row=9, column=0)
         '''
