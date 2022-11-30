@@ -347,20 +347,6 @@ def calculate_RateCoverageRatio(net_revenues,
     # if ratio < 1.25, covenant failure
     return (net_revenues + fund_balance) / (debt_service)
 
-def debt_issue(bond_issue_amount, years_of_debtservice, interest_rate, UNIFORM_debt, multiplier_list):
-    if UNIFORM_debt == True:
-        debt_issue_shape = np.ones(years_of_debtservice)
-        debt_issue_shape /= years_of_debtservice
-        debt_issue = bond_issue_amount * debt_issue_shape
-        #debt_issue *= 1 + interest_rate
-    else:
-        ## years of debt service will need to match
-        multipliers = multiplier_list
-        debt_issue_shape = np.array(multipliers)
-        debt_issue = bond_issue_amount * debt_issue_shape
-        #debt_issue *= 1 + interest_rate
-    return debt_issue
-
 def interest_calculation(principal, interest_rate, maturity):
     total_payment = principal * ((interest_rate * (1 + interest_rate)**maturity)/((1 + interest_rate)**maturity -1))
     interest_paid = principal * interest_rate
