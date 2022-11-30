@@ -12,9 +12,9 @@ sns.set()
 data_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW'
 
 for run_id in [125]:
-    n_sims = 3; bond_colors = ['b', 'r', 'c', 'y', 'm']; sim_type = ['Origianl Planning', 'Higher Interest Rates', 'High Interest Rates and Inflation']
+    n_sims = 3; bond_colors = ['b', 'r', 'c', 'y', 'm']; sim_type = ['Origianl Planning', 'High Interest Rates and Inflation']
     #add additional total debt colors for additional simulation runs
-    total_debt_colors = ['b', 'g', 'm']
+    total_debt_colors = ['b', 'm']
     
     total_debt_comparison = pd.DataFrame(columns = sim_type)
     for sim in range(0, n_sims):

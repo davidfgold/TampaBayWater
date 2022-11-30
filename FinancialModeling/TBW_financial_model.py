@@ -1431,7 +1431,6 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # but prevent it from going negative
         current_FY_budgeted_rr_transfer_in = \
             np.max([current_FY_budgeted_rr_transfer_in - current_FY_rr_net_deposit, 0.0])
-                
         # if there is remaining need, increase the deposit
         current_FY_rr_net_deposit = \
             current_FY_budgeted_rr_deposit - current_FY_budgeted_rr_transfer_in
@@ -1759,6 +1758,10 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
         # remaining surplus going to rate stabilization
         current_FY_rate_stabilization_fund_deposit += \
             current_FY_budget_surplus
+        ## Take the fund transfer in amounts out of the rate stabilization fund deposit.
+        # They are already earmarked for project costs and not meant to go back to a fund.
+        total_transfer_ins = current_FY_rr_transfer_in + current_FY_cip_transfer_in + current_FY_energy_transfer_in
+        current_FY_rate_stabilization_fund_deposit -= total_transfer_ins
             
     if ACTIVE_DEBUGGING:        
         print(str(FY) + ': Final Budget Surplus is ' + str(current_FY_budget_surplus))
@@ -2499,7 +2502,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            outpath = 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output',
                                            formulation_id = 125,
                                            PRE_CLEANED = True,
-                                           ACTIVE_DEBUGGING = False,
+                                           ACTIVE_DEBUGGING = True,
                                            FOLLOW_CIP_MAJOR_SCHEDULE = True,
                                            FLEXIBLE_OTHER_CIP_SCHEDULE = True):
     # get necessary packages
@@ -2736,6 +2739,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     #           also record monthly values for exporting output
     for FY in range(start_fiscal_year, end_fiscal_year):
         # for debugging: FY = start_fiscal_year
+        # for debugging a specific year: FY = 2022
         ### -------------------------------------------------------------------
         # step 2a: calculate revenues from water sales, collect within dataset
         water_delivery_sales, past_FY_year_data = \
@@ -2844,29 +2848,29 @@ import numpy as np; import pandas as pd
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
 start_fy = 2021; end_fy = 2041; first_modeled_fy = 2021
-local_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW'
-###local_base_path = 'F:/MonteCarlo_Project/Cornell_UNC' #Vgrid pathways
-local_data_sub_path = '/Data'
-###local_data_sub_path = '/financial_model_input_data' #Vgrid pathway
-local_code_sub_path = '/Code'
-###local_code_sub_path = '' #Vgrid pathway
-local_MonteCarlo_data_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW'
-###local_MonteCarlo_data_base_path = 'F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMPL_files' #Vgrid pathway
+###local_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW'
+local_base_path = 'F:/MonteCarlo_Project/Cornell_UNC' #Vgrid pathways
+###local_data_sub_path = '/Data'
+local_data_sub_path = '/financial_model_input_data' #Vgrid pathway
+###local_code_sub_path = '/Code'
+local_code_sub_path = '' #Vgrid pathway
+###local_MonteCarlo_data_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW'
+local_MonteCarlo_data_base_path = 'F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMPL_files' #Vgrid pathway
 
 # read in decision variables from spreadsheet
-dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
-###dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling' #Vgrid pathway
-DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
-###DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None) #Vgrid pathway
+###dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
+dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling' #Vgrid pathway
+###DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None)
+DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None) #Vgrid pathway
 
 # read in deeply uncertain factors
-DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
-###DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None) #Vgrid pathway
+###DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
+DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None) #Vgrid pathway
 
 ### ---------------------------------------------------------------------------
 # read in historic records
-historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
-###historical_data_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data' #Vgrid pathway
+###historical_data_path = local_MonteCarlo_data_base_path + '/Financialoutputs'
+historical_data_path = 'F:/MonteCarlo_Project/Cornell_UNC/financial_model_input_data/model_input_data' #Vgrid pathway
 
 monthly_water_deliveries_and_sales = pd.read_csv(historical_data_path + '/water_sales_and_deliveries_all_2020.csv')
 historical_annual_budget_projections = pd.read_csv(historical_data_path + '/historical_budgets.csv')
@@ -2904,25 +2908,26 @@ else:
 ### =========================================================================== ###
 ### RUN FINANCIAL MODEL OVER RANGE OF INFRASTRUCTURE SCENARIOS/FORMULATIONS
 ### =========================================================================== ###
-for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
-    # run for testing: run_id = 125; sim = 0; r_id = 1
+for run_id in [147]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
+    # run for testing: run_id = 147; sim = 0; r_id = 1
     
     ### ---------------------------------------------------------------------------
     # set additional required paths
     scripts_path = local_base_path + local_code_sub_path + '/TampaBayWater/data_management'
-    ampl_output_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
-    ###ampl_output_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id) #Vgrid pathway
-    oms_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
-    ###oms_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_' + str(run_id) #Vgrid pathway
-    output_path = local_MonteCarlo_data_base_path + '/Modeloutput'
+    ###ampl_output_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
+    ampl_output_path = local_MonteCarlo_data_base_path + '/run0' + str(run_id) #Vgrid pathway
+    ###oms_path = local_MonteCarlo_data_base_path + '/watersupplyoutput' + str(run_id)
+    oms_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_' + str(run_id) #Vgrid pathway
+    ###output_path = local_MonteCarlo_data_base_path + '/Modeloutput'
     ###output_path = local_base_path + '/updated_financial_model_output' #Vgid pathway
+    output_path = local_base_path + '/board_meeting_model_outputs/christina_test_todelete' #Vgrid pathway 2
     
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    n_reals_tested = 1 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
-    #for sim in range(0,9): # sim = 0 for testing
-    for sim in range(0,3): # FOR RUNNING HISTORICALLY ONLY
+    n_reals_tested = 200 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    #for sim in range(0,2): # sim = 0 for testing
+    for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     #for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
         if end_fy <= 2022: # if we are running historical]
             output_path = output_path + '/historical_comparison'
@@ -2949,7 +2954,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
             
     #    for r_id in range(1,2): # r_id = 1 for testing
             # run this line for testing: 
-            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True   
+            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = True; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True   
             
             #final_debt is the variable if you want to add back in final debt balance table AKA existing debt
             budget_projection, actuals, outcomes, water_vars, debt_scheduling = \
@@ -2975,7 +2980,7 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
                         orop_output_path = ampl_output_path,
                         oms_output_path = oms_path,
                         outpath = output_path, formulation_id = run_id,
-                        PRE_CLEANED = True, ACTIVE_DEBUGGING = False,
+                        PRE_CLEANED = True, ACTIVE_DEBUGGING = True,
                         FOLLOW_CIP_MAJOR_SCHEDULE = FOLLOW_CIP_SCHEDULE_TOGGLE,
                         FLEXIBLE_OTHER_CIP_SCHEDULE = FLEXIBLE_CIP_SCHEDULE_TOGGLE)
             
@@ -3036,5 +3041,6 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
                           'Rate Covenant Violation Frequency', 
                           'Peak Uniform Rate']
     Objectives.to_csv(output_path + '/Objectives_f' + str(run_id) + '.csv')
+    
     
     

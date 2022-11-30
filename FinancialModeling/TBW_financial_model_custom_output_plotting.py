@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
 ###data_path = "C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput"
-data_path = 'F:/MonteCarlo_Project/Cornell_UNC/updated_financial_model_output' #Vgrid pathway
+data_path = 'F:/MonteCarlo_Project/Cornell_UNC/board_meeting_model_outputs/christina_test_todelete' #Vgrid pathway
 ###dv_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW/Code/TampaBayWater/FinancialModeling'
 dv_path = 'F:/MonteCarlo_Project/Cornell_UNC/TampaBayWater/FinancialModeling' #Vgrid pathway
 
@@ -55,12 +55,11 @@ METRICS_VARIABLES = ['Fiscal Year', 'Debt Covenant Ratio', 'Rate Covenant Ratio'
                        'Reserve Fund Balancing Failure', 'Remaining Unallocated Deficit']
 
 # what data do I want to plot? must be same as they are in output files
-data_names_to_plot = ['Rate Covenant Ratio', 'Debt Covenant Ratio', 'Uniform Rate', 'Debt Service', 'Debt Service Deferred', 'Remaining Unallocated Deficit',
-                      'Utility Reserve Fund Balance (Total)', 'Rate Stabilization Fund (Total)', 'CIP Fund (Total)', 'R&R Fund (Total)', 'Energy Savings Fund (Total)']
+data_names_to_plot = ['Debt Covenant Ratio','Rate Stabilization Fund (Total)', 'Rate Stabilization Fund (Transfer In)', 'Rate Stabilization Fund (Deposit)']
 
-formulation_to_plot = [125] # list all
-simulation_to_plot = [0,1,2,3,4,5,6,7,8] # list all, IDs start at 0
-realization_to_plot = [x for x in range(1,10)] # list which we want, IDs start at 1 not zero
+formulation_to_plot = [147] # list all
+simulation_to_plot = [0] # list all, IDs start at 0
+realization_to_plot = [x for x in range(1,200)] # list which we want, IDs start at 1 not zero
 metrics_test_read = pd.read_csv(data_path + '/financial_metrics_f' + str(formulation_to_plot[0]) + '_s' + str(simulation_to_plot[0]) + '_r' + str(realization_to_plot[0]) + '.csv', index_col = 0)
 
 
@@ -134,7 +133,7 @@ for f in range(0,len(formulation_to_plot)):
                 ax.set_xticklabels([int(x) for x in metrics['Fiscal Year'].values], rotation = 90)
                 
         # output and close figure to avoid overloading memory
-        plt.savefig(data_path + '/Custom_Outputs_Plot_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + (('_SINGLE_REALIZATION_r' + str(realization_to_plot[r])) if len(realization_to_plot) == 1 else '') + '.png', bbox_inches= 'tight', dpi = 400)
+        plt.savefig(data_path + '/debugging1_changeto_rsdeposit_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + (('_SINGLE_REALIZATION_r' + str(realization_to_plot[r])) if len(realization_to_plot) == 1 else '') + '.png', bbox_inches= 'tight', dpi = 400)
         plt.close()
                 
   
