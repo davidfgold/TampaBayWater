@@ -347,12 +347,14 @@ def calculate_RateCoverageRatio(net_revenues,
     # if ratio < 1.25, covenant failure
     return (net_revenues + fund_balance) / (debt_service)
 
+###TA
 def interest_calculation(principal, interest_rate, maturity):
     total_payment = principal * ((interest_rate * (1 + interest_rate)**maturity)/((1 + interest_rate)**maturity -1))
     interest_paid = principal * interest_rate
     principal_paid = total_payment - interest_paid
     return principal_paid, interest_paid, total_payment
 
+###TA
 def expected_payments(dataframe, interest, maturity):
     for year in range(len(dataframe.iloc[:,2])):
         if dataframe.iloc[year,2] == 0:
@@ -366,45 +368,47 @@ def expected_payments(dataframe, interest, maturity):
             dataframe['Principal Amount Remaining'].loc[year+1] = dataframe.iloc[year, 1] - dataframe.iloc[year, 2]
     return dataframe
     
+###TA
 def bond_series_agreements(fiscal_years_to_keep, debt_service_schedule_Bond2023, debt_service_schedule_Bond2, debt_service_schedule_Bond3, debt_service_schedule_Bond4, \
                            dv_list):
     #This function is meant to fill in each bond issue table with its originally agreed upon total, interest, and principal payments. The tables
     #are then manipulated based on excess revenues and if the excess revenue can instead be applied to the principal payment. This won't change \
     #the budgeted amounts only the newly calculated amounts that are calculated each FY. Also rather than bring in these dvs return them as values \
-    #for use in the next function.
+    #for use in the next function. ###FIX
     #for debugging dv_list = dvs
-    for fy in fiscal_years_to_keep:
-        if fy == 2023:
-            debt_service_schedule_Bond2023['Principal Amount Remaining'].loc[debt_service_schedule_Bond2023['Fiscal Year'] >= fy] = dv_list[27]
-        elif fy == 2025:
-            debt_service_schedule_Bond2['Principal Amount Remaining'].loc[debt_service_schedule_Bond2['Fiscal Year'] >= fy] = dv_list[28]
-        elif fy == 2027:
-            debt_service_schedule_Bond3['Principal Amount Remaining'].loc[debt_service_schedule_Bond3['Fiscal Year'] >= fy] = dv_list[29]
-        elif fy == 2029:
-            debt_service_schedule_Bond4['Principal Amount Remaining'].loc[debt_service_schedule_Bond4['Fiscal Year'] >= fy] = dv_list[30]
-    
-    #Bring in the length of maturity for each bond
-    maturity_Bond2023 = int(dv_list[15])
-    maturity_Bond2 = int(dv_list[16])
-    maturity_Bond3 = int(dv_list[17])
-    maturity_Bond4 = int(dv_list[18])
-    
-    #Bring in the interest rate of each bond
-    interest_rate_2023bond = dv_list[19]
-    interest_rate_Bond2 = dv_list[20]
-    interest_rate_Bond3 = dv_list[21]
-    interest_rate_Bond4 = dv_list[22]
-    
-    #establish how many years principal payments are scheduled to be put off for:
-    years_with_no_principal_payment_B2023 = int(dv_list[23])
-    years_with_no_principal_payment_B2 = int(dv_list[24])
-    years_with_no_principal_payment_B3 = int(dv_list[25])
-    years_with_no_principal_payment_B4 = int(dv_list[26])
     
     #Bring in issue years for bonds 2-4 -> for initial runs should assume the planned 2025, 2027, and 2029 years.
-    Bond2_issue_year = 2025 #turn into dv_list once section is built
-    Bond3_issue_year = 2027 #turn into dv_list once section is built
-    Bond4_issue_year = 2029 #turn into dv_list once section is built
+    Bond2_issue_year = int(dv_list[27])
+    Bond3_issue_year = int(dv_list[28])
+    Bond4_issue_year = int(dv_list[29])
+    
+    for fy in fiscal_years_to_keep:
+        if fy == 2023:
+            debt_service_schedule_Bond2023['Principal Amount Remaining'].loc[debt_service_schedule_Bond2023['Fiscal Year'] >= fy] = dv_list[23]
+        elif fy == Bond2_issue_year:
+            debt_service_schedule_Bond2['Principal Amount Remaining'].loc[debt_service_schedule_Bond2['Fiscal Year'] >= fy] = dv_list[24]
+        elif fy == Bond3_issue_year:
+            debt_service_schedule_Bond3['Principal Amount Remaining'].loc[debt_service_schedule_Bond3['Fiscal Year'] >= fy] = dv_list[25]
+        elif fy == Bond4_issue_year:
+            debt_service_schedule_Bond4['Principal Amount Remaining'].loc[debt_service_schedule_Bond4['Fiscal Year'] >= fy] = dv_list[26]
+    
+    #Bring in the length of maturity for each bond
+    maturity_Bond2023 = int(dv_list[11])
+    maturity_Bond2 = int(dv_list[12])
+    maturity_Bond3 = int(dv_list[13])
+    maturity_Bond4 = int(dv_list[14])
+    
+    #Bring in the interest rate of each bond
+    interest_rate_2023bond = dv_list[15]
+    interest_rate_Bond2 = dv_list[16]
+    interest_rate_Bond3 = dv_list[17]
+    interest_rate_Bond4 = dv_list[18]
+    
+    #establish how many years principal payments are scheduled to be put off for:
+    years_with_no_principal_payment_B2023 = int(dv_list[19])
+    years_with_no_principal_payment_B2 = int(dv_list[20])
+    years_with_no_principal_payment_B3 = int(dv_list[21])
+    years_with_no_principal_payment_B4 = int(dv_list[22])
     
     #Make budgeted principal payments 0 for years where there are no principal payments planned
     debt_service_schedule_Bond2023.iloc[(2023 - (first_modeled_fy-1)):((2023 - (first_modeled_fy-1)) + years_with_no_principal_payment_B2023), 2] = 0
@@ -434,17 +438,20 @@ def set_BudgetedDebtService(existing_debt_targets,
     ###TA
     #The following finds the total debt for the fiscal year using the amounts in the existing debts list and each of the bond issue
     #tables which are created previously.
-    ##Need to work on making these years more adaptive - so that the model doesn't break in 2 years.
+    Bond2_issue_year = int(dv_list[27])
+    Bond3_issue_year = int(dv_list[28])
+    Bond4_issue_year = int(dv_list[29])
+    
     if year < 2023:
         total_budgeted_debt_service = existing_debt_targets['Total'].loc[year - start_year]
-    elif 2023 <= year < 2025:
+    elif 2023 <= year < Bond2_issue_year:
         total_budgeted_debt_service = existing_debt_targets['Total'].loc[year - start_year] + \
             debt_service_schedule_Bond2023['Budgeted Total Payments'].loc[year - start_year]
-    elif 2025 <= year < 2027:
+    elif Bond2_issue_year <= year < Bond3_issue_year:
         total_budgeted_debt_service = existing_debt_targets['Total'].loc[year - start_year] + \
         debt_service_schedule_Bond2023['Budgeted Total Payments'].loc[year - start_year] + \
         debt_service_schedule_Bond2['Budgeted Total Payments'].loc[year - start_year]
-    elif 2027 <= year < 2029:
+    elif Bond3_issue_year <= year < Bond4_issue_year:
         total_budgeted_debt_service = existing_debt_targets['Total'].loc[year - start_year] + \
         debt_service_schedule_Bond2023['Budgeted Total Payments'].loc[year - start_year] + \
         debt_service_schedule_Bond2['Budgeted Total Payments'].loc[year - start_year] + \
@@ -1995,8 +2002,8 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
 
     return annual_actuals, annual_budgets, financial_metrics
     
-# For debugging past 2023: FY = 2030
-def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_data, 
+# For debugging past 2023: FY = 2030, index = 0
+def calculate_NextFYBudget(FY, index, first_modeled_fy, current_FY_data, past_FY_year_data, 
                             annual_budgets, annual_actuals, financial_metrics,
                             existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
                             debt_service_schedule_Bond2023, debt_service_schedule_Bond2,
@@ -2006,6 +2013,7 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                             dv_list,
                             formulation_id,
                             rdm_factor_list,
+                            inflation,
                             ACTIVE_DEBUGGING,
                             actual_major_cip_expenditures_by_source_by_year,
                             actual_other_cip_expenditures_by_source_by_year,
@@ -2013,12 +2021,11 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
                             reserve_deposits,
                             FOLLOW_CIP_SCHEDULE = True,
                             FLEXIBLE_CIP_SPENDING = True):
-    # for debugging: dv_list = dvs; rdm_factor_list = dufs; FOLLOW_CIP_SCHEDULE = True; FLEXIBLE_CIP_SPENDING = True
+    # for debugging: dv_list = dvs; rdm_factor_list = dufs; FOLLOW_CIP_SCHEDULE = True; FLEXIBLE_CIP_SPENDING = True, inflation=inflation_possibilities
     
     # set constants and variables as necessary
     convert_kgal_to_MG = 1000
     n_days_in_year = 365
-    
     # decision variables
     KEEP_UNIFORM_RATE_STABLE = bool(np.round(dv_list[2])) # if range is [0,1], will round to either bound for T/F value
     managed_uniform_rate_increase_rate = dv_list[3]
@@ -2031,11 +2038,17 @@ def calculate_NextFYBudget(FY, first_modeled_fy, current_FY_data, past_FY_year_d
 #    rate_stabilization_maximum_ratio = rdm_factor_list[1]
     fraction_variable_operational_cost = rdm_factor_list[2]
     budgeted_unencumbered_fraction = rdm_factor_list[3]
-    annual_budget_fixed_operating_cost_inflation_rate = rdm_factor_list[4]
+    ##Taken out and replaced with an annual inflation matrix - annual_budget_fixed_operating_cost_inflation_rate = rdm_factor_list[4] ###FIX
     annual_demand_growth_rate = rdm_factor_list[5]
     next_FY_budgeted_tampa_tbc_delivery = rdm_factor_list[6] # volume in MG/fiscal year
-    annual_budget_variable_operating_cost_inflation_rate = rdm_factor_list[14]
+    ##Taken out and replaced with an annual inflation matrix - annual_budget_variable_operating_cost_inflation_rate = rdm_factor_list[14] ###FIX
 #    TAMPA_SALES_THRESHOLD_FRACTION = rdm_factor_list[15]
+    
+    #Bring in inflation matrix:
+    #Maybe think about if the inflation adjustment should be a little smaller for fixed costs (not felt immediately - i.e. employee salaries)
+    ###FIX this should be brought in - in a more cyclical way
+    annual_budget_fixed_operating_cost_inflation_rate = inflation[index]
+    annual_budget_variable_operating_cost_inflation_rate = inflation[index]
     
     current_FY_final_reserve_fund_balance = \
         annual_actuals['Utility Reserve Fund Balance (Total)'].loc[annual_actuals['Fiscal Year'] == FY].values[0]
@@ -2469,6 +2482,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                            simulation_id,
                                            decision_variables, 
                                            rdm_factors,
+                                           inflation_possibilities,
                                            annual_budget,
                                            budget_projections,
                                            water_deliveries_and_sales,
@@ -2585,7 +2599,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     water_delivery_sales = pd.DataFrame(water_delivery_sales)
     water_delivery_sales.columns = [water_deliveries_and_sales.columns[-1], water_deliveries_and_sales.columns[-2]] + [v for v in water_deliveries_and_sales.columns[1:-3]]
     
-    ###TA
+    ###TA ###FIX(clean-up)
     debt_service_schedule_Bond2023 = pd.DataFrame(debt_service_schedule_Bond2023)
     debt_service_schedule_Bond2023.columns = ['Fiscal Year',
                                               'Principal Amount Remaining',
@@ -2723,7 +2737,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     #           through uniform rate sales and TBC sales
     #           and check if any infrastructure was triggered/built
     #           also record monthly values for exporting output
-    for FY in range(start_fiscal_year, end_fiscal_year):
+    for index, FY in enumerate(range(start_fiscal_year, end_fiscal_year)):
         # for debugging: FY = start_fiscal_year
         # for debugging a specific year: FY = 2022
         ### -------------------------------------------------------------------
@@ -2792,7 +2806,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
         annual_budgets, existing_issued_debt, potential_projects, \
                 accumulated_new_operational_fixed_costs_from_infra, \
                 accumulated_new_operational_variable_costs_from_infra = \
-            calculate_NextFYBudget(FY, first_modeled_fy+next_modeled_fy_budget_already_approved, 
+            calculate_NextFYBudget(FY, index, first_modeled_fy+next_modeled_fy_budget_already_approved, 
                                     current_FY_data, past_FY_year_data, 
                                     annual_budgets, annual_actuals, financial_metrics,
                                     existing_issued_debt, new_projects_to_finance, potential_projects, existing_debt_targets,
@@ -2803,6 +2817,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
                                     decision_variables,
                                     formulation_id,
                                     rdm_factors,
+                                    inflation_possibilities,
                                     ACTIVE_DEBUGGING,
                                     actual_major_cip_expenditures_by_source_by_year,
                                     actual_other_cip_expenditures_by_source_by_year,
@@ -2814,11 +2829,13 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     # step 4: end loop and export results, including objectives
     # Nov 2020: adjust paths to also show current model formulation (infrastructure pathway)
     
+    ###TA
     debt_service_schedule = pd.concat([debt_service_schedule_Bond2023, debt_service_schedule_Bond2, debt_service_schedule_Bond3, debt_service_schedule_Bond4], axis = 1, keys = ['Bond 2023', 'Bond 2', 'Bond 3', 'Bond 4'])
     
     annual_budgets.to_csv(outpath + '/budget_projections_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     annual_actuals.to_csv(outpath + '/budget_actuals_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     financial_metrics.to_csv(outpath + '/financial_metrics_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
+    ###TA ###FIX(clean up)
     #existing_issued_debt.to_csv(outpath + '/final_debt_balance_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     water_delivery_sales.to_csv(outpath + '/water_deliveries_revenues_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
     debt_service_schedule.to_csv(outpath + '/debt_service_schedule_f' + str(formulation_id) + '_s' + str(simulation_id) + '_r' + str(realization_id) + '.csv')
@@ -2833,6 +2850,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
 import numpy as np; import pandas as pd
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
+###FIX (first-modeled year is in single realization function - need to change w/o breaking model)
 start_fy = 2021; end_fy = 2041; first_modeled_fy = 2021
 ###local_base_path = 'C:/Users/cmpet/OneDrive/Documents/UNC Chapel Hill/TBW'
 local_base_path = 'F:/MonteCarlo_Project/Cornell_UNC' #Vgrid pathways
@@ -2852,6 +2870,10 @@ DVs = pd.read_csv(dv_path + '/financial_model_DVs.csv', header = None) #Vgrid pa
 # read in deeply uncertain factors
 ###DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None)
 DUFs = pd.read_csv(dv_path + '/financial_model_DUfactors.csv', header = None) #Vgrid pathway
+
+#Read in the annual inflation scenarios ###TA
+###inflation_matrix = pd.read_excel(dv_path + '/Inflation scenarios.xlsx', sheet_name = 'Sheet1')
+inflation_matrix = pd.read_csv(dv_path + '/inflation_scenarios.csv', header = None) #Vgrid pathway
 
 ### ---------------------------------------------------------------------------
 # read in historic records
@@ -2906,12 +2928,12 @@ for run_id in [147]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
     oms_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_' + str(run_id) #Vgrid pathway
     ###output_path = local_MonteCarlo_data_base_path + '/Modeloutput'
     ###output_path = local_base_path + '/updated_financial_model_output' #Vgid pathway
-    output_path = local_base_path + '/board_meeting_model_outputs/christina_test_todelete' #Vgrid pathway 2
+    output_path = local_base_path + '/board_meeting_model_outputs' #Vgrid pathway 2
     
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
-    n_reals_tested = 200 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
+    n_reals_tested = 10 # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
     #for sim in range(0,2): # sim = 0 for testing
     for sim in range(0,1): # FOR RUNNING HISTORICALLY ONLY
     #for sim in range(0,9): # FOR RUNNING MULTIPLE SIMULATIONS
@@ -2923,6 +2945,9 @@ for run_id in [147]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
         ### ----------------------------------------------------------------------- ###  
         dvs = [x for x in DVs.iloc[sim,:]]
         dufs = [x for x in DUFs.iloc[sim,:]]
+        ###TA
+        annual_inflation = [x for x in inflation_matrix.iloc[sim, :]]
+        
         
         FLEXIBLE_CIP_SCHEDULE_TOGGLE = bool(dufs[18])
         FOLLOW_CIP_SCHEDULE_TOGGLE = bool(dufs[19])
@@ -2940,7 +2965,7 @@ for run_id in [147]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
             
     #    for r_id in range(1,2): # r_id = 1 for testing
             # run this line for testing: 
-            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = True; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True   
+            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;inflation_possibilities = inflation_matrix;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = True; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True   
             
             #final_debt is the variable if you want to add back in final debt balance table AKA existing debt
             budget_projection, actuals, outcomes, water_vars, debt_scheduling = \
@@ -2949,6 +2974,7 @@ for run_id in [147]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
                         simulation_id = sim,
                         decision_variables = dvs, 
                         rdm_factors = dufs,
+                        inflation_possibilities = annual_inflation,
                         annual_budget = annual_budget_data,
                         budget_projections = historical_annual_budget_projections,
                         water_deliveries_and_sales = monthly_water_deliveries_and_sales,

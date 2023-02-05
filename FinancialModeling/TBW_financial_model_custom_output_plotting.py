@@ -59,7 +59,7 @@ data_names_to_plot = ['Debt Covenant Ratio','Rate Stabilization Fund (Total)', '
 
 formulation_to_plot = [147] # list all
 simulation_to_plot = [0] # list all, IDs start at 0
-realization_to_plot = [x for x in range(1,200)] # list which we want, IDs start at 1 not zero
+realization_to_plot = [x for x in range(1,10)] # list which we want, IDs start at 1 not zero
 metrics_test_read = pd.read_csv(data_path + '/financial_metrics_f' + str(formulation_to_plot[0]) + '_s' + str(simulation_to_plot[0]) + '_r' + str(realization_to_plot[0]) + '.csv', index_col = 0)
 
 
@@ -134,7 +134,7 @@ for f in range(0,len(formulation_to_plot)):
                 
         # output and close figure to avoid overloading memory
         plt.savefig(data_path + '/debugging1_changeto_rsdeposit_f' + str(formulation_to_plot[f]) + '_s' + str(simulation_to_plot[s]) + (('_SINGLE_REALIZATION_r' + str(realization_to_plot[r])) if len(realization_to_plot) == 1 else '') + '.png', bbox_inches= 'tight', dpi = 400)
-        plt.close()
+       # plt.close()
                 
   
             

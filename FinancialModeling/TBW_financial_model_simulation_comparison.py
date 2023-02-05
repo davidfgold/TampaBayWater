@@ -11,13 +11,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-data_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput'
+#data_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW/Modeloutput'
+data_path = 'F:/MonteCarlo_Project/Cornell_UNC/board_meeting_model_outputs' #vgrid pathway
 
 # plot data across simulations/evaluations and all realizations
-for run_id in [125]:
-    n_sims = 3; shift_size = 0; sim_colors = ['b', 'g', 'm'] 
+for run_id in [147]:
+    n_sims = 5; shift_size = 0; sim_colors = ['b', 'g', 'm', 'r', 'b'] 
     #sim_type = ['Hands-Off', 'Fixed', 'Controlled Growth']
-    sim_type = ['Origianl Planning', 'Higher Interest Rates', 'High Interest Rates and Inflation']
+    sim_type = ['Origianl Planning', 'Higher Interest Rates', 'High Interest Rates and Inflation', 'null', 'null', 'null']
 #    fig, (ax1, ax2, ax3) = plt.subplots(1,n_sims, sharey = False, figsize = (14,5))
     for sim in range(0, n_sims):
         fig, (ax1, ax2, ax3) = plt.subplots(1,3, sharey = False, figsize = (14,5))
@@ -61,7 +62,7 @@ for run_id in [125]:
                  color = 'k', linewidth = 3, linestyle = '--')
 #        ax3.legend(loc = 'upper left', title = 'Uniform Rate Policy')
         
-        ax1.set_ylim((2,4.5))
+        ax1.set_ylim((2,6.5))
         ax2.set_ylim((0,2))
         ax3.set_ylim((0,3))
         
@@ -80,7 +81,7 @@ for run_id in [125]:
         ax2.set_title('Debt Covenant')
         ax3.set_title('Rate Covenant')
 #        plt.savefig(data_path + '/Simulation_Covenant_Comparisons_f' + str(run_id) + '_animated' + str(sim) + '.png', bbox_inches= 'tight', dpi = 800)
-        #plt.savefig(data_path + '/Simulation_Covenant_Comparisons_f' + str(run_id) + '_individual' + str(sim) + '.png', bbox_inches= 'tight', dpi = 800)
+        plt.savefig(data_path + '/Simulation_Covenant_Comparisons_f' + str(run_id) + '_individual' + str(sim) + '.png', bbox_inches= 'tight', dpi = 800)
         
         plt.show()
         #plt.close()
