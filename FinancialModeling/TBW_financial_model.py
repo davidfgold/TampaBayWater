@@ -2742,7 +2742,22 @@ for run_id in [125]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTIN
             
     #    for r_id in range(1,2): # r_id = 1 for testing
             # run this line for testing: 
-            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True   
+            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;
+            # decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;
+            # budget_projections = historical_annual_budget_projections;
+            # water_deliveries_and_sales = monthly_water_deliveries_and_sales;
+            # existing_issued_debt = existing_debt;
+            # existing_debt_targets = current_debt_targets;
+            # potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;
+            # reserve_balances = projected_first_year_reserve_fund_balances;
+            # reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; 
+            # additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;
+            # oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; 
+            # PRE_CLEANED = True; ACTIVE_DEBUGGING = False; 
+            # fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; 
+            # generic_CIP_plan = normalized_CIP_spending; 
+            # generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; 
+            # FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True   
                         
             budget_projection, actuals, outcomes, water_vars, final_debt = \
                 run_FinancialModelForSingleRealization(

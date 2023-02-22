@@ -134,7 +134,7 @@ def build_HistoricalMonthlyWaterDeliveriesAndSalesData(historical_financial_data
     return all_monthly_data
 
 
-def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
+def build_HistoricalAnnualData(n_fiscal_years = 12, most_recent_year = 2022,
         historical_financial_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data/financials'):
     # names of financial streams/categories to track
     # that are NOT included already in historical_monthly_water_deliveries_and_sales_by_member.csv
@@ -228,13 +228,20 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
         elif year == 2020:
             full_rate.append(2.559)
             fund_balance.append(29314554) # FROM FY21 APPROVED OPERATING BUDGET, P.26 TABLE
+        elif year == 2021:
+            full_rate.append(2.559)
+            fund_balance.append(30152968)
+        elif year == 2022:
+            full_rate.append(2.5634)
+            fund_balance.append(30152968)
         else:
             full_rate.append(hist_oper_data[year].iloc[3])
             fund_balance.append(hist_oper_data[year].iloc[38])
         
+        
     acquisition_credits = [10231557, 10231557, 10231557, 10231557, 10231557, 
                            10231557, 10231557, 10231557, 10231557, 10231557,
-                           10231558]
+                           10231558, 10231558]
         
     # read in Operating Expenses (table 5) over time
     # NOTE: each row is different FY, row 0 is FY19, goes to FY10 in row 9
@@ -243,10 +250,10 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
                                       usecols = (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))
     OperatingExpenses = OperatingExpenses.replace('-',0)
     
-    # re-ordered from 2010 to 2019, with FY2020 added in 10/2021
-    variable_operating_expenses = OperatingExpenses['Variable Cost Expenses'][::-1].tolist() + [9935948+11364291+708172]
+    # re-ordered from 2010 to 2019, with FY2020 added in 10/2021, FY2021 added in 03/2022
+    variable_operating_expenses = OperatingExpenses['Variable Cost Expenses'][::-1].tolist() + [9935948+11364291+708172, 10579523+11893161+528245]
     fixed_operating_expenses = OperatingExpenses['Total Operating Expenses'][::-1] - OperatingExpenses['Variable Cost Expenses'][::-1]
-    fixed_operating_expenses = fixed_operating_expenses.tolist() + [165098630-70354915-10231558-(9935948+11364291+708172)]
+    fixed_operating_expenses = fixed_operating_expenses.tolist() + [165098630-70354915-10231558-(9935948+11364291+708172), 171759062-70093840-10231558-(10579523+11893161+528245)]
     
     # read in Restricted Assets (table 2) over time
     # NOTE: each row is different FY, row 0 is FY19, goes to FY10 in row 9
@@ -258,6 +265,7 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     # re-ordered from 2010 to 2019
     rr_fund_total = RestrictedAssets['Renewal and Replacement Funds'].values[::-1].tolist()
     rr_fund_total.append(32687852)  # FROM FY21 APPROVED OPERATING BUDGET, P.26 TABLE
+    rr_fund_total.append(34872799)
     
     # collect reserve fund and rate stabilization fund balances
     # with end-of-FY amounts from FY2010 to FY2019
@@ -266,20 +274,21 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     
     rate_stab_fund_total = [x for x in RateStab.iloc[[182, 193, 209, 231, 250, 268, 285, 305, 334, 369],19]]
     rate_stab_fund_total.append(35700886) # FROM FY21 APPROVED OPERATING BUDGET, P.26 TABLE
-    
+    rate_stab_fund_total.append(32182898)    
     rate_stab_fund_deposit = [x for x in RateStab.iloc[[179, 191, 208, 228, 246, 261, 283, 303, 333, 367],20]] # not including unencumbered carryover
         
 #    fund_balance = [x for x in FundBalance.iloc[[142, 160, 178, 198, 221, 248, 291, 324, 358, 395],3]] # overwrite other record
     
     ### -----------------------------------------------------------------------
     ### UPDATE 10/2021: FY19 AND FY20 ACTUALS APPENDED TO END OF RECORD
+    ### UPDATE 03/2022: FY21 ACTUALS APPENDED TO THE END
     ### -----------------------------------------------------------------------
     
     # collect unencumbered funds carried forward - manually added from actuals
     # found in FY approved budgets, usually p.31 or so
     unencumbered_funds = [np.nan, np.nan, 3004848, 2857706, 7292798, 
                           7162745, 5325000, 3072043, 3472702, 4772886, 
-                          4168060]
+                          4168060, 4233325]
     
     # because misc income is not totally insignificant, track it too
     # and also overwrite non-sales revenue while we are here
@@ -287,13 +296,13 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     # non-sales rev = interest
     misc_income = [np.nan, np.nan, 486098, 4051526, 244769, 
                    177065, 660011, 1035635, 754619, 460656, 
-                   492126]
+                   492126, 288738]
     interest_income = [np.nan, np.nan, 1235692, 899766, 640275, 
                        758519, 1019717, 1911132, 2440815, 3804846, 
-                       3738379]
+                       3738379, 2943657]
     insurance_litigation_arbitrage_income = [np.nan, np.nan, -19299350, -823286, 22, 
                                              979352, 1188148, 1084167, 18178, 6476, 
-                                             19851]
+                                             19851, 36841]
     
     # collect gross revenues that are consistent in definition
     # the way gross revenues used to determine covenants are calculated is
@@ -305,7 +314,7 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     # (ignoring Energy Fund transfers in, they are very small if they exist)
     gross_revenue = [np.nan, np.nan, 179745762, 174582244, 174111351, 
                      173361220, 174546428, 178721034, 175914894, 183438752, 
-                     195303127]
+                     195303127, 207053870]
     
     # because of inconsistencies between spreadsheets (due to my lack of 
     # understanding mostly), also overwrite the RS Fund Transfers In
@@ -315,41 +324,41 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     # this does NOT include unencumbered funds
     rate_stab_fund_transfer_in = [np.nan, np.nan, 31075823, 7690580, 8129415, 
                                   4424673, 8509699, 9058018, 6479981, 7039535, 
-                                  11468475]
+                                  11468475, 13141058]
     
     # for similar reasons, repeat for RS Fund Deposit
     # THIS INCLUDES MONEY DESIGNATED AS UNENCUMBERED FOR NEXT FY
     rate_stab_fund_deposit = [np.nan, np.nan, 26150905, 16639716, 9572418, 
                               12759993, 12089243, 12790683, 12908523, 17086535,
-                              17374383]
+                              17374383, 22824782]
     
     # repeat overwrite for R&R and CIP Fund flows
     rr_fund_deposit = [np.nan, np.nan, 775437, 3533711, 6019372, 
                        2891688, 3155183, 3242539, 3325468, 5509008,
-                       4988288]
+                       4988288, 3333679]
     rr_fund_transfer_in = [np.nan, np.nan, 300626, 1401864, 1522804, 
                            1318097, 2516508, 3139817, 1438279, 0,
-                           2593877]
+                           2593877, 4003941]
     
     cip_fund_transfer_in = [np.nan, np.nan, 4825958, 2011207, 947670, 
                             3640572, 1553479, 1918031, 344247, 653919,
-                            1752408]
+                            1752408, 6801606]
     cip_fund_deposit = [np.nan, np.nan, 976653, 1727032, 2583103, 
                         2986952, 4592553, 5158861, 4215354, 5356993,
-                        7427045]
-    cip_fund_total = RestrictedAssets['Capital Improvement Funds'].values[::-1].tolist() + [25046262] # FROM FY21 APPROVED OPERATING BUDGET, P.26 TABLE
+                        7427045, 8808449]
+    cip_fund_total = RestrictedAssets['Capital Improvement Funds'].values[::-1].tolist() + [25046262, 25046262] # FROM FY21 APPROVED OPERATING BUDGET, P.26 TABLE - could not find 2021 year, need to come back to.
     
     # there is a debt service actuals discrepancy in 2015-16, so will overwrite
     # with numbers from budget reports as well
     debt_service = [np.nan, np.nan, 73084766, 75447974, 75337316, 
                     72668588, 71414576, 70129335, 70133614, 70122276,
-                    70354915]
+                    70354915, 70093840]
     
     # collect actual sales revenues 
     # includes tbc sales
     total_sales_revenue = [np.nan, np.nan, 157523970+592097, 156134324+358558, 155291597+42000, 
                            154691290+33269, 153126957+46080+72526, 156135112+39555+570433, 160487626+36736+315441, 165973331+66855+146980,
-                           169802314+65547+436067]
+                           169802314+65547+436067, 172533037+68788+399573]
     
     # Nov 2021: collect energy savings fund info from approved budget and CAFRs
     # as with above records, includes actuals from FY20 back through FY11
@@ -359,16 +368,16 @@ def build_HistoricalAnnualData(n_fiscal_years = 11, most_recent_year = 2021,
     # the budget reporting practices for TBW also changed
     energy_fund_total = [0,0,0,0,174621,
                          179695,253127,379241,263821,553050,
-                         950977] # from approved budgets p.25 or 26 table, values for end of current FY here represented by beginning year values of next FY in the reports (hope that makes sense)
+                         950977, 559109] # from approved budgets p.25 or 26 table, values for end of current FY here represented by beginning year values of next FY in the reports (hope that makes sense)
     energy_fund_deposit = [0,0,0,0,0,
                            355237,278222,229278,269487,270869,
-                           338228]
+                           338228,260453]
     energy_fund_transfer_in = [0,0,0,0,0,
                                175639,204790,101190,97653,0,
-                               0] # doesn't account for CIP expenditures
+                               0,6318] # doesn't account for CIP expenditures
         
     # collect data to output for table
-    annual_streams.iloc[:,0] = [2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020]
+    annual_streams.iloc[:,0] = [2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021]
     annual_streams.iloc[:,1] = full_rate
     annual_streams.iloc[:,2] = variable_rate      
     annual_streams.iloc[:,3] = tbc_rate
@@ -434,10 +443,38 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
     # manually record values from FY22 Approved Operating Budget Report, p.31
     # to be incorporated into modeling later when historical records of demand
     # are updated and new hindcast "validation" can be done
+    ## FY 22 and FY 23 updated 5/2022. FY 23 is proposed and not "officially" approved
+    FY23_approved = [2023,
+                     188213179,
+                     192259384,
+                     185847755+42000+392000+0,
+                     186259384-70285137-10231558-(15899383+15390261+534500),
+                     15899383+15390261+534500,
+                     192259384-(186259384-70285137-10231558),
+                     70285137,
+                     10231558,
+                     4046205,
+                     6000000,
+                     0,
+                     0,
+                     2.5781,
+                     0.4415,
+                     0.195,
+                     0,
+                     0,
+                     0,
+                     1931424,
+                     0,
+                     0+0,
+                     0,
+                     0,
+                     0]
+
+    #Reviewed FY22 approved budget on 5/2022
     FY22_approved = [2022,
-                     185115929, 
+                     182202976, 
                      186515929, 
-                     172518114+42000+392000+0, 
+                     179831324+42000+392000+0, 
                      185115929-71153640-10231558-(13397656+15384286+500800), 
                      13397656+15384286+500800, 
                      186515929 - (185115929-71153640-10231558), 
@@ -740,7 +777,8 @@ def build_HistoricalProjectedAnnualBudgets(financial_path = 'C:\\Users\\dgorelic
                                                FY19_approved, 
                                                FY20_approved, 
                                                FY21_approved,
-                                               FY22_approved)))
+                                               FY22_approved,
+                                               FY23_approved)))
     approved_budgets.columns = ApprovedBudgetVariables
     # approved_budgets.to_csv('historical_approved_annual_budgets.csv')
     
@@ -911,18 +949,34 @@ def get_PotentialInfrastructureProjects(data_path = 'C:/Users/dgorelic/OneDrive 
 
 def get_CIPSchedule(hist_financial_path):
     # read in data from Maribel on CIP projects from FY21-31, clip and reorganize
+    #03/2022 update: Christina attempt at adding in the new Financial Model Forecast 10 year multiple sources for FY22-32
     import pandas as pd
-    cip_data = pd.read_excel(hist_financial_path + '/FinancialModelForecast10yrmultiplesourcesTBW.xlsx', sheet_name = 'Sheet1')
+    cip_data = pd.read_excel(hist_financial_path + '/FinancialModelForecast10yrmultiplesourcesTBWFY22.xlsx', sheet_name = 'Sheet1')
     cip_data_cleaned = cip_data.iloc[6:,:].drop(columns = cip_data.columns[[0,1,3,4,16]], axis = 1)
     cip_data_cleaned.columns = cip_data.iloc[5,[2,5,6,7,8,9,10,11,12,13,14,15,17,18,19,20,21,22,23]]
     
     # sum FY21 funding to get full year in a single column
-    cip_data_cleaned['FY 2021'] = cip_data_cleaned['Remaining FY 2021'] + cip_data_cleaned['Current FY Actual to Date']
+    # for update sum FY22 funding to get full year in single column
+    cip_data_cleaned['FY 2022'] = cip_data_cleaned['Remaining FY 2022'] + cip_data_cleaned['Current FY Actual to Date']
+    
+    #Need to bring in FY21 data from previous financial model forecast10yearmultiplesourcesFY21
+    cip_data_FY21 = pd.read_excel(hist_financial_path + '/FinancialModelForecast10yrmultiplesourcesTBW.xlsx', sheet_name = 'Sheet1')
+    cip_data_FY21_cleaned = cip_data_FY21.iloc[6:,:].drop(columns = cip_data_FY21.columns[[0,1,3,4,16]], axis = 1)
+    cip_data_FY21_cleaned.columns = cip_data_FY21.iloc[5,[2,5,6,7,8,9,10,11,12,13,14,15,17,18,19,20,21,22,23]]
+    
+    # sum FY21 funding to get full year in a single column
+    cip_data_FY21_cleaned['FY 2021'] = cip_data_FY21_cleaned['Remaining FY 2021'] + cip_data_FY21_cleaned['Current FY Actual to Date']
+    cip_data_cleaned['FY 2021'] = cip_data_FY21_cleaned['FY 2021']
     
     # reorganize as list-like object to easily index info within model
     # NOTE: IGNORE PAST FUNDING FOR PROJECTS, ONLY WORRY ABOUT CURRENT AND FUTURE FYs
-    planned_cip_investment_by_FY = cip_data_cleaned[['Current Funding Source'] + ['FY ' + str(fy) for fy in list(range(2021,2032))] + ['Future']].iloc[:-1,:]
+    planned_cip_investment_by_FY = cip_data_cleaned[['Current Funding Source'] + ['FY 2021'] + ['FY ' + str(fy) for fy in list(range(2022,2033))] + ['Future']].iloc[:-1,:]
     planned_investment_by_FY_aggregated_funding_source = planned_cip_investment_by_FY.groupby('Current Funding Source').sum()
+    
+    planned_cip_investment_by_FY21 = cip_data_FY21_cleaned[['Current Funding Source'] + ['FY ' + str(fy) for fy in list(range(2021,2032))] + ['Future']].iloc[:-1,:]
+    planned_investment_by_FY_aggregated_funding_source_FY21 = planned_cip_investment_by_FY21.groupby('Current Funding Source').sum()
+    planned_investment_by_FY_aggregated_funding_source['FY 2021'] = planned_investment_by_FY_aggregated_funding_source_FY21['FY 2021']
+    ## Add column orders take from 971
 
     # export for use in financial model
     return planned_investment_by_FY_aggregated_funding_source
@@ -955,8 +1009,7 @@ def get_ReserveDepositSchedule(hist_financial_path):
 #           in future, if this is run in a larger loop across realizations
 #           consider reading in historical data outside function once
 #           and passed here
-local_base_data_path = 'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Data'
-hist_financial_path = local_base_data_path + '/financials'
+hist_financial_path = 'C:/Users/cmpet/OneDrive/Documents/UNCTBW'
 
 monthly_water_deliveries_and_sales = build_HistoricalMonthlyWaterDeliveriesAndSalesData(hist_financial_path)
 annual_budget_data = build_HistoricalAnnualData(historical_financial_data_path = hist_financial_path)
@@ -968,15 +1021,15 @@ historical_annual_budget_projections = build_HistoricalProjectedAnnualBudgets(hi
 #           AND OROP/OMS RESULTS REPRESENT 2020-2039 YEARS RATHER THAN 2021-2040
 #           so for now we need to use the approved FY2020 budget/uniform rates
 #           for calculation of revenue from observed water sales 
-observed_delivery_path = local_base_data_path + '/observed_deliveries'
+observed_delivery_path = hist_financial_path + '/WaterDelivery'
 monthly_water_deliveries_and_sales = append_UpToJan2021DeliveryAndSalesData(monthly_record = monthly_water_deliveries_and_sales, 
                                                                              FY2020_approved_budget = historical_annual_budget_projections.iloc[6,:], 
                                                                              FY2021_proposed_budget = historical_annual_budget_projections.iloc[7,:], 
                                                                              daily_delivery_path = observed_delivery_path)
 
 # step 0c: collect existing and future debt/infrastructure project costs
-# get existing debt by issue
-model_path = local_base_data_path + '/model_input_data'
+# get existing debt by issu
+model_path = hist_financial_path + '/Financialoutputs'
 existing_issued_debt = get_ExistingDebt(model_path)
 
 # get potential projects and their specs
@@ -997,6 +1050,6 @@ potential_projects.to_csv(model_path + '/potential_projects.csv', index = None)
 monthly_water_deliveries_and_sales.to_csv(model_path + '/water_sales_and_deliveries_all_2020.csv', index = None)
 annual_budget_data.to_csv(model_path + '/historical_actuals.csv', index = None)
 historical_annual_budget_projections.to_csv(model_path + '/historical_budgets.csv', index = None)
-projected_cip_expenditures.to_csv(model_path + '/projected_CIP_expenditures.csv')
-projected_reserve_fund_starting_balances.to_csv(model_path + '/projected_FY21_reserve_fund_starting_balances.csv', index = None)
+projected_cip_expenditures.to_csv(model_path + '/projected_CIP_expendituresFY22.csv') #updated FY on csv name
+projected_reserve_fund_starting_balances.to_csv(model_path + '/projected_FY21_reserve_fund_starting_balances.csv', index = None) 
 projected_FY_reserve_fund_deposits.to_csv(model_path + '/projected_reserve_fund_deposits.csv', index = None)

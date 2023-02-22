@@ -1029,7 +1029,7 @@ def calculate_FYActuals(FY, current_FY_data, past_FY_year_data,
     non_sales_rev_factor = rdm_factor_list[9]
     rate_stab_transfer_factor = rdm_factor_list[10]
     rr_transfer_factor = rdm_factor_list[11]
-#    other_transfer_factor = rdm_factor_list[12]
+    #other_transfer_factor = rdm_factor_list[12]
     required_cip_factor = rdm_factor_list[13]
     energy_transfer_factor = rdm_factor_list[16]
     utility_reserve_fund_deficit_reduction_fraction = rdm_factor_list[17]
@@ -2452,7 +2452,7 @@ def run_FinancialModelForSingleRealization(start_fiscal_year, end_fiscal_year,
     #   NOTE: THIS IS THE MOST TIME-CONSUMING STEP
     #   IF DOING HISTORICAL TEST, NO NEED TO READ DATA
     AMPL_cleaned_data, TBC_raw_sales_to_CoT, Year, Month = \
-        pull_ModeledData(additional_scripts_path, orop_output_path, oms_output_path, realization_id,
+        pull_ModeledData(additional_scripts_path, orop_output_path, oms_output_path, num_sims,
                          fiscal_years_to_keep, end_fiscal_year, first_modeled_fy, PRE_CLEANED)
 
     ### -----------------------------------------------------------------------
@@ -2642,29 +2642,26 @@ sys.path.insert(1, 'Code/data_management')
 # set data paths, differentiating local vs common path components
 # see past commits or vgrid_version branch for paths to run on TBW system
 
-#GUI = load_workbook('../../Finanical_Model_GUI.xlsm')
-GUI = load_workbook('Data/model_input_data/model_setup.xlsx')
 
-input_filenames = load_workbook('Data/model_input_data/input_filenames.xlsx')
+GUI = load_workbook('Data/model_input_data/model_initialization/model_setup.xlsx')
 
+input_filenames = load_workbook('Data/model_input_data/model_initialization/input_filenames.xlsx')
 BAR = '/'
 run_model_sheet = GUI['Sheet1']
 input_filenames_sheet = input_filenames['Sheet1']
 
-#local_data_sub_path = '/Data'
-#local_code_sub_path = '/Code'
-#local_MonteCarlo_data_base_path = 'C:/Users/dgorelic/Desktop/TBWruns'
 local_base_path = run_model_sheet['A2'].value
-local_data_sub_path = 'Data' + BAR
-local_model_input_path = 'model_input_data/'
-local_dv_du_path = 'parameters/'
-#local_MC_database_path = local_base_path + local_data_sub_path + 'run' + str(run_model_sheet['D30'].value)
+run_name = run_model_sheet['B2'].value
+
+local_data_sub_path = 'Data/'
+local_model_input_path = 'model_input_data/model_initialization/'
+local_dv_du_path = 'parameters/' + run_name + BAR
 
 # Use this if on VGrid
 local_MC_database_path = r"F:/MonteCarlo_Project/Cornell_UNC/cleaned_AMPL_files/run"
 
 # open the error file
-err_filepath = local_base_path + 'Output/error_files/err_financial_model.txt'
+err_filepath = local_base_path + 'Output/' + run_name + '/error_files/err_financial_model.txt'
 err = open(err_filepath, 'w')
 
 # model simulation start and end dates
@@ -2672,7 +2669,7 @@ start_FY = run_model_sheet['D2'].value
 end_FY = run_model_sheet['E2'].value
 curr_year = start_FY - 1
 num_sims = int(run_model_sheet['G2'].value)    # number of different scenarios
-num_reals = int(run_model_sheet['F2'].value)   # number of different .mat files
+num_reals = int(run_model_sheet['F2'].value)   # number of different .ampl files
 
 # read in decision variables from spreadsheet
 #dv_path = local_base_path + local_code_sub_path + '/TampaBayWater/FinancialModeling'
@@ -2695,8 +2692,8 @@ DUFs = pd.read_csv(du_path, header=None)
 
 ### ---------------------------------------------------------------------------
 # read in historic records
-#historical_data_path = local_base_path + local_data_sub_path + '/model_input_data'
-historical_data_path = local_base_path + local_data_sub_path + local_model_input_path
+historical_data_path = local_base_path + local_data_sub_path + '/model_input_data/'
+print(historical_data_path)
 
 # pre-assign historic record variable holders to empty strings to ensure the pathnames are correct
 monthly_water_deliveries_and_sales = ""
@@ -2798,21 +2795,22 @@ else:
 curr_run_id = run_model_sheet['C2'].value
 
 for run_id in [curr_run_id]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FOR TESTING
-    # run for testing: run_id = 125; sim = 0; r_id = 1
+    # run for testing: run_id = 0125; sim = 0; r_id = 1
 
     ### ---------------------------------------------------------------------------
     # set additional required paths
     scripts_path = local_base_path + 'Code/data_management'
     ampl_output_path = local_MC_database_path + '0' + str(run_id)
-    oms_path = local_MC_database_path  + '0' + str(run_id)
-    print('oms_path=', oms_path)
-    output_path = local_base_path + 'Output/financial_model_results'
+    # oms_path = local_MC_database_path  + '0' + str(run_id)
+    oms_path = 'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_' + str(run_id)
+    #print('oms_path=', oms_path)
+    output_path = local_base_path + 'Output/' + run_name + '/financial_model_results'
 
     ### ---------------------------------------------------------------------------
     # run loop across DV sets
     sim_objectives = [0,0,0,0] # sim id + three objectives
     start_fy = start_FY; end_fy = end_FY
-    #n_reals_tested = num_sims
+    #n_sims_tested = num_sims
     n_reals_tested = num_reals
     # NOTE: DAVID'S LOCAL CP ONLY HAS RUN 125 MC REALIZATION FILES 0-200 FOR TESTING
     #for sim in range(0,len(DVs)): # sim = 0 for testing
@@ -2837,11 +2835,6 @@ for run_id in [curr_run_id]: # NOTE: DAVID'S LOCAL CP ONLY HAS 125 RUN OUTPUT FO
             # seems to be an issue with run 95 .mat file, skip this realization
             if r_id == 95:
                 continue
-
-    #    for r_id in range(1,2): # r_id = 1 for testing
-            # run this line for testing:
-            # start_fiscal_year = start_fy; end_fiscal_year = end_fy;simulation_id = sim;decision_variables = dvs;rdm_factors = dufs;annual_budget = annual_budget_data;budget_projections = historical_annual_budget_projections;water_deliveries_and_sales = monthly_water_deliveries_and_sales;existing_issued_debt = existing_debt;existing_debt_targets = current_debt_targets;potential_projects = infrastructure_options;CIP_plan = projected_10year_CIP_spending;reserve_balances = projected_first_year_reserve_fund_balances;reserve_deposits = projected_10year_reserve_fund_deposits;realization_id = r_id; additional_scripts_path = scripts_path;orop_output_path = ampl_output_path;oms_output_path = oms_path; outpath = output_path; formulation_id = run_id; PRE_CLEANED = True; ACTIVE_DEBUGGING = False; fraction_cip_spending_for_major_projects_by_year_by_source = projected_10year_CIP_spending_major_project_fraction; generic_CIP_plan = normalized_CIP_spending; generic_fraction_cip_spending_for_major_projects_by_year_by_source = normalized_CIP_spending_major_project_fraction; FOLLOW_CIP_MAJOR_SCHEDULE = True; FLEXIBLE_OTHER_CIP_SCHEDULE = True
-
             budget_projection, actuals, outcomes, water_vars, final_debt = \
                 run_FinancialModelForSingleRealization(
                         start_fiscal_year = start_fy, end_fiscal_year = end_fy,
