@@ -45,40 +45,39 @@
 14. estimate_UniformRate
 15. calculate_TrueDeliveriesWithSlack
 16. collect_ExistingRecords
-a. Arguments:
-	i.	annual_actuals
-		output: 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output'
-		this output path eventually goes to the model output – just not sure where those other csvs go and what they are used for? (this is all overwritten with a new output file pathway)
-	ii.	annual_budgets
-	iii.	water_delivery_sales
-	iv.	annual_budget
-	v.	budget_projection
+- Arguments:
+	- annual_actuals
+		- output: 'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/output': this output path eventually goes to the model output – just not sure where those other csvs go and what they are used for? (this is all overwritten with a new output file pathway)
+	- annual_budgets
+	- water_delivery_sales
+	- annual_budget
+	- budget_projection
 		C:\Users\cmpet\OneDrive\Documents\UNCTBW\Financialoutputs\historical_budgets.csv (this is created from the build_historic_records model)
-	vi.	water_delivery_sales
-	vii.	CIP_plan
-	viii.	reserve_balances
-	ix.	reserve_deposits
-	x.	AMPL_cleaned_data
-	xi.	TBC_raw_sales_to_CoT
-	xii.	Month
-	xiii.	Year
-	xiv.	fiscal_years_to_keep
-	xv.	first_modeled_fy
-	xvi.	n_months_in_year
-	xvii.	annual_demand_growth_rate
-	xviii.	last_fy_month
-	xix.	outpath
-b.	Outputs:
-	i.	annual_actuals
+	- water_delivery_sales
+	- CIP_plan
+	- reserve_balances
+	- reserve_deposits
+	- AMPL_cleaned_data
+	- TBC_raw_sales_to_CoT
+	- Month
+	- Year
+	- fiscal_years_to_keep
+	- first_modeled_fy
+	- n_months_in_year
+	- annual_demand_growth_rate
+	- last_fy_month
+	- outpath
+- Outputs:
+	- annual_actuals
 		goes to the output file pathway: historic_actuals.csv
-	ii.	annual_budgets
+	- annual_budgets
 		goes to the output file pathway: historic_budgets.csv
-	iii.	water_delivery_sales
+	- water_delivery_sales
 		goes to ouput file pathway: historic_sales.csv
-	iv.	full_model_period_reserve_deposits
-c.	Utilized:
-	i.	run_FinancialModelForSingleRealization
-d.	Summary:
+	- full_model_period_reserve_deposits
+- Utilized:
+	- run_FinancialModelForSingleRealization
+- Summary:
 	Pulls the oldest year from the historical budgets csv (budget projections argument), historical actuals csv (annual budget argument), water deliveries and sales 2020 csv (water deliveries and sales argument). 
 	The preliminary year should be two years before the inputed Fiscal start year. To confirm that the accurate number of historic records are available the preliminary year is comparted to the earliest fiscal year actuals available.
 
