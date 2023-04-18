@@ -1,4 +1,5 @@
 # Financial Model
+
 ## ORDER OF DEFINED FUNCTION EXECUTION:
 run_FinancialModelForSingleRealization\*
 	- pull_ModeledData
@@ -23,6 +24,7 @@ run_FinancialModelForSingleRealization\*
 		- Estimate_VariableRate
 
 \*Makes a difference if the CIP schedule is toggled on (True)
+
 
 
 
