@@ -90,40 +90,41 @@
 
 
 17.	pull_ModeledData
-a.	Arguments:
-	i.	additional_scripts_path
+- Arguments:
+	- additional_scripts_path
 		'C:/Users/dgorelic/OneDrive - University of North Carolina at Chapel Hill/UNC/Research/TBW/Code/Visualization'
-	ii.	orop_output_path
+	- orop_output_path
 		'C:/Users/dgorelic/Desktop/TBWruns/rrv_0125/cleaned'
-	iii.	oms_output_path
+	- oms_output_path
 		'F:/MonteCarlo_Project/FNAII/IM to Tirusew/Integrated Models/SWERP_V1/AMPL_Results_run_125'
-	iv.	realization_id
+	- realization_id
 		1 (defined differences between realization id, simulation id, and ) When to change the realization id?
-	v.	fiscal_years_to_keep
+	- 	fiscal_years_to_keep
 		Defined variable in step 0 of the run_FinancialModelForSingleRealization function
-	vi.	end_fiscal_year
+	- end_fiscal_year
 		end_year (just can’t remember where this is defined)
-	vii.	first_modeled_fy
+	- first_modeled_fy
 		defined in constants of run_FinancialModelForSingleRealization function
-	viii.	PRE_CLEANED = True
-b.	Outputs:
-	i.	AMPL_cleaned_data:
+	- PRE_CLEANED = True
+- Outputs:
+	- AMPL_cleaned_data:
 		This is a dataframe – it cleans the data from the ampl csv files
-	ii.	TBC_raw_sales_to_CoT
+	- TBC_raw_sales_to_CoT
 		This is the Tampa Bay Canal sales to City of Tampa this is calculated using the get_HarneyAugmentationFromOMS
-	iii.	Year
+	- Year
 		Pulls the year from the ampl out file 
-	iv.	Month
+	- Month
 		Pulls the month from the ampl out file
-c.	Utilized: 
-	i.	run_FinancialModelForSingleRealization
-d.	Summary:
-e.	Questions:
-	i.	How do I determine if the data is pre-cleaned?
-	ii.	If the directory for additional scripts path is pointing to David’s folder what is it pointing towards? Same with the OROP one?
-	iii.	Os.chdir – what is this and where does the analysis_functions variable come from?
-	iv.	How to read an OUT file?
+- Utilized: 
+	- run_FinancialModelForSingleRealization
+- Summary:
+- Questions:
+	- How do I determine if the data is pre-cleaned?
+	- If the directory for additional scripts path is pointing to David’s folder what is it pointing towards? Same with the OROP one?
+	- Os.chdir – what is this and where does the analysis_functions variable come from?
+	- How to read an OUT file?
 18.	calculate_WaterSalesForFY
 19.	calculate_FYActuals
 20.	calculate_NextFYBudget
 21.	run_FinancialModelForSingleRealization **(big function)**
+ 
