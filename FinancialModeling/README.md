@@ -1,27 +1,26 @@
 # Financial Model
-
 ## ORDER OF DEFINED FUNCTION EXECUTION:
-1.	run_FinancialModelForSingleRealization\*
-	a.	pull_ModeledData
-		i.	get_HarneyAugmentationFromOMS
-	b.	collect_ExistingRecords
-		i.	calculate_TrueDeliveriesWithSlack
+run_FinancialModelForSingleRealization\*
+	- pull_ModeledData
+		-get_HarneyAugmentationFromOMS
+	- collect_ExistingRecords
+		- calculate_TrueDeliveriesWithSlack
 			1.	get_MemberDeliveries
 			2.	get_DailySupplySlack
-	c.	allocate_InitialAnnualCIPSpending
-	d.	Calculate_WaterSalesforFY
-		i.	Estimate_UniformRate
-	e.	Update_MajorSupplyInfrastructureInvestment\*
-		i.	Check_forTriggeredProjects
-	f.	Calculate_FYActuals\*
-		i.	Calculate_DebtCoverageRatio
-		ii.	Calculate_RateCoverageRatio
-	g.	Calculate_NextFYBudget\*
-		i.	Add_NewDebt
-		ii.	Set_BudgetedDebtService
-		iii.	Add_NewOperationalCosts
-		iv.	Estimate_UniformRate
-		v.	Estimate_VariableRate
+	- allocate_InitialAnnualCIPSpending
+	- Calculate_WaterSalesforFY
+		-Estimate_UniformRate
+	- Update_MajorSupplyInfrastructureInvestment\*
+		- Check_forTriggeredProjects
+	- Calculate_FYActuals\*
+		- Calculate_DebtCoverageRatio
+		- Calculate_RateCoverageRatio
+	- Calculate_NextFYBudget\*
+		- Add_NewDebt
+		- Set_BudgetedDebtService
+		- Add_NewOperationalCosts
+		- Estimate_UniformRate
+		- Estimate_VariableRate
 
 \*Makes a difference if the CIP schedule is toggled on (True)
 
